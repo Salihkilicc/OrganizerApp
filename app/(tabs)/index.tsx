@@ -8,10 +8,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/store/useAuth';
 
 type ConnectionState = 'idle' | 'connecting' | 'connected' | 'error';
 
 export default function HomeScreen() {
+  const { user } = useAuth();
+  const isGuest = Boolean(user?.guest);
+  const authLabel = user ? (isGuest ? 'Guest mode' : 'Connected') : 'Not connected';
   const [supabaseStatus, setSupabaseStatus] = useState<{
     state: ConnectionState;
     message: string;
@@ -62,6 +66,10 @@ export default function HomeScreen() {
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Auth status</ThemedText>
+        <ThemedText>{authLabel}</ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Supabase status</ThemedText>

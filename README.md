@@ -53,3 +53,17 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Supabase Auth (Dev vs Prod)
+
+1. **Google Cloud Console → OAuth Client (Web)**
+   - Create a Web client and add the following Authorized redirect URI: `https://<PROJECT-REF>.supabase.co/auth/v1/callback`.
+2. **Supabase Dashboard → Authentication → URL Configuration**
+   - **DEV**: Paste the exact string logged by `getDevRedirect()` (looks like `https://auth.expo.io/@<your-user>/<your-slug>`). The root layout logs `DEV redirect: ...` in development for easy copy/paste.
+   - **PROD**: Paste the exact string logged by `getProdRedirect()` (for this app it resolves to `organizer://redirect` by default, or a path you set if you change the helper).
+
+### Troubleshooting
+
+- **`redirect_to is not allowed`** → Add the exact redirect string (copy it from the dev logs) under Supabase Redirect URLs.
+- **`Google redirect_uri_mismatch`** → Ensure the Google OAuth client uses the Supabase callback URL (`https://<PROJECT-REF>.supabase.co/auth/v1/callback`).
+- **Session not persisting** → Confirm both `supabase.auth.getSession()` and the `onAuthStateChange` subscription run on app start (already wired in `store/useAuth.ts`).
