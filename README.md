@@ -12,9 +12,14 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 2. Start the app
 
-   ```bash
-   npx expo start
-   ```
+```bash
+npx expo start
+```
+
+### Configure Supabase
+
+1. Copy `.env.example` to `.env` (or your preferred env file that Expo loads) and paste the Supabase project credentials from [your dashboard](https://mcp.supabase.com/mcp?project_ref=omspbmogkplnklfzgotk).
+2. Restart Expo so `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are available at runtime.
 
 In the output, you'll find options to open the app in a
 

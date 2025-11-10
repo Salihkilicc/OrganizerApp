@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useEffect, useState } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
@@ -6,8 +7,49 @@ import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import { supabase } from '@/lib/supabase';
 
- export default function HomeScreen() {
+type ConnectionState = 'idle' | 'connecting' | 'connected' | 'error';
+
+export default function HomeScreen() {
+  const [supabaseStatus, setSupabaseStatus] = useState<{
+    state: ConnectionState;
+    message: string;
+  }>({
+    state: 'idle',
+    message: 'Not connected yet',
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkConnection = async () => {
+      setSupabaseStatus({ state: 'connecting', message: 'Contacting Supabase…' });
+
+      const { data, error } = await supabase.auth.getSession();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        setSupabaseStatus({ state: 'error', message: error.message });
+        return;
+      }
+
+      setSupabaseStatus({
+        state: 'connected',
+        message: data.session ? 'Session found, ready to go!' : 'No session yet – ready to sign in.',
+      });
+    };
+
+    checkConnection();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -20,6 +62,16 @@ import { Link } from 'expo-router';
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Supabase status</ThemedText>
+        <ThemedText>
+          {supabaseStatus.state === 'connected'
+            ? `✅ Connected — ${supabaseStatus.message}`
+            : supabaseStatus.state === 'error'
+              ? `❌ ${supabaseStatus.message}`
+              : `⏳ ${supabaseStatus.message}`}
+        </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
