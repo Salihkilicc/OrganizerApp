@@ -1,47 +1,42 @@
 import { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
   SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
-  Pressable,
   View,
-  KeyboardAvoidingView,
-  Platform,
-  useColorScheme,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { useAuth, signInWithGoogle } from '@/store/useAuth';
+import { signInWithGoogle, useAuth } from '@/store/useAuth';
+
+const palette = {
+  text: '#111826',
+  muted: '#7a8397',
+  border: '#d9dde6',
+  accent: '#2f7e4f',
+  link: '#1975ff',
+};
 
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn, enterGuestMode, loading } = useAuth();
-  const isDark = useColorScheme() === 'dark';
-  const palette = {
-    background: isDark ? '#050505' : '#f5f5f5',
-    card: isDark ? '#111' : '#fff',
-    border: isDark ? '#333' : '#ddd',
-    text: isDark ? '#fff' : '#111',
-    muted: isDark ? '#999' : '#555',
-  };
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorText, setErrorText] = useState('');
   const [loadingGoogle, setLoadingGoogle] = useState(false);
 
   const handleLogin = async () => {
+    setErrorText('');
     if (!email || !password) {
-      alert('Lütfen e-posta ve şifre girin.');
+      setErrorText('Please enter an email and password.');
       return;
     }
     await signIn(email.trim(), password);
-  };
-
-  const handleGuest = () => {
-    enterGuestMode();
-    // TODO: Persist guest actions and merge when the user registers.
-    router.replace('/(tabs)');
   };
 
   const handleGoogleSignIn = async () => {
@@ -49,67 +44,94 @@ export default function LoginScreen() {
       setLoadingGoogle(true);
       await signInWithGoogle();
     } catch (error: unknown) {
-      Alert.alert('Google Giriş Hatası', error instanceof Error ? error.message : String(error));
+      setErrorText(
+        error instanceof Error ? error.message : 'An error occurred during Google sign-in.'
+      );
     } finally {
       setLoadingGoogle(false);
     }
   };
 
+  const handleGuestMode = () => {
+    enterGuestMode();
+    router.replace('/(tabs)');
+  };
+
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
+    <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}>
-        <View style={[styles.container, { backgroundColor: palette.background }]}>
-          <Text style={[styles.title, { color: palette.text }]}>Organizer</Text>
-          <TextInput
-            value={email}
-            inputMode="email"
-            onChangeText={setEmail}
-            placeholder="E-posta"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            placeholderTextColor={palette.muted}
-            style={[
-              styles.input,
-              { borderColor: palette.border, backgroundColor: palette.card, color: palette.text },
-            ]}
-          />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Şifre"
-            secureTextEntry
-            placeholderTextColor={palette.muted}
-            style={[
-              styles.input,
-              { borderColor: palette.border, backgroundColor: palette.card, color: palette.text },
-            ]}
-          />
-          <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
-            <Text style={styles.buttonText}>Giriş</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.secondaryButton, { backgroundColor: palette.card }]}
-            onPress={handleGoogleSignIn}
-            disabled={loadingGoogle}>
-            <Text style={[styles.buttonText, { color: palette.text }]}>
-              {loadingGoogle ? 'Google ile Giriş (bekleyin…)' : 'Google ile Giriş Yap'}
-            </Text>
-          </Pressable>
-          <View style={styles.linkRow}>
-            <Pressable onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.linkText}>Kayıt ol</Text>
+        <View style={styles.container}>
+          <Text style={styles.title}>Login</Text>
+          <Text style={styles.subtitle}>Access Organizer with your email and password.</Text>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>E-mail</Text>
+            <TextInput
+              value={email}
+              inputMode="email"
+              onChangeText={setEmail}
+              placeholder="jsmith@mail.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholderTextColor={palette.muted}
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Password</Text>
+            <View style={[styles.input, styles.passwordWrapper]}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Enter your password"
+                placeholderTextColor={palette.muted}
+                secureTextEntry={!showPassword}
+                style={styles.passwordInput}
+              />
+              <Pressable onPress={() => setShowPassword((prev) => !prev)}>
+                <Text style={styles.toggle}>{showPassword ? 'Hide' : 'Show'}</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {errorText ? <Text style={styles.error}>{errorText}</Text> : null}
+
+          <View style={styles.actions}>
+            <Pressable
+              style={[styles.button, loading ? styles.disabled : null]}
+              onPress={handleLogin}
+              disabled={loading}>
+              <Text style={styles.buttonText}>{loading ? 'Logging in…' : 'Login'}</Text>
             </Pressable>
-            <Pressable onPress={() => router.push('/(auth)/forgot')}>
-              <Text style={styles.linkText}>Şifremi unuttum</Text>
+
+            <Text style={styles.auxText}>or login with</Text>
+
+            <Pressable
+              style={styles.googleButton}
+              onPress={handleGoogleSignIn}
+              disabled={loadingGoogle}>
+              <View style={styles.googleBadge}>
+                <Text style={styles.googleLetter}>G</Text>
+              </View>
+              <Text style={styles.googleText}>
+                {loadingGoogle ? 'Signing in with Google (loading…)' : 'Login with Google'}
+              </Text>
             </Pressable>
           </View>
-          <Pressable
-            style={[styles.guestButton, { borderColor: palette.border }]}
-            onPress={handleGuest}>
-            <Text style={[styles.guestText, { color: palette.text }]}>Guest olarak devam et</Text>
-          </Pressable>
+
+          <View style={styles.bottomRow}>
+            <Pressable
+              onPress={() => router.push('/(auth)/register')}
+              style={styles.registerLink}>
+              <Text style={styles.registerText}>Create account</Text>
+            </Pressable>
+            <Pressable style={styles.guestButton} onPress={handleGuestMode}>
+              <Text style={styles.guestText}>Continue as guest</Text>
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -119,64 +141,154 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   flex: {
     flex: 1,
   },
   container: {
     flex: 1,
-    padding: 24,
-    gap: 12,
+    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 32,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
-    marginBottom: 12,
+    color: '#111826',
+  },
+  subtitle: {
+    marginTop: 12,
+    fontSize: 15,
+    color: palette.muted,
+  },
+  field: {
+    marginTop: 24,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4b5572',
+    marginBottom: 6,
   },
   input: {
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    borderColor: palette.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    backgroundColor: '#fff',
+  },
+  passwordWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 15,
+    color: palette.text,
+  },
+  toggle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: palette.link,
+  },
+  error: {
+    marginTop: 12,
+    color: '#c21c3a',
+    fontSize: 13,
+  },
+  actions: {
+    flex: 1,
+    justifyContent: 'center',
+    marginTop: 18,
   },
   button: {
-    backgroundColor: '#007bff',
-    paddingVertical: 16,
-    borderRadius: 12,
+    alignSelf: 'center',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 44,
     alignItems: 'center',
+    backgroundColor: palette.accent,
+    minWidth: 220,
   },
-  secondaryButton: {
-    backgroundColor: '#222',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+  disabled: {
+    opacity: 0.8,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  linkText: {
-    color: '#6ea8fe',
     fontSize: 15,
     fontWeight: '600',
   },
-  guestButton: {
-    marginTop: 'auto',
-    paddingVertical: 14,
-    borderRadius: 12,
+  auxText: {
+    marginTop: 16,
+    textAlign: 'center',
+    color: palette.muted,
+    fontSize: 13,
+  },
+  googleButton: {
+    marginTop: 10,
+    flexDirection: 'row',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: palette.border,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    alignSelf: 'center',
+  },
+  googleBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#f1f3f7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  googleLetter: {
+    fontWeight: '700',
+    color: '#de4f3f',
+  },
+  googleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.text,
+  },
+  bottomRow: {
+    marginTop: 28,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  guestText: {
-    fontSize: 16,
+  registerLink: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  registerText: {
+    color: palette.text,
     fontWeight: '600',
+    fontSize: 14,
+  },
+  guestButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  guestText: {
+    color: palette.text,
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
