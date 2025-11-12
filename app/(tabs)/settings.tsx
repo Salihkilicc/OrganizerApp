@@ -1,6 +1,6 @@
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { useTheme, type ThemeKey } from '@/store/useTheme';
+import { type ThemeKey, useTheme } from '@/store/useTheme';
 import { useAuth } from '@/store/useAuth';
 import { useI18n } from '@/store/useI18n';
 import { useT } from '@/i18n';
@@ -16,11 +16,9 @@ const themeLabelMap: Record<ThemeKey, 'lightTheme' | 'darkTheme' | 'ninjaTheme'>
 };
 
 export default function SettingsScreen() {
-  const { palette, themeKey, setTheme } = useTheme((state) => ({
-    palette: state.palette,
-    themeKey: state.themeKey,
-    setTheme: state.setTheme,
-  }));
+  const palette = useTheme((state) => state.palette);
+  const themeKey = useTheme((state) => state.themeKey);
+  const setTheme = useTheme((state) => state.setTheme);
   const { user, signOut } = useAuth();
   const { lang, change } = useI18n();
   const t = useT();
@@ -33,7 +31,7 @@ export default function SettingsScreen() {
       <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <View style={styles.header}>
           <Text style={[styles.heading, { color: palette.text }]}>Settings</Text>
-          <Text style={[styles.subheading, { color: palette.muted }]}>{userLabel}</Text>
+          <Text style={[styles.subheading, { color: palette.text }]}>{userLabel}</Text>
         </View>
 
         <View style={styles.section}>
