@@ -10,6 +10,7 @@ import { useAuth } from '@/store/useAuth';
 import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
 import { useI18n } from '@/store/useI18n';
 import { useTheme } from '@/store/useTheme';
+import { ensureInitialized } from '@/lib/notifications';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -29,6 +30,10 @@ export default function RootLayout() {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    ensureInitialized().catch(console.warn);
+  }, []);
 
   useEffect(() => {
     loadTheme();

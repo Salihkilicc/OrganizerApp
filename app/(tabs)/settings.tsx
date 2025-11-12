@@ -15,6 +15,7 @@ const themeLabelMap: Record<ThemeKey, 'lightTheme' | 'darkTheme' | 'ninjaTheme'>
   ninja: 'ninjaTheme',
 };
 
+
 export default function SettingsScreen() {
   const palette = useTheme((state) => state.palette);
   const themeKey = useTheme((state) => state.themeKey);
