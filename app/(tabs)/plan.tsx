@@ -99,13 +99,6 @@ export default function PlanScreen() {
     [addPlan, closeEditor, editingId, selectedDate, updatePlan],
   );
 
-  const handleMove = useCallback(
-    (id: string, newStart: number, newEnd: number) => {
-      updatePlan(id, { startMin: newStart, endMin: newEnd });
-    },
-    [updatePlan],
-  );
-
   const handleDelete = useCallback(
     (id: string) => {
       removePlan(id);
@@ -124,7 +117,6 @@ export default function PlanScreen() {
           <PlanGrid
             date={selectedDate}
             blocks={dailyBlocks}
-            onMove={handleMove}
             onEdit={openEditEditor}
             onLongDelete={handleDelete}
             step={STEP}

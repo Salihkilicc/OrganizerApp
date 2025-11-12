@@ -23,7 +23,11 @@ export type PlansStore = {
 const STORAGE_KEY = 'plans_v1';
 
 const persistImmediate = async (blocks: PlanBlock[]) => {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(blocks));
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(blocks));
+  } catch (error) {
+    console.warn('[usePlans/persist]', error);
+  }
 };
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -67,11 +71,13 @@ export const usePlans = create<PlansStore>((set, get) => ({
     const next: PlanBlock = { id: nextId(), ...block };
     const updated = [...get().blocks, next];
     set({ blocks: updated });
+    console.log('[usePlans/add]', next);
     schedulePersist(updated);
     return next.id;
   },
 
   update: async (id, patch) => {
+    console.log('[usePlans/update]', id, patch);
     const updated = get().blocks.map((block) =>
       block.id === id ? { ...block, ...patch } : block,
     );
@@ -80,6 +86,7 @@ export const usePlans = create<PlansStore>((set, get) => ({
   },
 
   remove: async (id) => {
+    console.log('[usePlans/remove]', id);
     const updated = get().blocks.filter((block) => block.id !== id);
     set({ blocks: updated });
     schedulePersist(updated);

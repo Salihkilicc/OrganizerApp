@@ -2,8 +2,8 @@
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 /* eslint-enable import/no-duplicates */
-import { useEffect, useMemo } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -21,6 +21,34 @@ WebBrowser.maybeCompleteAuthSession();
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+type ErrorBoundaryState = {
+  error?: Error;
+};
+
+class ErrorBoundary extends React.Component<React.PropsWithChildren<unknown>, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { error: undefined };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('[Render error]', error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <Text>
+          {String(this.state.error.stack ?? this.state.error.message ?? 'Unknown render error')}
+        </Text>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function RootLayout() {
   const router = useRouter();
@@ -87,24 +115,28 @@ export default function RootLayout() {
   if (showSplash) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <ThemeProvider value={navigatorTheme}>
-          <Splash backgroundColor={palette.background} />
-          <StatusBar style="auto" />
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider value={navigatorTheme}>
+            <Splash backgroundColor={palette.background} />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </ErrorBoundary>
       </GestureHandlerRootView>
     );
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={navigatorTheme}>
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider value={navigatorTheme}>
+          <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

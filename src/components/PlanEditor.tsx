@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -62,8 +63,34 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
   const isValid = title.trim().length > 0 && endMin > startMin;
 
   const handleSave = () => {
-    if (!isValid) return;
-    onSave({ title: title.trim(), note: note.trim() || undefined, startMin, endMin });
+    try {
+      const trimmedTitle = title.trim();
+      const trimmedNote = note.trim() || undefined;
+      const safeStart = clamp(startMin, 0, 24 * 60);
+      const safeEnd = clamp(endMin, 0, 24 * 60);
+
+      console.log('[PlanEditor/save]', {
+        title: trimmedTitle,
+        startMin: safeStart,
+        endMin: safeEnd,
+        date,
+      });
+
+      if (!Number.isFinite(safeStart) || !Number.isFinite(safeEnd)) {
+        throw new Error('Start or end time is invalid');
+      }
+      if (safeEnd <= safeStart) {
+        throw new Error('End time must be after start time');
+      }
+      if (trimmedTitle.length === 0) {
+        throw new Error('Title is required');
+      }
+
+      onSave({ title: trimmedTitle, note: trimmedNote, startMin: safeStart, endMin: safeEnd });
+    } catch (err) {
+      console.warn('[PlanEditor/error]', err);
+      Alert.alert('Plan save failed', err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
