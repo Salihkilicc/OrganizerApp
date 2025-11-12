@@ -14,7 +14,7 @@ type ConnectionState = 'idle' | 'connecting' | 'connected' | 'error';
 
 export default function HomeScreen() {
   const { user } = useAuth();
-  const isGuest = Boolean(user?.guest);
+  const isGuest = Boolean(user && 'guest' in user && user.guest);
   const authLabel = user ? (isGuest ? 'Guest mode' : 'Connected') : 'Not connected';
   const [supabaseStatus, setSupabaseStatus] = useState<{
     state: ConnectionState;

@@ -9,14 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   useColorScheme,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { useAuth } from '@/store/useAuth';
+import { useAuth, signInWithGoogle } from '@/store/useAuth';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn, signInWithGoogle, enterGuestMode, loading } = useAuth();
+  const { signIn, enterGuestMode, loading } = useAuth();
   const isDark = useColorScheme() === 'dark';
   const palette = {
     background: isDark ? '#050505' : '#f5f5f5',
@@ -27,6 +28,7 @@ export default function LoginScreen() {
   };
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,6 +42,17 @@ export default function LoginScreen() {
     enterGuestMode();
     // TODO: Persist guest actions and merge when the user registers.
     router.replace('/(tabs)');
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoadingGoogle(true);
+      await signInWithGoogle();
+    } catch (error: unknown) {
+      Alert.alert('Google Giriş Hatası', error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoadingGoogle(false);
+    }
   };
 
   return (
@@ -78,9 +91,11 @@ export default function LoginScreen() {
           </Pressable>
           <Pressable
             style={[styles.secondaryButton, { backgroundColor: palette.card }]}
-            onPress={signInWithGoogle}
-            disabled={loading}>
-            <Text style={[styles.buttonText, { color: palette.text }]}>Google ile Giriş</Text>
+            onPress={handleGoogleSignIn}
+            disabled={loadingGoogle}>
+            <Text style={[styles.buttonText, { color: palette.text }]}>
+              {loadingGoogle ? 'Google ile Giriş (bekleyin…)' : 'Google ile Giriş Yap'}
+            </Text>
           </Pressable>
           <View style={styles.linkRow}>
             <Pressable onPress={() => router.push('/(auth)/register')}>
