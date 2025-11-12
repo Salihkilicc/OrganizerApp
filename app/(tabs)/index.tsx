@@ -6,9 +6,9 @@ import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/store/useAuth';
+import { Link } from 'expo-router';
 
 type ConnectionState = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -64,7 +64,7 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedText type="title">Today</ThemedText>
         <HelloWave />
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
@@ -121,7 +121,7 @@ export default function HomeScreen() {
         </Link>
 
         <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+          {`Tap the Plan tab to see how the sections below can help you organize today.`}
         </ThemedText>
       </ThemedView>
       <ThemedView style={styles.stepContainer}>

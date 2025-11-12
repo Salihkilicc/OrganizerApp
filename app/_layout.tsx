@@ -1,14 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/store/useAuth';
 import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
+import { useI18n } from '@/store/useI18n';
+import { useTheme } from '@/store/useTheme';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -17,14 +18,25 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const router = useRouter();
   const segments = useSegments();
   const { user, loading, initialize } = useAuth();
+  const { ready: i18nReady, init: initI18n } = useI18n();
+  const loadTheme = useTheme((state) => state.load);
+  const themeKey = useTheme((state) => state.themeKey);
+  const palette = useTheme((state) => state.palette);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    loadTheme();
+  }, [loadTheme]);
+
+  useEffect(() => {
+    initI18n();
+  }, [initI18n]);
 
   useEffect(() => {
     if (loading) {
@@ -47,17 +59,33 @@ export default function RootLayout() {
     }
   }, []);
 
-  if (loading) {
+  const navigatorTheme: Theme = useMemo(() => {
+    const baseTheme = themeKey === 'light' ? DefaultTheme : DarkTheme;
+    return {
+      ...baseTheme,
+      colors: {
+        ...baseTheme.colors,
+        background: palette.background,
+        card: palette.card,
+        border: palette.border,
+        text: palette.text,
+      },
+    };
+  }, [themeKey, palette]);
+
+  const showSplash = loading || !i18nReady;
+
+  if (showSplash) {
     return (
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Splash colorScheme={colorScheme} />
+      <ThemeProvider value={navigatorTheme}>
+        <Splash backgroundColor={palette.background} />
         <StatusBar style="auto" />
       </ThemeProvider>
     );
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigatorTheme}>
       <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -69,17 +97,17 @@ export default function RootLayout() {
 }
 
 type SplashProps = {
-  colorScheme: string | null | undefined;
+  backgroundColor: string;
 };
 
-function Splash({ colorScheme }: SplashProps) {
+function Splash({ backgroundColor }: SplashProps) {
   return (
     <View
       style={{
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colorScheme === 'dark' ? '#000' : '#fff',
+        backgroundColor,
       }}>
       <ActivityIndicator size="large" />
     </View>
