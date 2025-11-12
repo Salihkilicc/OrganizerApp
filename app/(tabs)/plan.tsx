@@ -1,112 +1,198 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { DayStrip } from '@/components/DayStrip';
+import { HourColumn } from '@/components/HourColumn';
+import { PlanEditor } from '@/components/PlanEditor';
+import { PlanGrid } from '@/components/PlanGrid';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { usePlans, type PlanBlock } from '@/store/usePlans';
+import { useTheme } from '@/store/useTheme';
+import { useT } from '@/i18n';
+
+const GRID_START = 6;
+const GRID_END = 24;
+const STEP = 30;
+const MIN_BLOCK = 60;
+
+const toISO = (date: Date) => {
+  const pad = (value: number) => value.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const nextRoundedStart = () => {
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const start = Math.min(Math.ceil(minutes / STEP) * STEP, 24 * 60 - MIN_BLOCK);
+  return start;
+};
+
+type EditorValues = {
+  title: string;
+  startMin: number;
+  endMin: number;
+  note?: string;
+};
 
 export default function PlanScreen() {
+  const { palette } = useTheme();
+  const t = useT();
+  const heading = t ? t('plan') : 'Plan';
+  const [selectedDate, setSelectedDate] = useState(() => toISO(new Date()));
+  const loadPlans = usePlans((state) => state.load);
+  const addPlan = usePlans((state) => state.add);
+  const updatePlan = usePlans((state) => state.update);
+  const removePlan = usePlans((state) => state.remove);
+  const blocks = usePlans((state) => state.blocks);
+  const dailyBlocks = useMemo(
+    () => blocks.filter((block) => block.date === selectedDate),
+    [blocks, selectedDate],
+  );
+
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [editorInitial, setEditorInitial] = useState<Partial<PlanBlock> | undefined>();
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadPlans();
+  }, [loadPlans]);
+
+  useEffect(() => {
+    setEditorVisible(false);
+    setEditingId(null);
+    setEditorInitial(undefined);
+  }, [selectedDate]);
+
+  const openAddEditor = useCallback(() => {
+    const startMin = nextRoundedStart();
+    setEditorInitial({ startMin, endMin: Math.min(startMin + MIN_BLOCK, 24 * 60) });
+    setEditingId(null);
+    setEditorVisible(true);
+  }, []);
+
+  const openEditEditor = useCallback(
+    (id: string) => {
+      const current = blocks.find((block) => block.id === id);
+      if (!current) return;
+      setEditorInitial(current);
+      setEditingId(id);
+      setEditorVisible(true);
+    },
+    [blocks],
+  );
+
+  const closeEditor = useCallback(() => {
+    setEditorVisible(false);
+    setEditingId(null);
+    setEditorInitial(undefined);
+  }, []);
+
+  const handleSave = useCallback(
+    async (values: EditorValues) => {
+      if (editingId) {
+        await updatePlan(editingId, values);
+      } else {
+        await addPlan({ ...values, date: selectedDate });
+      }
+      closeEditor();
+    },
+    [addPlan, closeEditor, editingId, selectedDate, updatePlan],
+  );
+
+  const handleMove = useCallback(
+    (id: string, newStart: number, newEnd: number) => {
+      updatePlan(id, { startMin: newStart, endMin: newEnd });
+    },
+    [updatePlan],
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      removePlan(id);
+    },
+    [removePlan],
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Plan
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This project uses file-based routing with separate Today and Plan screens under{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/plan.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          wires up the tabs for Today, Plan, and Settings.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <GestureHandlerRootView style={styles.flex}>
+      <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
+        <Text style={[styles.heading, { color: palette.text }]}>{heading}</Text>
+        <DayStrip selected={selectedDate} onSelect={setSelectedDate} />
+        <View style={styles.gridRow}>
+          <HourColumn startHour={GRID_START} endHour={GRID_END} pxPerMin={1} />
+        <View style={styles.gridArea}>
+          <PlanGrid
+            date={selectedDate}
+            blocks={dailyBlocks}
+            onMove={handleMove}
+            onEdit={openEditEditor}
+            onLongDelete={handleDelete}
+            step={STEP}
+            startHour={GRID_START}
+            endHour={GRID_END}
+            pxPerMin={1}
+          />
+        </View>
+      </View>
+      <Pressable
+        onPress={openAddEditor}
+        style={({ pressed }) => [
+          styles.fab,
+          {
+            backgroundColor: palette.accent,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}>
+        <Text style={[styles.fabText, { color: palette.background }]}>+</Text>
+      </Pressable>
+      <PlanEditor
+        visible={editorVisible}
+        initial={editorInitial}
+        date={selectedDate}
+        onCancel={closeEditor}
+        onSave={handleSave}
+      />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  flex: {
+    flex: 1,
   },
-  titleContainer: {
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  gridRow: {
+    flex: 1,
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'stretch',
+  },
+  gridArea: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+  },
+  fabText: {
+    fontSize: 32,
+    fontWeight: '600',
+    lineHeight: 32,
   },
 });

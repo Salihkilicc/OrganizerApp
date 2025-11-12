@@ -1,3 +1,7 @@
+/* eslint-disable import/no-duplicates */
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+/* eslint-enable import/no-duplicates */
 import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
@@ -82,22 +86,26 @@ export default function RootLayout() {
 
   if (showSplash) {
     return (
-      <ThemeProvider value={navigatorTheme}>
-        <Splash backgroundColor={palette.background} />
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider value={navigatorTheme}>
+          <Splash backgroundColor={palette.background} />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <ThemeProvider value={navigatorTheme}>
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={navigatorTheme}>
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
