@@ -1,7 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-export type PlanCategory = 'focus' | 'study' | 'work' | 'gym' | 'other';
+export type PlanCategory =
+  | 'focus'
+  | 'study'
+  | 'work'
+  | 'gym'
+  | 'meeting'
+  | 'reading'
+  | 'break'
+  | 'personal'
+  | 'other';
 
 export type PlanBlock = {
   id: string;

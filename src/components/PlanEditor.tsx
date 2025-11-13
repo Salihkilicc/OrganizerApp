@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { Button } from '@/components/ui/Button';
 import { useTheme } from '@/store/useTheme';
 import type { PlanBlock, PlanCategory } from '@/store/usePlans';
 
@@ -31,6 +32,7 @@ type Props = {
     note?: string;
     category: PlanCategory;
   }) => void;
+  onDelete?: (id: string) => void;
 };
 
 const MIN_DURATION = 30;
@@ -39,13 +41,20 @@ const CATEGORY_OPTIONS: { label: string; value: PlanCategory }[] = [
   { label: 'Study', value: 'study' },
   { label: 'Work', value: 'work' },
   { label: 'Gym', value: 'gym' },
+  { label: 'Meeting', value: 'meeting' },
+  { label: 'Reading', value: 'reading' },
+  { label: 'Break', value: 'break' },
+  { label: 'Personal', value: 'personal' },
   { label: 'Other', value: 'other' },
 ];
 
-export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) => {
+export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete }: Props) => {
   const { palette } = useTheme();
   const defaultStart = useMemo(() => initial?.startMin ?? 8 * 60, [initial]);
-  const defaultEnd = useMemo(() => initial?.endMin ?? defaultStart + 60, [defaultStart, initial?.endMin]);
+  const defaultEnd = useMemo(
+    () => initial?.endMin ?? defaultStart + 60,
+    [defaultStart, initial?.endMin],
+  );
 
   const [title, setTitle] = useState(initial?.title ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
@@ -118,10 +127,17 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
     }
   };
 
+  const canDelete = Boolean(onDelete && initial?.id);
+  const handleDelete = () => {
+    if (!onDelete || !initial?.id) return;
+    onDelete(initial.id);
+    onCancel();
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
-        <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}> 
+        <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <Text style={[styles.heading, { color: palette.text }]}>Plan for {date}</Text>
           <TextInput
             style={[
@@ -251,6 +267,11 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
               <Text style={[styles.actionText, { color: palette.background }]}>Save</Text>
             </Pressable>
           </View>
+          {canDelete && (
+            <View style={styles.deleteRow}>
+              <Button title="Delete plan" type="ghost" onPress={handleDelete} />
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -359,5 +380,8 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontWeight: '600',
+  },
+  deleteRow: {
+    marginTop: 12,
   },
 });

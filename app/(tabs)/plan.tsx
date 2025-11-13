@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DayStrip } from '@/components/DayStrip';
 import { HourColumn } from '@/components/HourColumn';
@@ -14,6 +14,7 @@ const GRID_START = 6;
 const GRID_END = 24;
 const STEP = 30;
 const MIN_BLOCK = 60;
+const PX_PER_MIN = 1;
 
 const toISO = (date: Date) => {
   const pad = (value: number) => value.toString().padStart(2, '0');
@@ -124,19 +125,43 @@ export default function PlanScreen() {
     [addPlan, closeEditor, editingId, selectedDate, updatePlan],
   );
 
-const handleDelete = useCallback(
-  (id: string) => {
-    removePlan(id);
-  },
-  [removePlan],
-);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await removePlan(id);
+      closeEditor();
+    },
+    [closeEditor, removePlan],
+  );
 
-const handleMove = useCallback(
-  (id: string, newStartMin: number, newEndMin: number) => {
-    updatePlan(id, { startMin: newStartMin, endMin: newEndMin });
-  },
-  [updatePlan],
-);
+  const handleCreateAt = useCallback(
+    (startMin: number, endMin: number) => {
+      setEditorInitial({
+        startMin,
+        endMin,
+        category: 'focus',
+      });
+      setEditingId(null);
+      setEditorVisible(true);
+    },
+    [setEditorInitial, setEditorVisible, setEditingId],
+  );
+
+  const handleMove = useCallback(
+    (id: string, newStartMin: number, newEndMin: number) => {
+      updatePlan(id, { startMin: newStartMin, endMin: newEndMin });
+    },
+    [updatePlan],
+  );
+
+  const scrollRef = useRef<ScrollView>(null);
+  const contentHeight = (GRID_END - GRID_START) * 60 * PX_PER_MIN;
+
+  useEffect(() => {
+    const target = Math.max((8 - GRID_START) * 60 * PX_PER_MIN, 0);
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: target, animated: false });
+    });
+  }, []);
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -149,25 +174,36 @@ const handleMove = useCallback(
         <View style={[styles.summaryRow, { borderColor: palette.border, backgroundColor: palette.card }]}>
           <Text style={[styles.summaryText, { color: palette.text }]}>
             {blockCount > 0
-              ? `${blockCount} block${blockCount === 1 ? '' : 's'} • ${totalHours.toFixed(1)} hours planned`
+              ? `${blockCount} plan${blockCount === 1 ? '' : 's'} and ${totalHours.toFixed(1)} hours total`
               : 'No plan for this day yet. Use the grid below to add your first block.'}
           </Text>
         </View>
         <View style={styles.gridRow}>
-          <HourColumn startHour={GRID_START} endHour={GRID_END} pxPerMin={1} />
-          <View style={styles.gridArea}>
-            <PlanGrid
-              date={selectedDate}
-              blocks={dailyBlocks}
-              onMove={handleMove}
-              onEdit={openEditEditor}
-              onLongDelete={handleDelete}
-              step={STEP}
-              startHour={GRID_START}
-              endHour={GRID_END}
-              pxPerMin={1}
-            />
-          </View>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.scroll}
+            contentContainerStyle={[styles.scrollContent, { height: contentHeight }]}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={styles.innerRow}>
+              <HourColumn startHour={GRID_START} endHour={GRID_END} pxPerMin={PX_PER_MIN} />
+              <View style={styles.gridArea}>
+                <PlanGrid
+                  date={selectedDate}
+                  blocks={dailyBlocks}
+                  onMove={handleMove}
+                  onEdit={openEditEditor}
+                  onCreateAt={handleCreateAt}
+                  step={STEP}
+                  startHour={GRID_START}
+                  endHour={GRID_END}
+                  pxPerMin={PX_PER_MIN}
+                  contentHeight={contentHeight}
+                />
+              </View>
+            </View>
+          </ScrollView>
         </View>
       <Pressable
         onPress={openAddEditor}
@@ -186,6 +222,7 @@ const handleMove = useCallback(
         date={selectedDate}
         onCancel={closeEditor}
         onSave={handleSave}
+        onDelete={handleDelete}
       />
       </SafeAreaView>
     </GestureHandlerRootView>
@@ -220,6 +257,16 @@ const styles = StyleSheet.create({
   gridArea: {
     flex: 1,
     marginLeft: 12,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  innerRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
   summaryRow: {
     borderWidth: 1,

@@ -1,5 +1,5 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/store/useTheme';
 
@@ -23,33 +23,27 @@ const startOfWeek = (date: Date) => {
 
 export const DayStrip = memo(function DayStrip({ selected, onSelect }: Props) {
   const { palette } = useTheme();
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(parseISO(selected)));
   const todayISO = useMemo(() => toISO(new Date()), []);
-
-  useEffect(() => {
-    setWeekStart(startOfWeek(parseISO(selected)));
+  const windowStart = useMemo(() => {
+    const base = startOfWeek(parseISO(selected));
+    const copy = new Date(base);
+    copy.setDate(base.getDate() - 7);
+    return copy;
   }, [selected]);
-
   const days = useMemo(() => {
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + index);
+    return Array.from({ length: 21 }, (_, index) => {
+      const date = new Date(windowStart);
+      date.setDate(windowStart.getDate() + index);
       return date;
     });
-  }, [weekStart]);
+  }, [windowStart]);
 
   return (
     <View style={[styles.container, { borderColor: palette.border }]}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.arrow,
-          pressed && { opacity: 0.65 },
-          { borderColor: palette.border },
-        ]}
-        onPress={() => setWeekStart((prev) => offsetWeek(prev, -1))}>
-        <Text style={[styles.arrowText, { color: palette.text }]}>‹</Text>
-      </Pressable>
-      <View style={styles.week}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
         {days.map((day) => {
           const iso = toISO(day);
           const isSelected = iso === selected;
@@ -84,16 +78,7 @@ export const DayStrip = memo(function DayStrip({ selected, onSelect }: Props) {
             </Pressable>
           );
         })}
-      </View>
-      <Pressable
-        style={({ pressed }) => [
-          styles.arrow,
-          pressed && { opacity: 0.65 },
-          { borderColor: palette.border },
-        ]}
-        onPress={() => setWeekStart((prev) => offsetWeek(prev, 1))}>
-        <Text style={[styles.arrowText, { color: palette.text }]}>›</Text>
-      </Pressable>
+      </ScrollView>
     </View>
   );
 });
@@ -101,12 +86,6 @@ export const DayStrip = memo(function DayStrip({ selected, onSelect }: Props) {
 const parseISO = (value: string) => {
   const [year, month, day] = value.split('-').map(Number);
   return new Date(year, month - 1, day);
-};
-
-const offsetWeek = (date: Date, weeks: number) => {
-  const next = new Date(date);
-  next.setDate(date.getDate() + weeks * 7);
-  return startOfWeek(next);
 };
 
 const styles = StyleSheet.create({
@@ -119,10 +98,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
   },
-  week: {
-    flex: 1,
+  scrollContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
   },
   day: {
     alignItems: 'center',
@@ -138,14 +118,5 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  arrow: {
-    borderWidth: 1,
-    borderRadius: 999,
-    padding: 6,
-  },
-  arrowText: {
-    fontSize: 18,
-    fontWeight: '700',
   },
 });
