@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+export type PlanCategory = 'focus' | 'study' | 'work' | 'gym' | 'other';
+
 export type PlanBlock = {
   id: string;
   title: string;
@@ -9,6 +11,7 @@ export type PlanBlock = {
   startMin: number;
   endMin: number;
   color?: string;
+  category: PlanCategory;
 };
 
 export type PlansStore = {
@@ -49,7 +52,10 @@ const loadBlocks = async (): Promise<PlanBlock[]> => {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed;
+      return parsed.map((block) => ({
+        ...block,
+        category: block?.category ?? 'other',
+      }));
     }
   } catch (error) {
     console.warn('Failed to parse stored plans', error);
@@ -68,7 +74,11 @@ export const usePlans = create<PlansStore>((set, get) => ({
   },
 
   add: async (block) => {
-    const next: PlanBlock = { id: nextId(), ...block };
+    const next: PlanBlock = {
+      id: nextId(),
+      category: block.category ?? 'focus',
+      ...block,
+    };
     const updated = [...get().blocks, next];
     set({ blocks: updated });
     console.log('[usePlans/add]', next);
@@ -79,7 +89,13 @@ export const usePlans = create<PlansStore>((set, get) => ({
   update: async (id, patch) => {
     console.log('[usePlans/update]', id, patch);
     const updated = get().blocks.map((block) =>
-      block.id === id ? { ...block, ...patch } : block,
+      block.id === id
+        ? {
+            ...block,
+            ...patch,
+            category: patch.category ?? block.category ?? 'other',
+          }
+        : block,
     );
     set({ blocks: updated });
     schedulePersist(updated);

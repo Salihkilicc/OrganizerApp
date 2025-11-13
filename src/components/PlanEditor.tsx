@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/store/useTheme';
-import type { PlanBlock } from '@/store/usePlans';
+import type { PlanBlock, PlanCategory } from '@/store/usePlans';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (min: number) => {
@@ -24,10 +24,23 @@ type Props = {
   initial?: Partial<PlanBlock>;
   date: string;
   onCancel: () => void;
-  onSave: (values: { title: string; startMin: number; endMin: number; note?: string }) => void;
+  onSave: (values: {
+    title: string;
+    startMin: number;
+    endMin: number;
+    note?: string;
+    category: PlanCategory;
+  }) => void;
 };
 
 const MIN_DURATION = 30;
+const CATEGORY_OPTIONS: { label: string; value: PlanCategory }[] = [
+  { label: 'Focus', value: 'focus' },
+  { label: 'Study', value: 'study' },
+  { label: 'Work', value: 'work' },
+  { label: 'Gym', value: 'gym' },
+  { label: 'Other', value: 'other' },
+];
 
 export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) => {
   const { palette } = useTheme();
@@ -38,6 +51,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
   const [note, setNote] = useState(initial?.note ?? '');
   const [startMin, setStartMin] = useState(defaultStart);
   const [endMin, setEndMin] = useState(defaultEnd);
+  const [category, setCategory] = useState<PlanCategory>(initial?.category ?? 'focus');
 
   useEffect(() => {
     setTitle(initial?.title ?? '');
@@ -45,6 +59,10 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
     setStartMin(initial?.startMin ?? defaultStart);
     setEndMin(initial?.endMin ?? defaultEnd);
   }, [initial, defaultStart, defaultEnd, visible]);
+
+  useEffect(() => {
+    setCategory(initial?.category ?? 'focus');
+  }, [initial, visible]);
 
   const increaseStart = (delta: number) => {
     setStartMin((prev) => {
@@ -73,6 +91,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
         title: trimmedTitle,
         startMin: safeStart,
         endMin: safeEnd,
+        category,
         date,
       });
 
@@ -86,7 +105,13 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
         throw new Error('Title is required');
       }
 
-      onSave({ title: trimmedTitle, note: trimmedNote, startMin: safeStart, endMin: safeEnd });
+      onSave({
+        title: trimmedTitle,
+        note: trimmedNote,
+        startMin: safeStart,
+        endMin: safeEnd,
+        category,
+      });
     } catch (err) {
       console.warn('[PlanEditor/error]', err);
       Alert.alert('Plan save failed', err instanceof Error ? err.message : String(err));
@@ -127,6 +152,31 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave }: Props) 
             value={note}
             onChangeText={setNote}
           />
+          <View style={[styles.categoryRow, { borderColor: palette.border }]}>
+            {CATEGORY_OPTIONS.map((option) => {
+              const selected = option.value === category;
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setCategory(option.value)}
+                  style={[
+                    styles.categoryChip,
+                    {
+                      borderColor: palette.border,
+                      backgroundColor: selected ? palette.accent : 'transparent',
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.categoryLabel,
+                      { color: selected ? palette.background : palette.text },
+                    ]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <View style={styles.row}>
             <View style={[styles.timeControl, { borderColor: palette.border }]}>
               <Text style={[styles.label, { color: palette.text }]}>Start</Text>
@@ -236,6 +286,26 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 8,
+    marginTop: 12,
+  },
+  categoryChip: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   timeControl: {
     flex: 1,

@@ -6,7 +6,7 @@ import { HourColumn } from '@/components/HourColumn';
 import { PlanEditor } from '@/components/PlanEditor';
 import { PlanGrid } from '@/components/PlanGrid';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { usePlans, type PlanBlock } from '@/store/usePlans';
+import { usePlans, type PlanBlock, type PlanCategory } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { useT } from '@/i18n';
 
@@ -32,6 +32,7 @@ type EditorValues = {
   startMin: number;
   endMin: number;
   note?: string;
+  category: PlanCategory;
 };
 
 export default function PlanScreen() {
@@ -85,7 +86,11 @@ export default function PlanScreen() {
 
   const openAddEditor = useCallback(() => {
     const startMin = nextRoundedStart();
-    setEditorInitial({ startMin, endMin: Math.min(startMin + MIN_BLOCK, 24 * 60) });
+    setEditorInitial({
+      startMin,
+      endMin: Math.min(startMin + MIN_BLOCK, 24 * 60),
+      category: 'focus',
+    });
     setEditingId(null);
     setEditorVisible(true);
   }, []);
