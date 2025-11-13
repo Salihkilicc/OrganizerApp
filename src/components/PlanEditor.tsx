@@ -13,38 +13,24 @@ import { Button } from '@/components/ui/Button';
 import { useTheme } from '@/store/useTheme';
 import type { PlanBlock, PlanCategory } from '@/store/usePlans';
 
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const pad = (value: number) => value.toString().padStart(2, '0');
-const formatTime = (min: number) => {
-  const hours = Math.floor(min / 60);
-  const minutes = min % 60;
-  return `${pad(hours)}:${pad(minutes)}`;
+const getTimeParts = (minutes: number) => ({
+  hours: Math.floor(minutes / 60),
+  minutes: minutes % 60,
+});
+const sanitizeDigits = (value: string) => value.replace(/\D/g, '').slice(0, 2);
+const parseFieldNumber = (text: string, fallback: number, max: number) => {
+  if (text.length === 0) return fallback;
+  const parsed = Number(text);
+  if (!Number.isFinite(parsed)) return fallback;
+  return clamp(parsed, 0, max);
 };
-
-const parseTimeInput = (value: string): number | null => {
-  const normalized = value.trim().replace(/\./g, ':');
-  if (normalized.length === 0) {
-    return null;
-  }
-
-  if (normalized.includes(':')) {
-    const [hoursRaw, minutesRaw] = normalized.split(':');
-    if (!hoursRaw || !minutesRaw) return null;
-    if (!/^\d{1,2}$/.test(hoursRaw) || !/^\d{1,2}$/.test(minutesRaw)) return null;
-    const hours = Number(hoursRaw);
-    const minutes = Number(minutesRaw);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-    return hours * 60 + minutes;
-  }
-
-  const digitsOnly = normalized.replace(/\D/g, '');
-  if (digitsOnly.length < 3 || digitsOnly.length > 4) {
-    return null;
-  }
-  const hours = Number(digitsOnly.slice(0, digitsOnly.length - 2));
-  const minutes = Number(digitsOnly.slice(-2));
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+const getMinutesFromFields = (hourText: string, minuteText: string, fallbackMinutes: number) => {
+  const fallbackHours = Math.floor(fallbackMinutes / 60);
+  const fallbackMinutesPart = fallbackMinutes % 60;
+  const hours = parseFieldNumber(hourText, fallbackHours, 23);
+  const minutes = parseFieldNumber(minuteText, fallbackMinutesPart, 59);
   return hours * 60 + minutes;
 };
 
@@ -89,8 +75,10 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
   const [note, setNote] = useState(initial?.note ?? '');
   const [startMin, setStartMin] = useState(defaultStart);
   const [endMin, setEndMin] = useState(defaultEnd);
-  const [startInput, setStartInput] = useState(formatTime(defaultStart));
-  const [endInput, setEndInput] = useState(formatTime(defaultEnd));
+  const [startHourText, setStartHourText] = useState(() => pad(Math.floor(defaultStart / 60)));
+  const [startMinuteText, setStartMinuteText] = useState(() => pad(defaultStart % 60));
+  const [endHourText, setEndHourText] = useState(() => pad(Math.floor(defaultEnd / 60)));
+  const [endMinuteText, setEndMinuteText] = useState(() => pad(defaultEnd % 60));
   const [category, setCategory] = useState<PlanCategory>(initial?.category ?? 'focus');
   const [done, setDone] = useState(initial?.done ?? false);
 
@@ -101,8 +89,12 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
     setNote(initial?.note ?? '');
     setStartMin(nextStart);
     setEndMin(nextEnd);
-    setStartInput(formatTime(nextStart));
-    setEndInput(formatTime(nextEnd));
+    const startParts = getTimeParts(nextStart);
+    const endParts = getTimeParts(nextEnd);
+    setStartHourText(pad(startParts.hours));
+    setStartMinuteText(pad(startParts.minutes));
+    setEndHourText(pad(endParts.hours));
+    setEndMinuteText(pad(endParts.minutes));
   }, [initial, defaultStart, defaultEnd, visible]);
 
   useEffect(() => {
@@ -110,66 +102,109 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
     setDone(initial?.done ?? false);
   }, [initial, visible]);
 
-  const handleStartInputChange = (value: string) => {
-    const parsed = parseTimeInput(value);
-    if (parsed === null) {
-      setStartInput(value);
-      return;
-    }
-    const clampedStart = clamp(parsed, 0, 24 * 60 - MIN_DURATION);
-    setStartMin(clampedStart);
-    setStartInput(formatTime(clampedStart));
-    if (endMin < clampedStart + MIN_DURATION) {
-      const nextEnd = clamp(clampedStart + MIN_DURATION, clampedStart + MIN_DURATION, 24 * 60);
-      setEndMin(nextEnd);
-      setEndInput(formatTime(nextEnd));
+  const applyStartTime = (minutes: number) => {
+    const nextStartMin = clamp(minutes, 0, 24 * 60 - MIN_DURATION);
+    setStartMin(nextStartMin);
+    const startParts = getTimeParts(nextStartMin);
+    setStartHourText(pad(startParts.hours));
+    setStartMinuteText(pad(startParts.minutes));
+
+    const requiredEnd = nextStartMin + MIN_DURATION;
+    if (endMin < requiredEnd) {
+      const nextEndMin = clamp(requiredEnd, requiredEnd, 24 * 60);
+      setEndMin(nextEndMin);
+      const endParts = getTimeParts(nextEndMin);
+      setEndHourText(pad(endParts.hours));
+      setEndMinuteText(pad(endParts.minutes));
     }
   };
 
-  const handleEndInputChange = (value: string) => {
-    const parsed = parseTimeInput(value);
-    if (parsed === null) {
-      setEndInput(value);
-      return;
-    }
-    const minEnd = startMin + MIN_DURATION;
-    const clampedEnd = clamp(parsed, minEnd, 24 * 60);
-    setEndMin(clampedEnd);
-    setEndInput(formatTime(clampedEnd));
+  const applyEndTime = (minutes: number, startReference?: number) => {
+    const baseStartMin = typeof startReference === 'number' ? startReference : startMin;
+    const requiredEnd = clamp(baseStartMin + MIN_DURATION, 0, 24 * 60);
+    const nextEndMin = clamp(minutes, requiredEnd, 24 * 60);
+    setEndMin(nextEndMin);
+    const endParts = getTimeParts(nextEndMin);
+    setEndHourText(pad(endParts.hours));
+    setEndMinuteText(pad(endParts.minutes));
   };
 
-  const isValid = title.trim().length > 0 && endMin > startMin;
+  const commitStartFromFields = () => {
+    const minutes = getMinutesFromFields(startHourText, startMinuteText, startMin);
+    applyStartTime(minutes);
+  };
+
+  const commitEndFromFields = () => {
+    const minutes = getMinutesFromFields(endHourText, endMinuteText, endMin);
+    applyEndTime(minutes);
+  };
+
+  const handleStartHourChange = (value: string) => {
+    setStartHourText(sanitizeDigits(value));
+  };
+
+  const handleStartMinuteChange = (value: string) => {
+    setStartMinuteText(sanitizeDigits(value));
+  };
+
+  const handleEndHourChange = (value: string) => {
+    setEndHourText(sanitizeDigits(value));
+  };
+
+  const handleEndMinuteChange = (value: string) => {
+    setEndMinuteText(sanitizeDigits(value));
+  };
+
+  const handleStartStep = (delta: number) => {
+    const current = getMinutesFromFields(startHourText, startMinuteText, startMin);
+    applyStartTime(current + delta);
+  };
+
+  const handleEndStep = (delta: number) => {
+    const current = getMinutesFromFields(endHourText, endMinuteText, endMin);
+    applyEndTime(current + delta);
+  };
+
+  const derivedStartMin = getMinutesFromFields(startHourText, startMinuteText, startMin);
+  const derivedEndMin = getMinutesFromFields(endHourText, endMinuteText, endMin);
+  const isValid = title.trim().length > 0 && derivedEndMin > derivedStartMin;
 
   const handleSave = () => {
     try {
       const trimmedTitle = title.trim();
       const trimmedNote = note.trim() || undefined;
-      const safeStart = clamp(startMin, 0, 24 * 60);
-      const safeEnd = clamp(endMin, 0, 24 * 60);
+      const rawStart = getMinutesFromFields(startHourText, startMinuteText, startMin);
+      const normalizedStart = clamp(rawStart, 0, 24 * 60 - MIN_DURATION);
+      const rawEnd = getMinutesFromFields(endHourText, endMinuteText, endMin);
+      const minEnd = clamp(normalizedStart + MIN_DURATION, 0, 24 * 60);
+      const normalizedEnd = clamp(rawEnd, minEnd, 24 * 60);
 
       console.log('[PlanEditor/save]', {
         title: trimmedTitle,
-        startMin: safeStart,
-        endMin: safeEnd,
+        startMin: normalizedStart,
+        endMin: normalizedEnd,
         category,
         date,
       });
 
-      if (!Number.isFinite(safeStart) || !Number.isFinite(safeEnd)) {
+      if (!Number.isFinite(normalizedStart) || !Number.isFinite(normalizedEnd)) {
         throw new Error('Start or end time is invalid');
       }
-      if (safeEnd <= safeStart) {
+      if (normalizedEnd <= normalizedStart) {
         throw new Error('End time must be after start time');
       }
       if (trimmedTitle.length === 0) {
         throw new Error('Title is required');
       }
 
+      applyStartTime(normalizedStart);
+      applyEndTime(normalizedEnd, normalizedStart);
+
       onSave({
         title: trimmedTitle,
         note: trimmedNote,
-        startMin: safeStart,
-        endMin: safeEnd,
+        startMin: normalizedStart,
+        endMin: normalizedEnd,
         category,
         done,
       });
@@ -248,30 +283,132 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
           <View style={styles.timeRow}>
             <View style={[styles.timeInputContainer, { borderColor: palette.border }]}>
               <Text style={[styles.label, { color: palette.text }]}>Start</Text>
-              <TextInput
-                style={[styles.timeInput, { color: palette.text }]}
-                value={startInput}
-                onChangeText={handleStartInputChange}
-                placeholder="07:00"
-                placeholderTextColor={palette.border}
-                keyboardType="numbers-and-punctuation"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              <View style={styles.timeInputRow}>
+                <TextInput
+                  style={[
+                    styles.timeSegmentInput,
+                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                  ]}
+                  value={startHourText}
+                  onChangeText={handleStartHourChange}
+                  onEndEditing={commitStartFromFields}
+                  placeholder="HH"
+                  placeholderTextColor={palette.border}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  textAlign="center"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Text style={[styles.timeSeparator, { color: palette.text }]}>:</Text>
+                <TextInput
+                  style={[
+                    styles.timeSegmentInput,
+                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                  ]}
+                  value={startMinuteText}
+                  onChangeText={handleStartMinuteChange}
+                  onEndEditing={commitStartFromFields}
+                  placeholder="MM"
+                  placeholderTextColor={palette.border}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  textAlign="center"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              <View style={styles.stepRow}>
+                <Pressable
+                  onPress={() => handleStartStep(-MIN_DURATION)}
+                  style={({ pressed }) => [
+                    styles.stepButton,
+                    {
+                      borderColor: palette.border,
+                      backgroundColor: palette.background,
+                      opacity: pressed ? 0.75 : 1,
+                    },
+                  ]}>
+                  <Text style={[styles.stepButtonText, { color: palette.text }]}>-30</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleStartStep(MIN_DURATION)}
+                  style={({ pressed }) => [
+                    styles.stepButton,
+                    {
+                      borderColor: palette.border,
+                      backgroundColor: palette.background,
+                      opacity: pressed ? 0.75 : 1,
+                    },
+                  ]}>
+                  <Text style={[styles.stepButtonText, { color: palette.text }]}>+30</Text>
+                </Pressable>
+              </View>
             </View>
             <View
               style={[styles.timeInputContainer, styles.timeInputContainerRight, { borderColor: palette.border }]}>
               <Text style={[styles.label, { color: palette.text }]}>End</Text>
-              <TextInput
-                style={[styles.timeInput, { color: palette.text }]}
-                value={endInput}
-                onChangeText={handleEndInputChange}
-                placeholder="07:00"
-                placeholderTextColor={palette.border}
-                keyboardType="numbers-and-punctuation"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              <View style={styles.timeInputRow}>
+                <TextInput
+                  style={[
+                    styles.timeSegmentInput,
+                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                  ]}
+                  value={endHourText}
+                  onChangeText={handleEndHourChange}
+                  onEndEditing={commitEndFromFields}
+                  placeholder="HH"
+                  placeholderTextColor={palette.border}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  textAlign="center"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Text style={[styles.timeSeparator, { color: palette.text }]}>:</Text>
+                <TextInput
+                  style={[
+                    styles.timeSegmentInput,
+                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                  ]}
+                  value={endMinuteText}
+                  onChangeText={handleEndMinuteChange}
+                  onEndEditing={commitEndFromFields}
+                  placeholder="MM"
+                  placeholderTextColor={palette.border}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  textAlign="center"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              <View style={styles.stepRow}>
+                <Pressable
+                  onPress={() => handleEndStep(-MIN_DURATION)}
+                  style={({ pressed }) => [
+                    styles.stepButton,
+                    {
+                      borderColor: palette.border,
+                      backgroundColor: palette.background,
+                      opacity: pressed ? 0.75 : 1,
+                    },
+                  ]}>
+                  <Text style={[styles.stepButtonText, { color: palette.text }]}>-30</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleEndStep(MIN_DURATION)}
+                  style={({ pressed }) => [
+                    styles.stepButton,
+                    {
+                      borderColor: palette.border,
+                      backgroundColor: palette.background,
+                      opacity: pressed ? 0.75 : 1,
+                    },
+                  ]}>
+                  <Text style={[styles.stepButtonText, { color: palette.text }]}>+30</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
           {initial && (
@@ -331,8 +468,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
     </Modal>
   );
 };
-
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const styles = StyleSheet.create({
   overlay: {
@@ -401,11 +536,44 @@ const styles = StyleSheet.create({
   timeInputContainerRight: {
     marginLeft: 8,
   },
-  timeInput: {
+  timeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  timeSegmentInput: {
+    width: 60,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#888',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     fontSize: 20,
     fontWeight: '600',
-    marginTop: 6,
-    textAlign: 'center',
+  },
+  timeSeparator: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginHorizontal: 4,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  stepButton: {
+    flex: 1,
+    minWidth: 56,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  stepButtonText: {
+    fontWeight: '600',
   },
   actions: {
     flexDirection: 'row',
