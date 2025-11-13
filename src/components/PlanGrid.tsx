@@ -9,6 +9,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 type Props = {
   date: string;
   blocks: PlanBlock[];
+  onMove: (id: string, newStartMin: number, newEndMin: number) => void;
   onEdit: (id: string) => void;
   onLongDelete?: (id: string) => void;
   pxPerMin?: number;
@@ -82,32 +83,31 @@ export const PlanGrid = memo(function PlanGrid({
               />
             );
           })}
-          {sorted.map((blockProps) => {
-            const top = clamp((blockProps.startMin - startMin) * pxPerMin, 0, gridHeight);
-            const duration = Math.max(blockProps.endMin - blockProps.startMin, step);
-            const height = clamp(duration * pxPerMin, step * pxPerMin, gridHeight - top);
-            const handleLongPress = onLongDelete ? () => onLongDelete(blockProps.id) : undefined;
+          {sorted.map((block) => {
+            const safeStart = clamp(block.startMin, startMin, endMin - 1);
+            const safeEnd = clamp(block.endMin, safeStart + 1, endMin);
+            const top = clamp((safeStart - startMin) * pxPerMin, 0, Math.max(gridHeight, 0));
+            const height = clamp((safeEnd - safeStart) * pxPerMin, pxPerMin, Math.max(gridHeight - top, pxPerMin));
+            const handleLongPress = onLongDelete ? () => onLongDelete(block.id) : undefined;
 
             return (
               <Pressable
-                key={blockProps.id}
-                onPress={() => onEdit(blockProps.id)}
+                key={block.id}
+                onPress={() => onEdit(block.id)}
                 onLongPress={handleLongPress}
                 style={[
                   styles.block,
                   {
                     top,
                     height,
-                    backgroundColor: blockProps.color ?? palette.accent,
+                    backgroundColor: block.color ?? palette.accent,
                     borderColor: palette.border,
                   },
                 ]}>
                 <View style={styles.textContainer} pointerEvents="none">
-                  <Text style={[styles.title, { color: palette.background }]}>
-                    {blockProps.title}
-                  </Text>
-                  <Text style={[styles.time, { color: palette.background }]}> 
-                    {formatTime(blockProps.startMin)} – {formatTime(blockProps.endMin)}
+                  <Text style={[styles.title, { color: palette.background }]}>{block.title}</Text>
+                  <Text style={[styles.time, { color: palette.background }]}>
+                    {formatTime(block.startMin)} – {formatTime(block.endMin)}
                   </Text>
                 </View>
               </Pressable>

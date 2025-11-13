@@ -99,12 +99,19 @@ export default function PlanScreen() {
     [addPlan, closeEditor, editingId, selectedDate, updatePlan],
   );
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      removePlan(id);
-    },
-    [removePlan],
-  );
+const handleDelete = useCallback(
+  (id: string) => {
+    removePlan(id);
+  },
+  [removePlan],
+);
+
+const handleMove = useCallback(
+  (id: string, newStartMin: number, newEndMin: number) => {
+    updatePlan(id, { startMin: newStartMin, endMin: newEndMin });
+  },
+  [updatePlan],
+);
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -113,19 +120,20 @@ export default function PlanScreen() {
         <DayStrip selected={selectedDate} onSelect={setSelectedDate} />
         <View style={styles.gridRow}>
           <HourColumn startHour={GRID_START} endHour={GRID_END} pxPerMin={1} />
-        <View style={styles.gridArea}>
-          <PlanGrid
-            date={selectedDate}
-            blocks={dailyBlocks}
-            onEdit={openEditEditor}
-            onLongDelete={handleDelete}
-            step={STEP}
-            startHour={GRID_START}
-            endHour={GRID_END}
-            pxPerMin={1}
-          />
+          <View style={styles.gridArea}>
+            <PlanGrid
+              date={selectedDate}
+              blocks={dailyBlocks}
+              onMove={handleMove}
+              onEdit={openEditEditor}
+              onLongDelete={handleDelete}
+              step={STEP}
+              startHour={GRID_START}
+              endHour={GRID_END}
+              pxPerMin={1}
+            />
+          </View>
         </View>
-      </View>
       <Pressable
         onPress={openAddEditor}
         style={({ pressed }) => [
