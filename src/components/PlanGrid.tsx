@@ -6,6 +6,7 @@ import type { PlanBlock, PlanCategory } from '@/store/usePlans';
 
 const HOURS_PER_DAY = 24;
 const HOUR_COPIES = 3;
+const VISUAL_OFFSET_MIN = 30;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -166,7 +167,11 @@ export const PlanGrid = memo(function PlanGrid({
         {sorted.map((block, index) => {
           const safeStart = clamp(block.startMin, startMin, endMin - 1);
           const safeEnd = clamp(block.endMin, safeStart + 1, endMin);
-          const baseTop = clamp((safeStart - startMin) * pxPerMin, 0, gridHeight);
+          const baseTop = clamp(
+            ((safeStart - startMin + VISUAL_OFFSET_MIN) * pxPerMin),
+            0,
+            gridHeight,
+          );
           const baseHeight = clamp(
             (safeEnd - safeStart) * pxPerMin,
             pxPerMin,
