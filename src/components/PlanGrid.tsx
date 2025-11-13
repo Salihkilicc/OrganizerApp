@@ -4,6 +4,9 @@ import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-
 import { useTheme } from '@/store/useTheme';
 import type { PlanBlock, PlanCategory } from '@/store/usePlans';
 
+const HOURS_PER_DAY = 24;
+const HOUR_COPIES = 3;
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 type Props = {
@@ -92,21 +95,26 @@ export const PlanGrid = memo(function PlanGrid({
   onMove,
   pxPerMin = 1,
   step = 30,
-  startHour = 6,
-  endHour = 24,
+  startHour = 0,
+  endHour = HOURS_PER_DAY,
   contentHeight,
 }: Props) {
   void onMove;
   const { palette } = useTheme();
   void date;
-  const startMin = startHour * 60;
-  const endMin = endHour * 60;
-  const totalMinutes = endMin - startMin;
-  const gridHeight = totalMinutes * pxPerMin;
-  const effectiveHeight = contentHeight ?? gridHeight;
+  const normalizedStart = Math.max(0, Math.min(startHour, HOURS_PER_DAY));
+  const normalizedEnd = Math.max(normalizedStart, Math.min(endHour, HOURS_PER_DAY));
+  const startMin = normalizedStart * 60;
+  const endMin = normalizedEnd * 60;
+  const dayDuration = Math.max(endMin - startMin, 0);
+  const dayHeight = dayDuration * pxPerMin;
+  const totalMinutes = dayDuration * HOUR_COPIES;
+  const totalHeight = dayHeight * HOUR_COPIES;
+  const effectiveHeight = contentHeight ?? totalHeight;
 
   const sorted = useMemo(() => [...blocks].sort((a, b) => a.startMin - b.startMin), [blocks]);
   const layout = useMemo(() => calculateLayouts(sorted), [sorted]);
+  const gridHeight = Math.max(dayHeight, 0);
   const lines = useMemo(() => {
     const segments: number[] = [];
     for (let min = 0; min <= totalMinutes; min += step) {
@@ -119,7 +127,9 @@ export const PlanGrid = memo(function PlanGrid({
   const handleGridPress = (event: GestureResponderEvent) => {
     if (!onCreateAt) return;
     const minuteOffset = event.nativeEvent.locationY / touchPxPerMin;
-    const rawMinute = startMin + minuteOffset;
+    const normalizedOffset =
+      gridHeight > 0 ? ((minuteOffset % gridHeight) + gridHeight) % gridHeight : 0;
+    const rawMinute = startMin + normalizedOffset;
     const snappedStart = Math.round(rawMinute / snapStep) * snapStep;
     const maxStart = Math.max(endMin - DEFAULT_DURATION, startMin);
     const safeStart = clamp(snappedStart, startMin, maxStart);
@@ -156,8 +166,12 @@ export const PlanGrid = memo(function PlanGrid({
         {sorted.map((block, index) => {
           const safeStart = clamp(block.startMin, startMin, endMin - 1);
           const safeEnd = clamp(block.endMin, safeStart + 1, endMin);
-          const top = clamp((safeStart - startMin) * pxPerMin, 0, Math.max(gridHeight, 0));
-          const height = clamp((safeEnd - safeStart) * pxPerMin, pxPerMin, Math.max(gridHeight - top, pxPerMin));
+          const baseTop = clamp((safeStart - startMin) * pxPerMin, 0, gridHeight);
+          const baseHeight = clamp(
+            (safeEnd - safeStart) * pxPerMin,
+            pxPerMin,
+            Math.max(gridHeight - baseTop, pxPerMin),
+          );
           const info = layout[index] ?? { column: 0, totalColumns: 1 };
           const columns = Math.max(info.totalColumns, 1);
           const columnWidth = 100 / columns;
@@ -169,34 +183,37 @@ export const PlanGrid = memo(function PlanGrid({
           );
           const paletteColor = categoryColors[(block.category ?? 'other') as PlanCategory];
 
-          return (
-            <Pressable
-              key={block.id}
-              onPress={() => onEdit(block.id)}
-              style={[
-                styles.block,
-                {
-                  top,
-                  height,
-                  left: `${leftPercent}%`,
-                  width: `${widthPercent}%`,
-                  backgroundColor: paletteColor.background,
-                  borderColor: paletteColor.border,
-                },
-              ]}>
-              <View style={styles.textContainer} pointerEvents="none">
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  style={[styles.blockTitle, { color: palette.text }]}>
-                  {block.title}
-                </Text>
-                <Text style={[styles.blockTime, { color: palette.text }]}>
-                  {formatTime(block.startMin)} – {formatTime(block.endMin)}
-                </Text>
-              </View>
-            </Pressable>
-          );
+          return Array.from({ length: HOUR_COPIES }, (_, copyIndex) => {
+            const copyOffset = copyIndex * gridHeight;
+            return (
+              <Pressable
+                key={`${block.id}-${copyIndex}`}
+                onPress={() => onEdit(block.id)}
+                style={[
+                  styles.block,
+                  {
+                    top: baseTop + copyOffset,
+                    height: baseHeight,
+                    left: `${leftPercent}%`,
+                    width: `${widthPercent}%`,
+                    backgroundColor: paletteColor.background,
+                    borderColor: paletteColor.border,
+                  },
+                ]}>
+                <View style={styles.textContainer} pointerEvents="none">
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[styles.blockTitle, { color: palette.text }]}>
+                    {block.title}
+                  </Text>
+                  <Text style={[styles.blockTime, { color: palette.text }]}>
+                    {formatTime(block.startMin)} – {formatTime(block.endMin)}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          });
         })}
       </View>
     </View>
@@ -248,9 +265,11 @@ const styles = StyleSheet.create({
   },
   blockTitle: {
     fontWeight: '600',
+    textAlign: 'center',
   },
   blockTime: {
     fontSize: 11,
     opacity: 0.85,
+    textAlign: 'center',
   },
 });

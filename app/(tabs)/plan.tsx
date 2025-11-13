@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { DayStrip } from '@/components/DayStrip';
 import { HourColumn } from '@/components/HourColumn';
@@ -10,11 +19,15 @@ import { usePlans, type PlanBlock, type PlanCategory } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { useT } from '@/i18n';
 
-const GRID_START = 6;
-const GRID_END = 24;
+const HOURS_PER_DAY = 24;
+const GRID_START = 0;
+const GRID_END = HOURS_PER_DAY;
 const STEP = 30;
 const MIN_BLOCK = 60;
 const PX_PER_MIN = 1;
+const HOUR_COPIES = 3;
+const DAY_MINUTES = HOURS_PER_DAY * 60;
+const DAY_HEIGHT = DAY_MINUTES * PX_PER_MIN;
 
 const toISO = (date: Date) => {
   const pad = (value: number) => value.toString().padStart(2, '0');
@@ -154,14 +167,40 @@ export default function PlanScreen() {
   );
 
   const scrollRef = useRef<ScrollView>(null);
-  const contentHeight = (GRID_END - GRID_START) * 60 * PX_PER_MIN;
+  const wrapScrollRef = useRef(false);
+  const contentHeight = DAY_HEIGHT * HOUR_COPIES;
 
   useEffect(() => {
-    const target = Math.max((8 - GRID_START) * 60 * PX_PER_MIN, 0);
+    const target = DAY_HEIGHT + 8 * 60 * PX_PER_MIN;
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ y: target, animated: false });
     });
   }, []);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (wrapScrollRef.current) {
+        wrapScrollRef.current = false;
+        return;
+      }
+      const offsetY = event.nativeEvent.contentOffset.y;
+      const lowerThreshold = DAY_HEIGHT * 0.5;
+      const upperThreshold = DAY_HEIGHT * 1.5;
+      let nextOffset: number | null = null;
+
+      if (offsetY < lowerThreshold) {
+        nextOffset = offsetY + DAY_HEIGHT;
+      } else if (offsetY > upperThreshold) {
+        nextOffset = offsetY - DAY_HEIGHT;
+      }
+
+      if (nextOffset !== null && scrollRef.current) {
+        wrapScrollRef.current = true;
+        scrollRef.current.scrollTo({ y: nextOffset, animated: false });
+      }
+    },
+    [],
+  );
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -185,6 +224,8 @@ export default function PlanScreen() {
             contentContainerStyle={[styles.scrollContent, { height: contentHeight }]}
             showsVerticalScrollIndicator={false}
             bounces={false}
+            scrollEventThrottle={16}
+            onScroll={handleScroll}
           >
             <View style={styles.innerRow}>
               <HourColumn startHour={GRID_START} endHour={GRID_END} pxPerMin={PX_PER_MIN} />
