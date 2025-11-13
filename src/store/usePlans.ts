@@ -37,6 +37,21 @@ export type PlansStore = {
   byDate: (dateISO: string) => PlanBlock[];
 };
 
+const padNumber = (value: number) => value.toString().padStart(2, '0');
+const formatLocalDate = (date: Date) =>
+  `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
+
+export const todayDate = (): string => formatLocalDate(new Date());
+export const isBeforeToday = (date: string): boolean => {
+  return date < todayDate();
+};
+export const isToday = (date: string): boolean => {
+  return date === todayDate();
+};
+export const isAfterToday = (date: string): boolean => {
+  return date > todayDate();
+};
+
 const STORAGE_KEY = 'plans_v1';
 
 const MIN_REWARD_AGE_MINUTES = 30;
@@ -51,6 +66,7 @@ const hasReachedRewardAge = (block: PlanBlock, now: Date): boolean => {
 };
 
 const isRewardable = (block: PlanBlock, nextDone: boolean, now: Date): boolean => {
+  if (isBeforeToday(block.date)) return false;
   if (block.rewarded) return false;
   const wasDone = block.done ?? false;
   if (wasDone) return false;

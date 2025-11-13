@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -11,11 +12,19 @@ import {
 } from 'react-native';
 
 import { DayStrip } from '@/components/DayStrip';
+import { FocusModeOverlay } from '@/components/FocusModeOverlay';
 import { HourColumn } from '@/components/HourColumn';
 import { PlanEditor } from '@/components/PlanEditor';
 import { PlanGrid } from '@/components/PlanGrid';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { usePlans, type PlanBlock, type PlanCategory } from '@/store/usePlans';
+import {
+  usePlans,
+  type PlanBlock,
+  type PlanCategory,
+  isAfterToday,
+  isBeforeToday,
+  isToday as isDateToday,
+} from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { useT } from '@/i18n';
 import { usePoints } from '@/store/usePoints';
@@ -62,6 +71,10 @@ export default function PlanScreen() {
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
   const blocks = usePlans((state) => state.blocks);
+  const isPast = isBeforeToday(selectedDate);
+  const isToday = isDateToday(selectedDate);
+  const isFuture = isAfterToday(selectedDate);
+  const isEditableDay = isToday || isFuture;
   const totalPoints = usePoints((state) => state.total);
   const dailyBlocks = useMemo(
     () => blocks.filter((block) => block.date === selectedDate),
@@ -91,6 +104,7 @@ export default function PlanScreen() {
   const [editorVisible, setEditorVisible] = useState(false);
   const [editorInitial, setEditorInitial] = useState<Partial<PlanBlock> | undefined>();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [focusVisible, setFocusVisible] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -117,6 +131,10 @@ export default function PlanScreen() {
     (id: string) => {
       const current = blocks.find((block) => block.id === id);
       if (!current) return;
+      if (isBeforeToday(current.date)) {
+        Alert.alert('Past plans cannot be edited.');
+        return;
+      }
       setEditorInitial(current);
       setEditingId(id);
       setEditorVisible(true);
@@ -129,6 +147,9 @@ export default function PlanScreen() {
     setEditingId(null);
     setEditorInitial(undefined);
   }, []);
+
+  const openFocusMode = useCallback(() => setFocusVisible(true), []);
+  const closeFocusMode = useCallback(() => setFocusVisible(false), []);
 
   const handleSave = useCallback(
     async (values: EditorValues) => {
@@ -216,12 +237,25 @@ export default function PlanScreen() {
             <Text style={[styles.heading, { color: palette.text }]}>{heading}</Text>
             <Text style={[styles.subtitle, { color: palette.text }]}>{dateLabel}</Text>
           </View>
-          <View
-            style={[
-              styles.pointsBadge,
-              { borderColor: palette.border, backgroundColor: palette.card },
-            ]}>
-            <Text style={[styles.pointsLabel, { color: palette.text }]}>{totalPoints} pts</Text>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={openFocusMode}
+              style={({ pressed }) => [
+                styles.focusButton,
+                {
+                  backgroundColor: palette.accent,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}>
+              <Text style={[styles.focusButtonText, { color: palette.background }]}>Focus</Text>
+            </Pressable>
+            <View
+              style={[
+                styles.pointsBadge,
+                { borderColor: palette.border, backgroundColor: palette.card },
+              ]}>
+              <Text style={[styles.pointsLabel, { color: palette.text }]}>{totalPoints} pts</Text>
+            </View>
           </View>
         </View>
         <DayStrip selected={selectedDate} onSelect={setSelectedDate} />
@@ -250,7 +284,7 @@ export default function PlanScreen() {
                   blocks={dailyBlocks}
                   onMove={handleMove}
                   onEdit={openEditEditor}
-                  onCreateAtMinute={handleCreateAtMinute}
+                  onCreateAtMinute={isEditableDay ? handleCreateAtMinute : undefined}
                   step={STEP}
                   startHour={GRID_START}
                   endHour={GRID_END}
@@ -261,17 +295,19 @@ export default function PlanScreen() {
             </View>
           </ScrollView>
         </View>
-      <Pressable
-        onPress={openAddEditor}
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            backgroundColor: palette.accent,
-            opacity: pressed ? 0.8 : 1,
-          },
-        ]}>
-        <Text style={[styles.fabText, { color: palette.background }]}>+</Text>
-      </Pressable>
+      {!isPast && (
+        <Pressable
+          onPress={openAddEditor}
+          style={({ pressed }) => [
+            styles.fab,
+            {
+              backgroundColor: palette.accent,
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}>
+          <Text style={[styles.fabText, { color: palette.background }]}>+</Text>
+        </Pressable>
+      )}
       <PlanEditor
         visible={editorVisible}
         initial={editorInitial}
@@ -280,6 +316,7 @@ export default function PlanScreen() {
         onSave={handleSave}
         onDelete={handleDelete}
       />
+      <FocusModeOverlay visible={focusVisible} onClose={closeFocusMode} />
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -303,6 +340,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   heading: {
     fontSize: 28,
     fontWeight: '700',
@@ -321,6 +362,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pointsLabel: {
+    fontWeight: '600',
+  },
+  focusButton: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
+  focusButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   gridRow: {

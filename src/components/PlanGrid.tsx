@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/store/useTheme';
+import { isBeforeToday } from '@/store/usePlans';
 import type { PlanBlock, PlanCategory } from '@/store/usePlans';
 
 const HOURS_PER_DAY = 24;
@@ -182,6 +183,7 @@ export const PlanGrid = memo(function PlanGrid({
             100 - widthPercent - gapPercent / 2,
           );
           const paletteColor = categoryColors[(block.category ?? 'other') as PlanCategory];
+          const isPastBlock = isBeforeToday(block.date);
 
           return Array.from({ length: HOUR_COPIES }, (_, copyIndex) => {
             const copyOffset = copyIndex * gridHeight;
@@ -189,11 +191,31 @@ export const PlanGrid = memo(function PlanGrid({
             const doneBackground = 'rgba(0,0,0,0.25)';
             const doneBorder = '#000';
             const doneTextColor = '#555';
-            const textDecorationLine = isDone ? 'line-through' : 'none';
+            const textDecorationLine = isPastBlock || isDone ? 'line-through' : 'none';
+            const blockBackground = isPastBlock
+              ? '#333333'
+              : isDone
+              ? doneBackground
+              : paletteColor.background;
+            const blockBorder = isPastBlock
+              ? '#555555'
+              : isDone
+              ? doneBorder
+              : paletteColor.border;
+            const blockTextColor = isPastBlock
+              ? '#BBBBBB'
+              : isDone
+              ? doneTextColor
+              : palette.text;
+            const handlePress = () => {
+              if (isPastBlock) return;
+              onEdit(block.id);
+            };
             return (
               <Pressable
                 key={`${block.id}-${copyIndex}`}
-                onPress={() => onEdit(block.id)}
+                disabled={isPastBlock}
+                onPress={handlePress}
                 style={[
                   styles.block,
                   {
@@ -201,8 +223,8 @@ export const PlanGrid = memo(function PlanGrid({
                     height: baseHeight,
                     left: `${leftPercent}%`,
                     width: `${widthPercent}%`,
-                    backgroundColor: isDone ? doneBackground : paletteColor.background,
-                    borderColor: isDone ? doneBorder : paletteColor.border,
+                    backgroundColor: blockBackground,
+                    borderColor: blockBorder,
                   },
                 ]}>
                 <View style={styles.textContainer} pointerEvents="none">
@@ -212,7 +234,7 @@ export const PlanGrid = memo(function PlanGrid({
                     style={[
                       styles.blockTitle,
                       {
-                        color: isDone ? doneTextColor : palette.text,
+                        color: blockTextColor,
                         textDecorationLine,
                       },
                     ]}>
@@ -222,7 +244,7 @@ export const PlanGrid = memo(function PlanGrid({
                     style={[
                       styles.blockTime,
                       {
-                        color: isDone ? doneTextColor : palette.text,
+                        color: blockTextColor,
                         textDecorationLine,
                       },
                     ]}>

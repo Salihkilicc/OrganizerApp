@@ -11,6 +11,7 @@ import * as WebBrowser from 'expo-web-browser';
 import 'react-native-reanimated';
 
 import { useAuth } from '@/store/useAuth';
+import { useFocusMode } from '@/store/useFocusMode';
 import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
 import { useI18n } from '@/store/useI18n';
 import { useTheme } from '@/store/useTheme';
@@ -21,6 +22,8 @@ WebBrowser.maybeCompleteAuthSession();
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+const FOCUS_TICK_INTERVAL_MS = 30 * 1000;
 
 type ErrorBoundaryState = {
   error?: Error;
@@ -58,6 +61,7 @@ export default function RootLayout() {
   const loadTheme = useTheme((state) => state.load);
   const themeKey = useTheme((state) => state.themeKey);
   const palette = useTheme((state) => state.palette);
+  const focusTick = useFocusMode((state) => state.tick);
 
   useEffect(() => {
     initialize();
@@ -95,6 +99,16 @@ export default function RootLayout() {
       console.log('PROD redirect:', getProdRedirect());
     }
   }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      focusTick(Date.now());
+    }, FOCUS_TICK_INTERVAL_MS);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [focusTick]);
 
   const navigatorTheme: Theme = useMemo(() => {
     const baseTheme = themeKey === 'light' ? DefaultTheme : DarkTheme;
