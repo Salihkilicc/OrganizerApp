@@ -20,6 +20,34 @@ const formatTime = (min: number) => {
   return `${pad(hours)}:${pad(minutes)}`;
 };
 
+const parseTimeInput = (value: string): number | null => {
+  const normalized = value.trim().replace(/\./g, ':');
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  if (normalized.includes(':')) {
+    const [hoursRaw, minutesRaw] = normalized.split(':');
+    if (!hoursRaw || !minutesRaw) return null;
+    if (!/^\d{1,2}$/.test(hoursRaw) || !/^\d{1,2}$/.test(minutesRaw)) return null;
+    const hours = Number(hoursRaw);
+    const minutes = Number(minutesRaw);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+
+  const digitsOnly = normalized.replace(/\D/g, '');
+  if (digitsOnly.length < 3 || digitsOnly.length > 4) {
+    return null;
+  }
+  const hours = Number(digitsOnly.slice(0, digitsOnly.length - 2));
+  const minutes = Number(digitsOnly.slice(-2));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+};
+
 type Props = {
   visible: boolean;
   initial?: Partial<PlanBlock>;
@@ -31,6 +59,7 @@ type Props = {
     endMin: number;
     note?: string;
     category: PlanCategory;
+    done: boolean;
   }) => void;
   onDelete?: (id: string) => void;
 };
@@ -60,31 +89,53 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
   const [note, setNote] = useState(initial?.note ?? '');
   const [startMin, setStartMin] = useState(defaultStart);
   const [endMin, setEndMin] = useState(defaultEnd);
+  const [startInput, setStartInput] = useState(formatTime(defaultStart));
+  const [endInput, setEndInput] = useState(formatTime(defaultEnd));
   const [category, setCategory] = useState<PlanCategory>(initial?.category ?? 'focus');
+  const [done, setDone] = useState(initial?.done ?? false);
 
   useEffect(() => {
+    const nextStart = initial?.startMin ?? defaultStart;
+    const nextEnd = initial?.endMin ?? defaultEnd;
     setTitle(initial?.title ?? '');
     setNote(initial?.note ?? '');
-    setStartMin(initial?.startMin ?? defaultStart);
-    setEndMin(initial?.endMin ?? defaultEnd);
+    setStartMin(nextStart);
+    setEndMin(nextEnd);
+    setStartInput(formatTime(nextStart));
+    setEndInput(formatTime(nextEnd));
   }, [initial, defaultStart, defaultEnd, visible]);
 
   useEffect(() => {
     setCategory(initial?.category ?? 'focus');
+    setDone(initial?.done ?? false);
   }, [initial, visible]);
 
-  const increaseStart = (delta: number) => {
-    setStartMin((prev) => {
-      const next = clamp(prev + delta, 0, endMin - MIN_DURATION);
-      if (next + MIN_DURATION > endMin) {
-        setEndMin(next + MIN_DURATION);
-      }
-      return next;
-    });
+  const handleStartInputChange = (value: string) => {
+    const parsed = parseTimeInput(value);
+    if (parsed === null) {
+      setStartInput(value);
+      return;
+    }
+    const clampedStart = clamp(parsed, 0, 24 * 60 - MIN_DURATION);
+    setStartMin(clampedStart);
+    setStartInput(formatTime(clampedStart));
+    if (endMin < clampedStart + MIN_DURATION) {
+      const nextEnd = clamp(clampedStart + MIN_DURATION, clampedStart + MIN_DURATION, 24 * 60);
+      setEndMin(nextEnd);
+      setEndInput(formatTime(nextEnd));
+    }
   };
 
-  const increaseEnd = (delta: number) => {
-    setEndMin((prev) => clamp(prev + delta, startMin + MIN_DURATION, 24 * 60));
+  const handleEndInputChange = (value: string) => {
+    const parsed = parseTimeInput(value);
+    if (parsed === null) {
+      setEndInput(value);
+      return;
+    }
+    const minEnd = startMin + MIN_DURATION;
+    const clampedEnd = clamp(parsed, minEnd, 24 * 60);
+    setEndMin(clampedEnd);
+    setEndInput(formatTime(clampedEnd));
   };
 
   const isValid = title.trim().length > 0 && endMin > startMin;
@@ -120,6 +171,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
         startMin: safeStart,
         endMin: safeEnd,
         category,
+        done,
       });
     } catch (err) {
       console.warn('[PlanEditor/error]', err);
@@ -193,56 +245,58 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
               );
             })}
           </View>
-          <View style={styles.row}>
-            <View style={[styles.timeControl, { borderColor: palette.border }]}>
+          <View style={styles.timeRow}>
+            <View style={[styles.timeInputContainer, { borderColor: palette.border }]}>
               <Text style={[styles.label, { color: palette.text }]}>Start</Text>
-              <Text style={[styles.timeValue, { color: palette.text }]}>{formatTime(startMin)}</Text>
-              <View style={styles.controlRow}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    { borderColor: palette.border },
-                    pressed && { opacity: 0.6 },
-                  ]}
-                  onPress={() => increaseStart(-MIN_DURATION)}>
-                  <Text style={styles.stepText}>-</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    { borderColor: palette.border, marginLeft: 8 },
-                    pressed && { opacity: 0.6 },
-                  ]}
-                  onPress={() => increaseStart(MIN_DURATION)}>
-                  <Text style={styles.stepText}>+</Text>
-                </Pressable>
-              </View>
+              <TextInput
+                style={[styles.timeInput, { color: palette.text }]}
+                value={startInput}
+                onChangeText={handleStartInputChange}
+                placeholder="07:00"
+                placeholderTextColor={palette.border}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
-            <View style={[styles.timeControl, styles.timeControlRight, { borderColor: palette.border }]}>
+            <View
+              style={[styles.timeInputContainer, styles.timeInputContainerRight, { borderColor: palette.border }]}>
               <Text style={[styles.label, { color: palette.text }]}>End</Text>
-              <Text style={[styles.timeValue, { color: palette.text }]}>{formatTime(endMin)}</Text>
-              <View style={styles.controlRow}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    { borderColor: palette.border },
-                    pressed && { opacity: 0.6 },
-                  ]}
-                  onPress={() => increaseEnd(-MIN_DURATION)}>
-                  <Text style={styles.stepText}>-</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    { borderColor: palette.border, marginLeft: 8 },
-                    pressed && { opacity: 0.6 },
-                  ]}
-                  onPress={() => increaseEnd(MIN_DURATION)}>
-                  <Text style={styles.stepText}>+</Text>
-                </Pressable>
-              </View>
+              <TextInput
+                style={[styles.timeInput, { color: palette.text }]}
+                value={endInput}
+                onChangeText={handleEndInputChange}
+                placeholder="07:00"
+                placeholderTextColor={palette.border}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
           </View>
+          {initial && (
+            <View style={styles.doneActionRow}>
+              <Text style={[styles.label, { color: palette.text }]}>Completed / Tamamlandı</Text>
+              <Pressable
+                onPress={() => setDone((value) => !value)}
+                style={({ pressed }) => [
+                  styles.doneButton,
+                  {
+                    borderColor: palette.accent,
+                    backgroundColor: done ? palette.accent : 'transparent',
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.doneButtonText,
+                    { color: done ? palette.background : palette.accent },
+                  ]}>
+                  {done ? 'Completed' : 'Mark as completed'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
           <View style={styles.actions}>
             <Pressable
               onPress={onCancel}
@@ -304,10 +358,6 @@ const styles = StyleSheet.create({
     padding: 12,
     minHeight: 44,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -328,40 +378,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  timeControl: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#888',
-    padding: 12,
-    marginRight: 8,
-  },
-  timeControlRight: {
-    marginRight: 0,
+  doneActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
   },
   label: {
     fontSize: 12,
     textTransform: 'uppercase',
   },
-  timeValue: {
+  timeRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  timeInputContainer: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  timeInputContainerRight: {
+    marginLeft: 8,
+  },
+  timeInput: {
     fontSize: 20,
     fontWeight: '600',
-  },
-  controlRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  stepButton: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#888',
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  stepText: {
-    fontSize: 16,
-    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
   },
   actions: {
     flexDirection: 'row',
@@ -380,6 +424,16 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontWeight: '600',
+  },
+  doneButton: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  doneButtonText: {
+    fontWeight: '600',
+    fontSize: 12,
   },
   deleteRow: {
     marginTop: 12,

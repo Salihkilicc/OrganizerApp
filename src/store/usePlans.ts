@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { usePoints } from '@/store/usePoints';
+
 export type PlanCategory =
   | 'focus'
   | 'study'
@@ -21,6 +23,9 @@ export type PlanBlock = {
   endMin: number;
   color?: string;
   category: PlanCategory;
+  createdAt?: string;
+  done?: boolean;
+  rewarded?: boolean;
 };
 
 export type PlansStore = {
@@ -33,6 +38,25 @@ export type PlansStore = {
 };
 
 const STORAGE_KEY = 'plans_v1';
+
+const MIN_REWARD_AGE_MINUTES = 30;
+const REWARD_POINTS = 10;
+
+const hasReachedRewardAge = (block: PlanBlock, now: Date): boolean => {
+  if (!block.createdAt) return false;
+  const created = new Date(block.createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  const ageMinutes = (now.getTime() - created.getTime()) / 60000;
+  return ageMinutes >= MIN_REWARD_AGE_MINUTES;
+};
+
+const isRewardable = (block: PlanBlock, nextDone: boolean, now: Date): boolean => {
+  if (block.rewarded) return false;
+  const wasDone = block.done ?? false;
+  if (wasDone) return false;
+  if (!nextDone) return false;
+  return hasReachedRewardAge(block, now);
+};
 
 const persistImmediate = async (blocks: PlanBlock[]) => {
   try {
@@ -64,6 +88,8 @@ const loadBlocks = async (): Promise<PlanBlock[]> => {
       return parsed.map((block) => ({
         ...block,
         category: block?.category ?? 'other',
+        done: block?.done ?? false,
+        rewarded: block?.rewarded ?? false,
       }));
     }
   } catch (error) {
@@ -86,6 +112,9 @@ export const usePlans = create<PlansStore>((set, get) => ({
     const next: PlanBlock = {
       id: nextId(),
       category: block.category ?? 'focus',
+      done: false,
+      rewarded: false,
+      createdAt: new Date().toISOString(),
       ...block,
     };
     const updated = [...get().blocks, next];
@@ -97,12 +126,27 @@ export const usePlans = create<PlansStore>((set, get) => ({
 
   update: async (id, patch) => {
     console.log('[usePlans/update]', id, patch);
+    const existing = get().blocks.find((block) => block.id === id);
+    if (!existing) return;
+    const nextCategory = patch.category ?? existing.category ?? 'other';
+    const nextDone = patch.done ?? existing.done ?? false;
+    const now = new Date();
+    const rewardable = isRewardable(existing, nextDone, now);
+    if (rewardable) {
+      usePoints.getState().addPoints(REWARD_POINTS);
+    }
+    const nextRewarded = rewardable
+      ? true
+      : patch.rewarded ?? existing.rewarded ?? false;
+
     const updated = get().blocks.map((block) =>
       block.id === id
         ? {
             ...block,
             ...patch,
-            category: patch.category ?? block.category ?? 'other',
+            category: nextCategory,
+            done: nextDone,
+            rewarded: nextRewarded,
           }
         : block,
     );

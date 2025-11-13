@@ -15,7 +15,7 @@ type Props = {
   blocks: PlanBlock[];
   onMove: (id: string, newStartMin: number, newEndMin: number) => void;
   onEdit: (id: string) => void;
-  onCreateAt?: (startMin: number, endMin: number) => void;
+  onCreateAtMinute?: (minute: number) => void;
   pxPerMin?: number;
   step?: number;
   startHour?: number;
@@ -39,8 +39,6 @@ const categoryColors: Record<PlanCategory, { border: string; background: string 
   personal: { border: '#E84393', background: 'rgba(232, 67, 147, 0.25)' },
   other: { border: '#9B59B6', background: 'rgba(155, 89, 182, 0.25)' },
 };
-
-const DEFAULT_DURATION = 60;
 
 const calculateLayouts = (blocks: PlanBlock[]): BlockLayout[] => {
   const layout: BlockLayout[] = blocks.map(() => ({ column: 0, totalColumns: 1 }));
@@ -92,13 +90,13 @@ export const PlanGrid = memo(function PlanGrid({
   date,
   blocks,
   onEdit,
-  onCreateAt,
   onMove,
   pxPerMin = 1,
   step = 30,
   startHour = 0,
   endHour = HOURS_PER_DAY,
   contentHeight,
+  onCreateAtMinute,
 }: Props) {
   void onMove;
   const { palette } = useTheme();
@@ -126,24 +124,21 @@ export const PlanGrid = memo(function PlanGrid({
   const snapStep = Math.max(step, 1);
   const touchPxPerMin = Math.max(pxPerMin, 0.01);
   const handleGridPress = (event: GestureResponderEvent) => {
-    if (!onCreateAt) return;
+    if (!onCreateAtMinute) return;
     const minuteOffset = event.nativeEvent.locationY / touchPxPerMin;
     const normalizedOffset =
       gridHeight > 0 ? ((minuteOffset % gridHeight) + gridHeight) % gridHeight : 0;
     const rawMinute = startMin + normalizedOffset;
-    const snappedStart = Math.round(rawMinute / snapStep) * snapStep;
-    const maxStart = Math.max(endMin - DEFAULT_DURATION, startMin);
-    const safeStart = clamp(snappedStart, startMin, maxStart);
-    const safeEnd = clamp(safeStart + DEFAULT_DURATION, safeStart + 1, endMin);
-    if (safeEnd > safeStart) {
-      onCreateAt(safeStart, safeEnd);
-    }
+    const snappedMinute = Math.round(rawMinute / snapStep) * snapStep;
+    const maxStart = Math.max(startMin, endMin - snapStep);
+    const safeStart = clamp(snappedMinute, startMin, maxStart);
+    onCreateAtMinute(safeStart);
   };
 
   return (
     <View style={[styles.wrapper, { borderColor: palette.border }]}>
       <View style={[styles.grid, { height: effectiveHeight, backgroundColor: palette.background }]}>
-        {onCreateAt && (
+        {onCreateAtMinute && (
           <Pressable style={StyleSheet.absoluteFill} onPress={handleGridPress} />
         )}
         {lines.map((lineMin) => {
@@ -190,6 +185,11 @@ export const PlanGrid = memo(function PlanGrid({
 
           return Array.from({ length: HOUR_COPIES }, (_, copyIndex) => {
             const copyOffset = copyIndex * gridHeight;
+            const isDone = block.done ?? false;
+            const doneBackground = 'rgba(0,0,0,0.25)';
+            const doneBorder = '#000';
+            const doneTextColor = '#555';
+            const textDecorationLine = isDone ? 'line-through' : 'none';
             return (
               <Pressable
                 key={`${block.id}-${copyIndex}`}
@@ -201,18 +201,31 @@ export const PlanGrid = memo(function PlanGrid({
                     height: baseHeight,
                     left: `${leftPercent}%`,
                     width: `${widthPercent}%`,
-                    backgroundColor: paletteColor.background,
-                    borderColor: paletteColor.border,
+                    backgroundColor: isDone ? doneBackground : paletteColor.background,
+                    borderColor: isDone ? doneBorder : paletteColor.border,
                   },
                 ]}>
                 <View style={styles.textContainer} pointerEvents="none">
                   <Text
                     numberOfLines={1}
                     ellipsizeMode="tail"
-                    style={[styles.blockTitle, { color: palette.text }]}>
+                    style={[
+                      styles.blockTitle,
+                      {
+                        color: isDone ? doneTextColor : palette.text,
+                        textDecorationLine,
+                      },
+                    ]}>
                     {block.title}
                   </Text>
-                  <Text style={[styles.blockTime, { color: palette.text }]}>
+                  <Text
+                    style={[
+                      styles.blockTime,
+                      {
+                        color: isDone ? doneTextColor : palette.text,
+                        textDecorationLine,
+                      },
+                    ]}>
                     {formatTime(block.startMin)} – {formatTime(block.endMin)}
                   </Text>
                 </View>

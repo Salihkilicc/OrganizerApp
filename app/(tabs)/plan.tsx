@@ -18,12 +18,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { usePlans, type PlanBlock, type PlanCategory } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { useT } from '@/i18n';
+import { usePoints } from '@/store/usePoints';
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
 const GRID_END = HOURS_PER_DAY;
 const STEP = 30;
 const MIN_BLOCK = 60;
+const TAP_BLOCK_DURATION = 30;
 const PX_PER_MIN = 1;
 const HOUR_COPIES = 3;
 const DAY_MINUTES = HOURS_PER_DAY * 60;
@@ -47,6 +49,7 @@ type EditorValues = {
   endMin: number;
   note?: string;
   category: PlanCategory;
+  done: boolean;
 };
 
 export default function PlanScreen() {
@@ -59,6 +62,7 @@ export default function PlanScreen() {
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
   const blocks = usePlans((state) => state.blocks);
+  const totalPoints = usePoints((state) => state.total);
   const dailyBlocks = useMemo(
     () => blocks.filter((block) => block.date === selectedDate),
     [blocks, selectedDate],
@@ -146,11 +150,13 @@ export default function PlanScreen() {
     [closeEditor, removePlan],
   );
 
-  const handleCreateAt = useCallback(
-    (startMin: number, endMin: number) => {
+  const handleCreateAtMinute = useCallback(
+    (minute: number) => {
+      const safeStart = Math.max(0, Math.min(minute, DAY_MINUTES - 1));
+      const safeEnd = Math.min(safeStart + TAP_BLOCK_DURATION, DAY_MINUTES);
       setEditorInitial({
-        startMin,
-        endMin,
+        startMin: safeStart,
+        endMin: safeEnd,
         category: 'focus',
       });
       setEditingId(null);
@@ -205,9 +211,18 @@ export default function PlanScreen() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
-        <View style={styles.header}>
-          <Text style={[styles.heading, { color: palette.text }]}>{heading}</Text>
-          <Text style={[styles.subtitle, { color: palette.text }]}>{dateLabel}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerTitles}>
+            <Text style={[styles.heading, { color: palette.text }]}>{heading}</Text>
+            <Text style={[styles.subtitle, { color: palette.text }]}>{dateLabel}</Text>
+          </View>
+          <View
+            style={[
+              styles.pointsBadge,
+              { borderColor: palette.border, backgroundColor: palette.card },
+            ]}>
+            <Text style={[styles.pointsLabel, { color: palette.text }]}>{totalPoints} pts</Text>
+          </View>
         </View>
         <DayStrip selected={selectedDate} onSelect={setSelectedDate} />
         <View style={[styles.summaryRow, { borderColor: palette.border, backgroundColor: palette.card }]}>
@@ -235,7 +250,7 @@ export default function PlanScreen() {
                   blocks={dailyBlocks}
                   onMove={handleMove}
                   onEdit={openEditEditor}
-                  onCreateAt={handleCreateAt}
+                  onCreateAtMinute={handleCreateAtMinute}
                   step={STEP}
                   startHour={GRID_START}
                   endHour={GRID_END}
@@ -278,8 +293,15 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  header: {
+  headerRow: {
     marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitles: {
+    flex: 1,
+    marginRight: 8,
   },
   heading: {
     fontSize: 28,
@@ -289,6 +311,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     opacity: 0.8,
+  },
+  pointsBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  pointsLabel: {
+    fontWeight: '600',
   },
   gridRow: {
     flex: 1,
