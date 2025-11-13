@@ -49,6 +49,26 @@ export default function PlanScreen() {
     [blocks, selectedDate],
   );
 
+  const blocksForDay = dailyBlocks;
+  const blockCount = blocksForDay.length;
+  const totalMinutes = blocksForDay.reduce(
+    (sum, b) => sum + Math.max(b.endMin - b.startMin, 0),
+    0,
+  );
+  const totalHours = totalMinutes / 60;
+
+  const dateLabel = useMemo(() => {
+    try {
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const dateInstance = new Date(year, month - 1, day);
+      const dayName = dateInstance.toLocaleDateString(undefined, { weekday: 'long' });
+      const monthName = dateInstance.toLocaleDateString(undefined, { month: 'long' });
+      return `${dayName} • ${day} ${monthName}`;
+    } catch {
+      return selectedDate;
+    }
+  }, [selectedDate]);
+
   const [editorVisible, setEditorVisible] = useState(false);
   const [editorInitial, setEditorInitial] = useState<Partial<PlanBlock> | undefined>();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -116,8 +136,18 @@ const handleMove = useCallback(
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
-        <Text style={[styles.heading, { color: palette.text }]}>{heading}</Text>
+        <View style={styles.header}>
+          <Text style={[styles.heading, { color: palette.text }]}>{heading}</Text>
+          <Text style={[styles.subtitle, { color: palette.text }]}>{dateLabel}</Text>
+        </View>
         <DayStrip selected={selectedDate} onSelect={setSelectedDate} />
+        <View style={[styles.summaryRow, { borderColor: palette.border, backgroundColor: palette.card }]}>
+          <Text style={[styles.summaryText, { color: palette.text }]}>
+            {blockCount > 0
+              ? `${blockCount} block${blockCount === 1 ? '' : 's'} • ${totalHours.toFixed(1)} hours planned`
+              : 'No plan for this day yet. Use the grid below to add your first block.'}
+          </Text>
+        </View>
         <View style={styles.gridRow}>
           <HourColumn startHour={GRID_START} endHour={GRID_END} pxPerMin={1} />
           <View style={styles.gridArea}>
@@ -165,10 +195,17 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  header: {
+    marginBottom: 4,
+  },
   heading: {
     fontSize: 28,
     fontWeight: '700',
-    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
+    opacity: 0.8,
   },
   gridRow: {
     flex: 1,
@@ -178,6 +215,16 @@ const styles = StyleSheet.create({
   gridArea: {
     flex: 1,
     marginLeft: 12,
+  },
+  summaryRow: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+    backgroundColor: 'transparent',
+  },
+  summaryText: {
+    fontSize: 14,
   },
   fab: {
     position: 'absolute',
