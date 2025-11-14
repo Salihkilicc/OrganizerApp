@@ -81,7 +81,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
   const [endMinuteText, setEndMinuteText] = useState(() => pad(defaultEnd % 60));
   const [category, setCategory] = useState<PlanCategory>(initial?.category ?? 'focus');
   const [done, setDone] = useState(initial?.done ?? false);
-
   useEffect(() => {
     const nextStart = initial?.startMin ?? defaultStart;
     const nextEnd = initial?.endMin ?? defaultEnd;
@@ -155,16 +154,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
     setEndMinuteText(sanitizeDigits(value));
   };
 
-  const handleStartStep = (delta: number) => {
-    const current = getMinutesFromFields(startHourText, startMinuteText, startMin);
-    applyStartTime(current + delta);
-  };
-
-  const handleEndStep = (delta: number) => {
-    const current = getMinutesFromFields(endHourText, endMinuteText, endMin);
-    applyEndTime(current + delta);
-  };
-
   const derivedStartMin = getMinutesFromFields(startHourText, startMinuteText, startMin);
   const derivedEndMin = getMinutesFromFields(endHourText, endMinuteText, endMin);
   const isValid = title.trim().length > 0 && derivedEndMin > derivedStartMin;
@@ -225,7 +214,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.heading, { color: palette.text }]}>Plan for {date}</Text>
           <TextInput
             style={[
               styles.input,
@@ -240,184 +228,143 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
             value={title}
             onChangeText={setTitle}
           />
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: palette.background,
-                color: palette.text,
-                borderColor: palette.border,
-              },
-            ]}
-            placeholder="Note (optional)"
-            placeholderTextColor={palette.border}
-            multiline
-            value={note}
-            onChangeText={setNote}
-          />
-          <View style={[styles.categoryRow, { borderColor: palette.border }]}>
-            {CATEGORY_OPTIONS.map((option) => {
-              const selected = option.value === category;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setCategory(option.value)}
-                  style={[
-                    styles.categoryChip,
-                    {
-                      borderColor: palette.border,
-                      backgroundColor: selected ? palette.accent : 'transparent',
-                    },
-                  ]}>
-                  <Text
+          <View style={styles.sectionGap}>
+            <View style={styles.timeRow}>
+              <View style={[styles.timeInputContainer, { borderColor: palette.border }]}>
+                <Text style={[styles.label, { color: palette.text }]}>Start</Text>
+                <View style={styles.timeInputRow}>
+                  <TextInput
                     style={[
-                      styles.categoryLabel,
-                      { color: selected ? palette.background : palette.text },
+                      styles.timeSegmentInput,
+                      { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    ]}
+                    value={startHourText}
+                    onChangeText={handleStartHourChange}
+                    onEndEditing={commitStartFromFields}
+                    placeholder="HH"
+                    placeholderTextColor={palette.border}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    textAlign="center"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    selectTextOnFocus
+                  />
+                  <Text style={[styles.timeSeparator, { color: palette.text }]}>:</Text>
+                  <TextInput
+                    style={[
+                      styles.timeSegmentInput,
+                      { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    ]}
+                    value={startMinuteText}
+                    onChangeText={handleStartMinuteChange}
+                    onEndEditing={commitStartFromFields}
+                    placeholder="MM"
+                    placeholderTextColor={palette.border}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    textAlign="center"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    selectTextOnFocus
+                  />
+                </View>
+              </View>
+              <View
+                style={[styles.timeInputContainer, styles.timeInputContainerRight, { borderColor: palette.border }]}>
+                <Text style={[styles.label, { color: palette.text }]}>End</Text>
+                <View style={styles.timeInputRow}>
+                  <TextInput
+                    style={[
+                      styles.timeSegmentInput,
+                      { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    ]}
+                    value={endHourText}
+                    onChangeText={handleEndHourChange}
+                    onEndEditing={commitEndFromFields}
+                    placeholder="HH"
+                    placeholderTextColor={palette.border}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    textAlign="center"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    selectTextOnFocus
+                  />
+                  <Text style={[styles.timeSeparator, { color: palette.text }]}>:</Text>
+                  <TextInput
+                    style={[
+                      styles.timeSegmentInput,
+                      { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    ]}
+                    value={endMinuteText}
+                    onChangeText={handleEndMinuteChange}
+                    onEndEditing={commitEndFromFields}
+                    placeholder="MM"
+                    placeholderTextColor={palette.border}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    textAlign="center"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    selectTextOnFocus
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+          <View style={styles.sectionGap}>
+            <View style={[styles.categoryRow, { borderColor: palette.border }]}>
+              {CATEGORY_OPTIONS.map((option) => {
+                const selected = option.value === category;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setCategory(option.value)}
+                    style={[
+                      styles.categoryChip,
+                      {
+                        borderColor: palette.border,
+                        backgroundColor: selected ? palette.accent : 'transparent',
+                      },
                     ]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={styles.timeRow}>
-            <View style={[styles.timeInputContainer, { borderColor: palette.border }]}>
-              <Text style={[styles.label, { color: palette.text }]}>Start</Text>
-              <View style={styles.timeInputRow}>
-                <TextInput
-                  style={[
-                    styles.timeSegmentInput,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
-                  ]}
-                  value={startHourText}
-                  onChangeText={handleStartHourChange}
-                  onEndEditing={commitStartFromFields}
-                  placeholder="HH"
-                  placeholderTextColor={palette.border}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  textAlign="center"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <Text style={[styles.timeSeparator, { color: palette.text }]}>:</Text>
-                <TextInput
-                  style={[
-                    styles.timeSegmentInput,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
-                  ]}
-                  value={startMinuteText}
-                  onChangeText={handleStartMinuteChange}
-                  onEndEditing={commitStartFromFields}
-                  placeholder="MM"
-                  placeholderTextColor={palette.border}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  textAlign="center"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-              <View style={styles.stepRow}>
-                <Pressable
-                  onPress={() => handleStartStep(-MIN_DURATION)}
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    {
-                      borderColor: palette.border,
-                      backgroundColor: palette.background,
-                      opacity: pressed ? 0.75 : 1,
-                    },
-                  ]}>
-                  <Text style={[styles.stepButtonText, { color: palette.text }]}>-30</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleStartStep(MIN_DURATION)}
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    {
-                      borderColor: palette.border,
-                      backgroundColor: palette.background,
-                      opacity: pressed ? 0.75 : 1,
-                    },
-                  ]}>
-                  <Text style={[styles.stepButtonText, { color: palette.text }]}>+30</Text>
-                </Pressable>
-              </View>
-            </View>
-            <View
-              style={[styles.timeInputContainer, styles.timeInputContainerRight, { borderColor: palette.border }]}>
-              <Text style={[styles.label, { color: palette.text }]}>End</Text>
-              <View style={styles.timeInputRow}>
-                <TextInput
-                  style={[
-                    styles.timeSegmentInput,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
-                  ]}
-                  value={endHourText}
-                  onChangeText={handleEndHourChange}
-                  onEndEditing={commitEndFromFields}
-                  placeholder="HH"
-                  placeholderTextColor={palette.border}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  textAlign="center"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <Text style={[styles.timeSeparator, { color: palette.text }]}>:</Text>
-                <TextInput
-                  style={[
-                    styles.timeSegmentInput,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
-                  ]}
-                  value={endMinuteText}
-                  onChangeText={handleEndMinuteChange}
-                  onEndEditing={commitEndFromFields}
-                  placeholder="MM"
-                  placeholderTextColor={palette.border}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  textAlign="center"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-              <View style={styles.stepRow}>
-                <Pressable
-                  onPress={() => handleEndStep(-MIN_DURATION)}
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    {
-                      borderColor: palette.border,
-                      backgroundColor: palette.background,
-                      opacity: pressed ? 0.75 : 1,
-                    },
-                  ]}>
-                  <Text style={[styles.stepButtonText, { color: palette.text }]}>-30</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleEndStep(MIN_DURATION)}
-                  style={({ pressed }) => [
-                    styles.stepButton,
-                    {
-                      borderColor: palette.border,
-                      backgroundColor: palette.background,
-                      opacity: pressed ? 0.75 : 1,
-                    },
-                  ]}>
-                  <Text style={[styles.stepButtonText, { color: palette.text }]}>+30</Text>
-                </Pressable>
-              </View>
+                    <Text
+                      style={[
+                        styles.categoryLabel,
+                        { color: selected ? palette.background : palette.text },
+                      ]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
-          {initial && (
-            <View style={styles.doneActionRow}>
-              <Text style={[styles.label, { color: palette.text }]}>Completed / Tamamlandı</Text>
+          <View style={styles.sectionGap}>
+            <TextInput
+              style={[
+                styles.input,
+                styles.noteInput,
+                {
+                  backgroundColor: palette.background,
+                  color: palette.text,
+                  borderColor: palette.border,
+                },
+              ]}
+              placeholder="Note (optional)"
+              placeholderTextColor={palette.border}
+              multiline
+              textAlignVertical="top"
+              value={note}
+              onChangeText={setNote}
+            />
+          </View>
+          <View style={styles.actions}>
+            {initial?.id && (
               <Pressable
                 onPress={() => setDone((value) => !value)}
                 style={({ pressed }) => [
-                  styles.doneButton,
+                  styles.doneActionButton,
                   {
                     borderColor: palette.accent,
                     backgroundColor: done ? palette.accent : 'transparent',
@@ -426,15 +373,13 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 ]}>
                 <Text
                   style={[
-                    styles.doneButtonText,
+                    styles.doneActionText,
                     { color: done ? palette.background : palette.accent },
                   ]}>
                   {done ? 'Completed' : 'Mark as completed'}
                 </Text>
               </Pressable>
-            </View>
-          )}
-          <View style={styles.actions}>
+            )}
             <Pressable
               onPress={onCancel}
               style={({ pressed }) => [
@@ -478,13 +423,12 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 16,
-    padding: 20,
+    padding: 24,
     borderWidth: 1,
     elevation: 6,
   },
-  heading: {
-    fontSize: 18,
-    fontWeight: '600',
+  sectionGap: {
+    marginTop: 18,
   },
   input: {
     borderRadius: 12,
@@ -493,13 +437,15 @@ const styles = StyleSheet.create({
     padding: 12,
     minHeight: 44,
   },
+  noteInput: {
+    minHeight: 84,
+  },
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     borderWidth: 1,
     borderRadius: 12,
     padding: 8,
-    marginTop: 12,
   },
   categoryChip: {
     borderRadius: 10,
@@ -513,28 +459,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  doneActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
   label: {
     fontSize: 12,
     textTransform: 'uppercase',
   },
   timeRow: {
     flexDirection: 'row',
-    marginTop: 12,
   },
   timeInputContainer: {
     flex: 1,
     borderRadius: 12,
     borderWidth: 1,
-    padding: 12,
+    padding: 16,
   },
   timeInputContainerRight: {
-    marginLeft: 8,
+    marginLeft: 12,
   },
   timeInputRow: {
     flexDirection: 'row',
@@ -555,30 +494,13 @@ const styles = StyleSheet.create({
   timeSeparator: {
     fontSize: 22,
     fontWeight: '600',
-    marginHorizontal: 4,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  stepButton: {
-    flex: 1,
-    minWidth: 56,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  stepButtonText: {
-    fontWeight: '600',
+    marginHorizontal: 6,
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 8,
+    alignItems: 'center',
+    marginTop: 24,
   },
   actionButton: {
     borderRadius: 10,
@@ -593,17 +515,18 @@ const styles = StyleSheet.create({
   actionText: {
     fontWeight: '600',
   },
-  doneButton: {
+  doneActionButton: {
     borderWidth: 1,
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
+    marginRight: 8,
   },
-  doneButtonText: {
+  doneActionText: {
     fontWeight: '600',
     fontSize: 12,
   },
   deleteRow: {
-    marginTop: 12,
+    marginTop: 16,
   },
 });
