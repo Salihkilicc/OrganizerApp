@@ -40,6 +40,24 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
+          <Pressable
+            onPress={() => {
+              router.push('/profile');
+            }}
+            style={({ pressed }) => [
+              styles.profileRow,
+              {
+                borderColor: palette.border,
+                backgroundColor: palette.card,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Text style={[styles.profileRowLabel, { color: palette.text }]}>Profile & account</Text>
+            <Text style={[styles.profileRowChevron, { color: palette.text }]}>›</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('theme')}</Text>
           <View style={styles.optionRow}>
             {themeOptions.map((option) => {
@@ -195,5 +213,22 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: 30,
+  },
+  profileRow: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  profileRowLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  profileRowChevron: {
+    fontSize: 20,
+    fontWeight: '700',
   },
 });
