@@ -29,6 +29,7 @@ import {
 import { useTheme } from '@/store/useTheme';
 import { usePoints } from '@/store/usePoints';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -71,6 +72,7 @@ type EditorValues = {
 };
 
 export default function PlanScreen() {
+  const router = useRouter();
   const { palette } = useTheme();
   const [selectedDate, setSelectedDate] = useState(() => toISO(new Date()));
   const loadPlans = usePlans((state) => state.load);
@@ -304,13 +306,18 @@ export default function PlanScreen() {
               ]}>
               <Text style={[styles.focusButtonText, { color: palette.background }]}>Focus</Text>
             </Pressable>
-            <View
-              style={[
+            <Pressable
+              onPress={() => router.push('/points')}
+              style={({ pressed }) => [
                 styles.pointsBadge,
-                { borderColor: palette.border, backgroundColor: palette.card },
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                  opacity: pressed ? 0.8 : 1,
+                },
               ]}>
               <Text style={[styles.pointsLabel, { color: palette.text }]}>{totalPoints} pts</Text>
-            </View>
+            </Pressable>
           </View>
         </View>
         <DayStrip

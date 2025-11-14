@@ -6,6 +6,8 @@ import { useI18n } from '@/store/useI18n';
 import { useT } from '@/i18n';
 import type { Lang } from '@/i18n';
 import { Button } from '@/components/ui/Button';
+import { usePoints } from '@/store/usePoints';
+import { useRouter } from 'expo-router';
 
 const themeOptions: ThemeKey[] = ['light', 'dark', 'ninja'];
 const languageOptions: Lang[] = ['tr', 'en'];
@@ -20,9 +22,11 @@ export default function SettingsScreen() {
   const palette = useTheme((state) => state.palette);
   const themeKey = useTheme((state) => state.themeKey);
   const setTheme = useTheme((state) => state.setTheme);
+  const router = useRouter();
   const { user, signOut } = useAuth();
   const { lang, change } = useI18n();
   const t = useT();
+  const totalPoints = usePoints((state) => state.total);
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
   const userLabel = isGuest ? 'guest' : (user && (user as any).email) ?? 'guest';
@@ -102,6 +106,22 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        <View style={styles.section}>
+          <Pressable
+            onPress={() => router.push('/points')}
+            style={({ pressed }) => [
+              styles.pointsRow,
+              {
+                borderColor: palette.border,
+                backgroundColor: palette.card,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Text style={[styles.pointsRowLabel, { color: palette.text }]}>Points</Text>
+            <Text style={[styles.pointsRowValue, { color: palette.accent }]}>{totalPoints} XP</Text>
+          </Pressable>
+        </View>
+
         <View style={styles.footer}>
           <Button title={t('signOut')} onPress={() => void signOut()} type="secondary" />
         </View>
@@ -155,6 +175,23 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  pointsRow: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pointsRowLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pointsRowValue: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   footer: {
     marginTop: 30,
