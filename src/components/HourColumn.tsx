@@ -46,7 +46,7 @@ export const HourColumn = memo(function HourColumn({
 
 const styles = StyleSheet.create({
   container: {
-    width: 60,
+    width: 48,
     gap: 0,
   },
   row: {
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
   label: {
-    marginLeft: 6,
+    marginLeft: 4,
     fontSize: 10,
     color: '#888',
   },

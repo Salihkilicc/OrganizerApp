@@ -5,6 +5,8 @@ import { useTheme } from '@/store/useTheme';
 
 type Props = {
   selected: string;
+  year: number;
+  month: number;
   onSelect: (dateISO: string) => void;
 };
 
@@ -13,37 +15,23 @@ const pad = (value: number) => value.toString().padStart(2, '0');
 const toISO = (date: Date) =>
   `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-const startOfWeek = (date: Date) => {
-  const diff = (date.getDay() + 6) % 7; // Monday = 0
-  const next = new Date(date);
-  next.setDate(next.getDate() - diff);
-  next.setHours(0, 0, 0, 0);
-  return next;
+const getDaysInMonth = (year: number, month: number) => {
+  return new Date(year, month + 1, 0).getDate();
 };
 
-export const DayStrip = memo(function DayStrip({ selected, onSelect }: Props) {
+export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect }: Props) {
   const { palette } = useTheme();
   const todayISO = useMemo(() => toISO(new Date()), []);
-  const windowStart = useMemo(() => {
-    const base = startOfWeek(parseISO(selected));
-    const copy = new Date(base);
-    copy.setDate(base.getDate() - 7);
-    return copy;
-  }, [selected]);
-  const days = useMemo(() => {
-    return Array.from({ length: 21 }, (_, index) => {
-      const date = new Date(windowStart);
-      date.setDate(windowStart.getDate() + index);
-      return date;
-    });
-  }, [windowStart]);
+  const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
+  const days = useMemo(
+    () =>
+      Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1)),
+    [daysInMonth, month, year],
+  );
 
   return (
     <View style={[styles.container, { borderColor: palette.border }]}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {days.map((day) => {
           const iso = toISO(day);
           const isSelected = iso === selected;
@@ -82,11 +70,6 @@ export const DayStrip = memo(function DayStrip({ selected, onSelect }: Props) {
     </View>
   );
 });
-
-const parseISO = (value: string) => {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, month - 1, day);
-};
 
 const styles = StyleSheet.create({
   container: {

@@ -3,6 +3,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Alert,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -26,8 +27,8 @@ import {
   isToday as isDateToday,
 } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
-import { useT } from '@/i18n';
 import { usePoints } from '@/store/usePoints';
+import { Ionicons } from '@expo/vector-icons';
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -43,6 +44,14 @@ const DAY_HEIGHT = DAY_MINUTES * PX_PER_MIN;
 const toISO = (date: Date) => {
   const pad = (value: number) => value.toString().padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const parseISO = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return new Date();
+  }
+  return new Date(year, month - 1, day);
 };
 
 const nextRoundedStart = () => {
@@ -63,8 +72,6 @@ type EditorValues = {
 
 export default function PlanScreen() {
   const { palette } = useTheme();
-  const t = useT();
-  const heading = t ? t('plan') : 'Plan';
   const [selectedDate, setSelectedDate] = useState(() => toISO(new Date()));
   const loadPlans = usePlans((state) => state.load);
   const addPlan = usePlans((state) => state.add);
@@ -89,22 +96,40 @@ export default function PlanScreen() {
   );
   const totalHours = totalMinutes / 60;
 
+  const selectedDateInstance = useMemo(() => parseISO(selectedDate), [selectedDate]);
+  const selectedMonthIndex = selectedDateInstance.getMonth();
+  const selectedYear = selectedDateInstance.getFullYear();
   const dateLabel = useMemo(() => {
-    try {
-      const [year, month, day] = selectedDate.split('-').map(Number);
-      const dateInstance = new Date(year, month - 1, day);
-      const dayName = dateInstance.toLocaleDateString(undefined, { weekday: 'long' });
-      const monthName = dateInstance.toLocaleDateString(undefined, { month: 'long' });
-      return `${dayName} • ${day} ${monthName}`;
-    } catch {
-      return selectedDate;
-    }
-  }, [selectedDate]);
+    const dayName = selectedDateInstance.toLocaleDateString(undefined, { weekday: 'long' });
+    const monthName = selectedDateInstance.toLocaleDateString(undefined, { month: 'long' });
+    return `${dayName} • ${selectedDateInstance.getDate()} ${monthName}`;
+  }, [selectedDateInstance]);
+  const monthTitle = selectedDateInstance.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+  const selectedMonthKey = `${selectedYear}-${selectedMonthIndex}`;
+  const monthOptions = useMemo(() => {
+    const now = new Date();
+    const rangeStart = -1;
+    const rangeEnd = 12;
+    return Array.from({ length: rangeEnd - rangeStart + 1 }, (_, index) => {
+      const offset = rangeStart + index;
+      const optionDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      return {
+        key: `${optionDate.getFullYear()}-${optionDate.getMonth()}`,
+        label: optionDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+        year: optionDate.getFullYear(),
+        month: optionDate.getMonth(),
+      };
+    });
+  }, []);
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editorInitial, setEditorInitial] = useState<Partial<PlanBlock> | undefined>();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [focusVisible, setFocusVisible] = useState(false);
+  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -147,6 +172,19 @@ export default function PlanScreen() {
     setEditingId(null);
     setEditorInitial(undefined);
   }, []);
+
+  const openMonthPicker = useCallback(() => setMonthPickerVisible(true), []);
+  const closeMonthPicker = useCallback(() => setMonthPickerVisible(false), []);
+  const handleMonthSelect = useCallback(
+    (year: number, month: number) => {
+      const maxDay = new Date(year, month + 1, 0).getDate();
+      const day = Math.min(selectedDateInstance.getDate(), maxDay);
+      const nextDate = new Date(year, month, day);
+      setSelectedDate(toISO(nextDate));
+      setMonthPickerVisible(false);
+    },
+    [selectedDateInstance],
+  );
 
   const openFocusMode = useCallback(() => setFocusVisible(true), []);
   const closeFocusMode = useCallback(() => setFocusVisible(false), []);
@@ -234,7 +272,24 @@ export default function PlanScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerTitles}>
-            <Text style={[styles.heading, { color: palette.text }]}>{heading}</Text>
+            <Pressable
+              onPress={openMonthPicker}
+              style={({ pressed }) => [
+                styles.monthSelector,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}>
+              <Text style={[styles.monthTitle, { color: palette.text }]}>{monthTitle}</Text>
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={palette.text}
+                style={styles.monthIcon}
+              />
+            </Pressable>
             <Text style={[styles.subtitle, { color: palette.text }]}>{dateLabel}</Text>
           </View>
           <View style={styles.headerActions}>
@@ -258,7 +313,62 @@ export default function PlanScreen() {
             </View>
           </View>
         </View>
-        <DayStrip selected={selectedDate} onSelect={setSelectedDate} />
+        <DayStrip
+          selected={selectedDate}
+          year={selectedYear}
+          month={selectedMonthIndex}
+          onSelect={setSelectedDate}
+        />
+        <Modal
+          visible={monthPickerVisible}
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          onRequestClose={closeMonthPicker}>
+          <View style={styles.modalOverlay}>
+            <Pressable style={styles.modalBackdrop} onPress={closeMonthPicker} />
+            <View
+              style={[
+                styles.monthModal,
+                {
+                  backgroundColor: palette.card,
+                  borderColor: palette.border,
+                },
+              ]}>
+              <View style={[styles.monthModalHandle, { backgroundColor: palette.border }]} />
+              <Text style={[styles.monthModalTitle, { color: palette.text }]}>Select month</Text>
+              <ScrollView
+                style={styles.monthModalList}
+                contentContainerStyle={styles.monthModalListContent}
+              >
+                {monthOptions.map((option) => {
+                  const isActive = option.key === selectedMonthKey;
+                  return (
+                    <Pressable
+                      key={option.key}
+                      onPress={() => handleMonthSelect(option.year, option.month)}
+                      style={({ pressed }) => [
+                        styles.monthItem,
+                        {
+                          borderColor: palette.border,
+                          backgroundColor: isActive ? palette.accent : palette.card,
+                          opacity: pressed ? 0.75 : 1,
+                        },
+                      ]}>
+                      <Text
+                        style={[
+                          styles.monthItemText,
+                          { color: isActive ? palette.background : palette.text },
+                        ]}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
         <View style={[styles.summaryRow, { borderColor: palette.border, backgroundColor: palette.card }]}>
           <Text style={[styles.summaryText, { color: palette.text }]}>
             {blockCount > 0
@@ -328,7 +438,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 12,
   },
   headerRow: {
     marginBottom: 4,
@@ -344,9 +456,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  heading: {
-    fontSize: 28,
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+  },
+  monthTitle: {
+    fontSize: 24,
     fontWeight: '700',
+  },
+  monthIcon: {
+    marginLeft: 6,
   },
   subtitle: {
     fontSize: 14,
@@ -374,6 +499,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  monthModal: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  monthModalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  monthModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  monthModalList: {
+    maxHeight: 320,
+  },
+  monthModalListContent: {
+    paddingBottom: 12,
+  },
+  monthItem: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  monthItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   gridRow: {
     flex: 1,
     flexDirection: 'row',
@@ -381,7 +553,7 @@ const styles = StyleSheet.create({
   },
   gridArea: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 8,
   },
   scroll: {
     flex: 1,
