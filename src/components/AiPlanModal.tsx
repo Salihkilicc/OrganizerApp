@@ -84,7 +84,6 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
 
   const handleGenerate = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const parsedFocus = Number(focusHours);
       const request: AiPlanRequest = {
@@ -97,13 +96,11 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
         priorities: priorities.trim() || undefined,
         habits: habits.trim() || undefined,
       };
-      const blocks = await generatePlanFromAI(request);
-      const normalizedBlocks = Array.isArray(blocks) ? blocks : [];
-      setPreviewBlocks(normalizedBlocks);
-      if (normalizedBlocks.length === 0) {
+      const { blocks } = await generatePlanFromAI(request);
+      setError(null);
+      setPreviewBlocks(Array.isArray(blocks) ? blocks : []);
+      if (!Array.isArray(blocks) || blocks.length === 0) {
         setError('No blocks returned from AI.');
-      } else {
-        setError(null);
       }
       setStage('preview');
     } catch (err) {
@@ -302,7 +299,7 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
                   ))
                 ) : (
                   <Text style={[styles.previewEmptyText, { color: palette.text }]}>
-                    {error ?? 'No suggestions yet. Fill the fields and tap Generate.'}
+                    {error ?? 'No blocks returned from AI.'}
                   </Text>
                 )}
               </ScrollView>
