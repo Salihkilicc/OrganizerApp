@@ -78,6 +78,14 @@ export default function TodayScreen() {
   }, [initializeStreak]);
 
   const today = todayDate();
+  const friends = useMemo(
+    () => [
+      { id: '1', name: 'Alex Johnson', streak: 5 },
+      { id: '2', name: 'Mina K.', streak: 12 },
+      { id: '3', name: 'Jonas', streak: 3 },
+    ],
+    [],
+  );
 
   const todayBlocks = useMemo(() => {
     return blocks
@@ -176,7 +184,60 @@ export default function TodayScreen() {
             </Text>
           </Pressable>
 
-          <View style={styles.headerStats}>
+          <View style={styles.friendsStrip}>
+            <Text style={[styles.friendsLabel, { color: palette.text }]}>Friends</Text>
+            <ScrollView
+              style={styles.friendsScroll}
+              contentContainerStyle={styles.friendsScrollRow}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              nestedScrollEnabled>
+              {friends.map((friend) => (
+                <Pressable
+                  key={friend.id}
+                  onPress={() => console.log('[TodayScreen] friend tapped', friend.id)}
+                  style={({ pressed }) => [
+                    styles.friendChip,
+                    pressed && styles.friendPressed,
+                    {
+                      borderColor: palette.border,
+                      backgroundColor: palette.card,
+                    },
+                  ]}>
+                  <View
+                    style={[
+                      styles.friendAvatar,
+                      {
+                        borderColor: palette.border,
+                        backgroundColor: palette.background,
+                      },
+                    ]}>
+                    <Text style={[styles.friendInitials, { color: palette.text }]}>
+                      {getInitials(friend.name)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.friendStreak, { color: palette.text }]}>
+                    {friend.streak}d
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable
+                onPress={() => console.log('[TodayScreen] add friend')}
+                style={({ pressed }) => [
+                  styles.addFriendChip,
+                  pressed && styles.friendPressed,
+                  {
+                    borderColor: palette.border,
+                    backgroundColor: palette.background,
+                  },
+                ]}>
+                <Text style={[styles.addFriendPlus, { color: palette.text }]}>+</Text>
+                <Text style={[styles.friendStreak, { color: palette.text }]}>Add</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+
+          <View style={[styles.headerStats, { marginLeft: 12 }]}>
             <View style={styles.statBlock}>
               <Text style={[styles.statLabel, { color: palette.text }]}>Streak</Text>
               <Text style={[styles.statValue, { color: palette.text }]}>
@@ -407,9 +468,60 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
   },
+  friendsStrip: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  friendsLabel: {
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 6,
+  },
+  friendsScroll: {
+    paddingVertical: 2,
+  },
+  friendsScrollRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 6,
+  },
+  friendChip: {
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  friendPressed: {
+    opacity: 0.75,
+  },
+  friendAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendInitials: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  friendStreak: {
+    fontSize: 11,
+    marginTop: 4,
+  },
+  addFriendChip: {
+    alignItems: 'center',
+    marginRight: 4,
+    justifyContent: 'center',
+  },
+  addFriendPlus: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
   headerStats: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    flexShrink: 0,
   },
   statBlock: {
     marginLeft: 18,
