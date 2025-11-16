@@ -12,6 +12,7 @@ import 'react-native-reanimated';
 
 import { useAuth } from '@/store/useAuth';
 import { useFocusMode } from '@/store/useFocusMode';
+import { usePremium } from '@/store/usePremium';
 import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
 import { useI18n } from '@/store/useI18n';
 import { useTheme } from '@/store/useTheme';
@@ -78,6 +79,10 @@ export default function RootLayout() {
   useEffect(() => {
     initI18n();
   }, [initI18n]);
+
+  useEffect(() => {
+    void usePremium.getState().hydrate();
+  }, []);
 
   useEffect(() => {
     if (loading) {
@@ -149,7 +154,8 @@ export default function RootLayout() {
             <Stack.Screen name="points" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="focus" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="premium" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

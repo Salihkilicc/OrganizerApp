@@ -29,7 +29,7 @@ import {
 } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { usePoints } from '@/store/usePoints';
-import { useAuth } from '@/store/useAuth';
+import { usePremium } from '@/store/usePremium';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
@@ -85,8 +85,7 @@ export default function PlanScreen() {
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
   const blocks = usePlans((state) => state.blocks);
-  const user = useAuth((state) => state.user);
-  const isPremium = Boolean(user?.user_metadata?.is_premium);
+  const isPremium = usePremium((state) => state.isPremium);
   const isPast = isBeforeToday(selectedDate);
   const isToday = isDateToday(selectedDate);
   const isFuture = isAfterToday(selectedDate);
