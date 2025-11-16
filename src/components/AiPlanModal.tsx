@@ -64,15 +64,16 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
   const [previewBlocks, setPreviewBlocks] = useState<AiPlanBlock[]>([]);
   const [stage, setStage] = useState<'form' | 'preview'>('form');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
 
   const dateLabel = useMemo(() => formatDateLabel(date), [date]);
+  const hasPreview = Array.isArray(previewBlocks) && previewBlocks.length > 0;
 
   const resetState = useCallback(() => {
     setStage('form');
     setPreviewBlocks([]);
     setLoading(false);
-    setError(undefined);
+    setError(null);
   }, []);
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
 
   const handleGenerate = useCallback(async () => {
     setLoading(true);
-    setError(undefined);
+    setError(null);
     try {
       const parsedFocus = Number(focusHours);
       const request: AiPlanRequest = {
@@ -97,10 +98,17 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
         habits: habits.trim() || undefined,
       };
       const blocks = await generatePlanFromAI(request);
-      setPreviewBlocks(blocks);
+      const normalizedBlocks = Array.isArray(blocks) ? blocks : [];
+      setPreviewBlocks(normalizedBlocks);
+      if (normalizedBlocks.length === 0) {
+        setError('No blocks returned from AI.');
+      } else {
+        setError(null);
+      }
       setStage('preview');
     } catch (err) {
       console.error('[AiPlanModal]', err);
+      setPreviewBlocks([]);
       setError('Unable to generate a plan right now. Please try again later.');
     } finally {
       setLoading(false);
@@ -282,18 +290,19 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
                 contentContainerStyle={styles.previewListContent}
                 showsVerticalScrollIndicator={false}
               >
-                {previewBlocks.map((block, index) => (
-                  <View key={`${block.startMin}-${block.title}-${index}`} style={styles.previewItem}>
-                    <Text style={[styles.previewTime, { color: palette.text }]}>
-                      {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
-                    </Text>
-                    <Text style={[styles.previewTitleRow, { color: palette.text }]}>{block.title}</Text>
-                    <Text style={[styles.previewCategory, { color: palette.text }]}>{block.category}</Text>
-                  </View>
-                ))}
-                {previewBlocks.length === 0 && (
-                  <Text style={[styles.previewEmpty, { color: palette.text }]}>
-                    No suggestions available yet. Try regenerating.
+                {hasPreview ? (
+                  previewBlocks.map((block, index) => (
+                    <View key={`${block.startMin}-${block.title}-${index}`} style={styles.previewItem}>
+                      <Text style={[styles.previewTime, { color: palette.text }]}>
+                        {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
+                      </Text>
+                      <Text style={[styles.previewTitleRow, { color: palette.text }]}>{block.title}</Text>
+                      <Text style={[styles.previewCategory, { color: palette.text }]}>{block.category}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={[styles.previewEmptyText, { color: palette.text }]}>
+                    {error ?? 'No suggestions yet. Fill the fields and tap Generate.'}
                   </Text>
                 )}
               </ScrollView>
@@ -312,12 +321,12 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
                 </Pressable>
                 <Pressable
                   onPress={handleApply}
-                  disabled={!previewBlocks.length}
+                  disabled={!hasPreview}
                   style={({ pressed }) => [
                     styles.primaryButton,
                     {
                       backgroundColor: palette.accent,
-                      opacity: !previewBlocks.length ? 0.5 : pressed ? 0.85 : 1,
+                      opacity: !hasPreview ? 0.5 : pressed ? 0.85 : 1,
                     },
                   ]}
                 >
@@ -458,10 +467,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  previewEmpty: {
+  previewEmptyText: {
     padding: 16,
     textAlign: 'center',
-    opacity: 0.8,
+    fontSize: 12,
+    opacity: 0.75,
   },
 });
 

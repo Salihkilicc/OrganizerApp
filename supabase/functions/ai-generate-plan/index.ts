@@ -144,25 +144,64 @@ const callOpenAI = async (payload: Awaited<ReturnType<typeof parseRequest>>) => 
 };
 
 serve(async (req) => {
+  console.log('[ai-generate-plan] Incoming request', {
+    method: req.method,
+    url: req.url,
+    pathname: (() => {
+      try {
+        return new URL(req.url).pathname;
+      } catch {
+        return undefined;
+      }
+    })(),
+    headers: {
+      accept: req.headers.get('accept'),
+      'content-type': req.headers.get('content-type'),
+      'user-agent': req.headers.get('user-agent'),
+    },
+  });
+
+  let payload: Awaited<ReturnType<typeof parseRequest>>;
   try {
-    const payload = await parseRequest(req);
+    payload = await parseRequest(req);
+    console.log('[ai-generate-plan] Parsed payload', {
+      date: payload.date,
+      wakeTime: payload.wakeTime ?? null,
+      sleepTime: payload.sleepTime ?? null,
+      workStart: payload.workStart ?? null,
+      workEnd: payload.workEnd ?? null,
+      focusHours: payload.focusHours ?? null,
+      priorities: payload.priorities ?? null,
+      habits: payload.habits ?? null,
+    });
+  } catch (error) {
+    console.error('[ai-generate-plan] Request parse error', error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'Invalid request payload' },
+      { status: 400 },
+    );
+  }
 
-    const envKey = Deno.env.get('OPENAI_API_KEY');
-    if (!envKey) {
-      return Response.json(
-        { error: 'Missing OPENAI_API_KEY in environment.' },
-        { status: 500 },
-      );
-    }
+  const envKey = Deno.env.get('OPENAI_API_KEY');
+  console.log('[ai-generate-plan] has OPENAI_API_KEY', Boolean(envKey));
+  if (!envKey) {
+    console.error('[ai-generate-plan] Missing OPENAI_API_KEY');
+    return Response.json(
+      { error: 'Missing OPENAI_API_KEY in environment.' },
+      { status: 500 },
+    );
+  }
 
+  try {
     const rawBlocks = await callOpenAI(payload);
     const validBlocks = validateBlocks(rawBlocks);
+    console.log('[ai-generate-plan] Generated blocks', validBlocks.length);
     return Response.json({ blocks: validBlocks });
   } catch (error) {
-    console.error('[ai-generate-plan]', error);
+    console.error('[ai-generate-plan] Error', error);
     return Response.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 400 },
+      { status: 500 },
     );
   }
 });
