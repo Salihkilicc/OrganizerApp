@@ -17,6 +17,7 @@ import { FocusModeOverlay } from '@/components/FocusModeOverlay';
 import { HourColumn } from '@/components/HourColumn';
 import { PlanEditor } from '@/components/PlanEditor';
 import { PlanGrid } from '@/components/PlanGrid';
+import { AiPlanModal } from '@/components/AiPlanModal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   usePlans,
@@ -28,6 +29,7 @@ import {
 } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { usePoints } from '@/store/usePoints';
+import { useAuth } from '@/store/useAuth';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
@@ -75,11 +77,16 @@ export default function PlanScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const [selectedDate, setSelectedDate] = useState(() => toISO(new Date()));
+  const [aiVisible, setAiVisible] = useState(false);
+  const [aiDate, setAiDate] = useState(selectedDate);
   const loadPlans = usePlans((state) => state.load);
   const addPlan = usePlans((state) => state.add);
+  const addMany = usePlans((state) => state.addMany);
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
   const blocks = usePlans((state) => state.blocks);
+  const user = useAuth((state) => state.user);
+  const isPremium = Boolean(user?.user_metadata?.is_premium);
   const isPast = isBeforeToday(selectedDate);
   const isToday = isDateToday(selectedDate);
   const isFuture = isAfterToday(selectedDate);
@@ -142,6 +149,12 @@ export default function PlanScreen() {
     setEditingId(null);
     setEditorInitial(undefined);
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (!aiVisible) {
+      setAiDate(selectedDate);
+    }
+  }, [aiVisible, selectedDate]);
 
   const openAddEditor = useCallback(() => {
     const startMin = nextRoundedStart();
@@ -226,6 +239,30 @@ export default function PlanScreen() {
     [setEditorInitial, setEditorVisible, setEditingId],
   );
 
+  const handleAiPlanPress = useCallback(() => {
+    if (!isPremium) {
+      router.push('/premium');
+      return;
+    }
+    setAiDate(selectedDate);
+    setAiVisible(true);
+  }, [isPremium, router, selectedDate, setAiDate, setAiVisible]);
+
+  const handleAiApply = useCallback(
+    async (blocks: PlanBlock[]) => {
+      try {
+        await addMany(blocks);
+      } catch (error) {
+        console.error('[PlanScreen] Failed to add AI plan blocks', error);
+      } finally {
+        setAiVisible(false);
+      }
+    },
+    [addMany, setAiVisible],
+  );
+
+  const closeAiModal = useCallback(() => setAiVisible(false), [setAiVisible]);
+
   const handleMove = useCallback(
     (id: string, newStartMin: number, newEndMin: number) => {
       updatePlan(id, { startMin: newStartMin, endMin: newEndMin });
@@ -295,6 +332,18 @@ export default function PlanScreen() {
             <Text style={[styles.subtitle, { color: palette.text }]}>{dateLabel}</Text>
           </View>
           <View style={styles.headerActions}>
+            <Pressable
+              onPress={handleAiPlanPress}
+              style={({ pressed }) => [
+                styles.aiButton,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}>
+              <Text style={[styles.aiButtonText, { color: palette.text }]}>✨ AI Plan</Text>
+            </Pressable>
             <Pressable
               onPress={openFocusMode}
               style={({ pressed }) => [
@@ -412,6 +461,12 @@ export default function PlanScreen() {
             </View>
           </ScrollView>
         </View>
+        <AiPlanModal
+          visible={aiVisible}
+          date={aiDate}
+          onClose={closeAiModal}
+          onApply={handleAiApply}
+        />
       {!isPast && (
         <Pressable
           onPress={openAddEditor}
@@ -494,6 +549,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pointsLabel: {
+    fontWeight: '600',
+  },
+  aiButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
+  aiButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   focusButton: {

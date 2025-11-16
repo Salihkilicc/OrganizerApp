@@ -33,6 +33,7 @@ export type PlansStore = {
   blocks: PlanBlock[];
   load: () => Promise<void>;
   add: (b: Omit<PlanBlock, 'id'>) => Promise<string>;
+  addMany: (blocks: Omit<PlanBlock, 'id'>[]) => Promise<string[]>;
   update: (id: string, patch: Partial<PlanBlock>) => Promise<void>;
   remove: (id: string) => Promise<void>;
   byDate: (dateISO: string) => PlanBlock[];
@@ -139,6 +140,24 @@ export const usePlans = create<PlansStore>((set, get) => ({
     console.log('[usePlans/add]', next);
     schedulePersist(updated);
     return next.id;
+  },
+
+  addMany: async (blocks) => {
+    if (!blocks.length) return [];
+    const now = new Date().toISOString();
+    const nextBlocks: PlanBlock[] = blocks.map((block) => ({
+      id: nextId(),
+      category: block.category ?? 'focus',
+      done: false,
+      rewarded: false,
+      createdAt: now,
+      ...block,
+    }));
+    const updated = [...get().blocks, ...nextBlocks];
+    set({ blocks: updated });
+    console.log('[usePlans/addMany]', nextBlocks);
+    schedulePersist(updated);
+    return nextBlocks.map((block) => block.id);
   },
 
   update: async (id, patch) => {
