@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  GestureResponderEvent,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -12,6 +13,7 @@ import { PlanEditor } from '@/components/PlanEditor';
 import { useAuth } from '@/store/useAuth';
 import { usePoints } from '@/store/usePoints';
 import { PlanBlock, todayDate, usePlans } from '@/store/usePlans';
+import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
 import { useRouter } from 'expo-router';
 
@@ -31,15 +33,38 @@ const getInitials = (value: string) => {
   const last = parts[parts.length - 1][0];
   return `${first}${last}`.toUpperCase();
 };
+const formatCategoryLabel = (category: PlanBlock['category']) => {
+  if (!category) return 'Other';
+  return `${category.charAt(0).toUpperCase()}${category.slice(1)}`;
+};
+const getCategoryIcon = (category: PlanBlock['category']) => {
+  switch (category) {
+    case 'focus':
+      return '🎯';
+    case 'study':
+      return '📚';
+    case 'work':
+      return '💼';
+    case 'gym':
+      return '🏋️';
+    default:
+      return '⭐';
+  }
+};
 
 export default function TodayScreen() {
   const palette = useTheme((state) => state.palette);
   const router = useRouter();
+  const goToPlan = () => {
+    router.push('/plan');
+  };
   const user = useAuth((state) => state.user);
   const points = usePoints((state) => state.total);
   const blocks = usePlans((state) => state.blocks);
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
+  const streakDays = useStreak((state) => state.streakDays);
+  const initializeStreak = useStreak((state) => state.initialize);
 
   const [selectedBlock, setSelectedBlock] = useState<PlanBlock | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
@@ -48,6 +73,10 @@ export default function TodayScreen() {
   const fallbackName = isGuest ? 'Guest User' : user?.email?.split('@')[0] ?? 'User';
   const displayName = user?.user_metadata?.full_name ?? user?.name ?? fallbackName;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
+  useEffect(() => {
+    initializeStreak();
+  }, [initializeStreak]);
+
   const today = todayDate();
 
   const todayBlocks = useMemo(() => {
@@ -56,7 +85,37 @@ export default function TodayScreen() {
       .sort((a, b) => a.startMin - b.startMin);
   }, [blocks, today]);
 
-  const streakDays = 0; // TODO: wire real streak tracking from focus mode.
+  const totalPlans = todayBlocks.length;
+  const completedPlans = todayBlocks.filter((block) => Boolean(block.done)).length;
+  const totalHours =
+    todayBlocks.reduce((sum, block) => sum + (block.endMin - block.startMin), 0) / 60;
+  const summaryText =
+    totalPlans === 0
+      ? 'No plans yet - your day is wide open.'
+      : `${totalPlans} plan${totalPlans === 1 ? '' : 's'} • ${completedPlans} completed • ${totalHours.toFixed(
+          1,
+        )} hours`;
+
+  const nextBlock = useMemo(() => {
+    if (!todayBlocks.length) return null;
+    const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+    const upcoming = todayBlocks.find((block) => block.startMin > currentMinutes);
+    return upcoming ?? todayBlocks[0];
+  }, [todayBlocks]);
+
+  const handleStartFocus = (block: PlanBlock | null) => {
+    if (!block) return;
+    router.push({
+      pathname: '/focus',
+      params: {
+        id: block.id,
+        title: block.title,
+        startMin: block.startMin.toString(),
+        endMin: block.endMin.toString(),
+        category: block.category,
+      },
+    });
+  };
 
   const handleAvatarPress = () => {
     router.push('/profile');
@@ -65,6 +124,12 @@ export default function TodayScreen() {
   const handleBlockPress = (block: PlanBlock) => {
     setSelectedBlock(block);
     setEditorVisible(true);
+  };
+
+  const toggleDone = (block: PlanBlock, event: GestureResponderEvent) => {
+    event.stopPropagation();
+    const nextDone = !(block.done ?? false);
+    void updatePlan(block.id, { done: nextDone });
   };
 
   const closeEditor = () => {
@@ -118,7 +183,13 @@ export default function TodayScreen() {
                 {streakDays} days
               </Text>
             </View>
-            <View style={styles.statBlock}>
+            <Pressable
+              onPress={() => router.push('/points')}
+              style={({ pressed }) => [
+                styles.statBlock,
+                styles.pointsPressable,
+                pressed && styles.pointsPressed,
+              ]}>
               <Text style={[styles.statLabel, { color: palette.text }]}>Points</Text>
               <View
                 style={[
@@ -129,19 +200,112 @@ export default function TodayScreen() {
                   {points}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           </View>
+        </View>
+
+        <View
+          style={[
+            styles.nextUpCard,
+            { backgroundColor: palette.card, borderColor: palette.border },
+          ]}>
+          <Text style={[styles.nextUpLabel, { color: palette.text }]}>Next up</Text>
+          {nextBlock ? (
+            <>
+              <Text style={[styles.nextUpTitle, { color: palette.text }]}>
+                {nextBlock.title}
+              </Text>
+              <View style={styles.nextUpMetaRow}>
+                <Text style={[styles.nextUpMeta, { color: palette.text }]}>
+                  {formatRange(nextBlock)}
+                </Text>
+                <View
+                  style={[
+                    styles.nextUpCategory,
+                    {
+                      borderColor: palette.border,
+                      backgroundColor: palette.background,
+                    },
+                  ]}>
+                  <Text style={[styles.nextUpCategoryText, { color: palette.text }]}>
+                    {`${getCategoryIcon(nextBlock.category)} ${formatCategoryLabel(
+                      nextBlock.category,
+                    )}`}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => handleStartFocus(nextBlock)}
+                style={({ pressed }) => [
+                  styles.startFocusButton,
+                  {
+                    backgroundColor: palette.accent,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}>
+                <Text style={[styles.startFocusText, { color: palette.background }]}>
+                  Start focus
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <View style={styles.nextUpEmptyContainer}>
+              <Text style={[styles.nextUpEmpty, { color: palette.text }]}>
+                No upcoming blocks today.
+              </Text>
+              <Pressable
+                onPress={goToPlan}
+                style={({ pressed }) => [
+                  styles.startFocusButton,
+                  {
+                    alignSelf: 'flex-start',
+                    backgroundColor: palette.accent,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}>
+                <Text style={[styles.startFocusText, { color: palette.background }]}>
+                  Create a plan
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        <View
+          style={[styles.summaryCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+          <Text style={[styles.summaryText, { color: palette.text }]}>{summaryText}</Text>
         </View>
 
         <View style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <Text style={[styles.planTitle, { color: palette.text }]}>Today’s plan</Text>
           {todayBlocks.length === 0 ? (
-            <Text style={[styles.emptyState, { color: palette.text }]}>
-              No plan for today – create one from the Plan tab.
-            </Text>
+            <View style={styles.planEmptyState}>
+              <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
+                You haven’t planned today yet.
+              </Text>
+              <Text style={[styles.planEmptyHint, { color: palette.text }]}>
+                Tap below to open the planner and create your first block.
+              </Text>
+              <Pressable
+                onPress={goToPlan}
+                style={({ pressed }) => [
+                  styles.startFocusButton,
+                  {
+                    alignSelf: 'center',
+                    backgroundColor: palette.accent,
+                    opacity: pressed ? 0.85 : 1,
+                    marginTop: 16,
+                  },
+                ]}>
+                <Text style={[styles.startFocusText, { color: palette.background }]}>
+                  Open planner
+                </Text>
+              </Pressable>
+            </View>
           ) : (
             todayBlocks.map((block) => {
               const accentColor = block.color ?? palette.accent;
+              const isDone = Boolean(block.done);
               return (
                 <Pressable
                   key={block.id}
@@ -154,13 +318,46 @@ export default function TodayScreen() {
                       opacity: pressed ? 0.65 : 1,
                     },
                   ]}>
+                  <Pressable
+                    onPress={(event) => toggleDone(block, event)}
+                    style={[
+                      styles.completionToggle,
+                      {
+                        borderColor: palette.accent,
+                        backgroundColor: isDone ? palette.accent : 'transparent',
+                      },
+                    ]}
+                    hitSlop={6}>
+                    {isDone && (
+                      <Text style={[styles.completionCheck, { color: palette.background }]}>✓</Text>
+                    )}
+                  </Pressable>
                   <View style={[styles.blockAccent, { backgroundColor: accentColor }]} />
+                  <View
+                    style={[
+                      styles.blockCategoryIcon,
+                      {
+                        borderColor: palette.border,
+                        backgroundColor: palette.card,
+                      },
+                    ]}>
+                    <Text style={[styles.blockCategoryIconText, { color: palette.text }]}>
+                      {getCategoryIcon(block.category)}
+                    </Text>
+                  </View>
                   <View style={styles.blockInfo}>
                     <Text style={[styles.blockTime, { color: palette.text }]}>
                       {formatRange(block)}
                     </Text>
                     <Text
-                      style={[styles.blockTitle, { color: palette.text }]}
+                      style={[
+                        styles.blockTitle,
+                        {
+                          color: palette.text,
+                          textDecorationLine: isDone ? 'line-through' : 'none',
+                          opacity: isDone ? 0.6 : 1,
+                        },
+                      ]}
                       numberOfLines={1}>
                       {block.title}
                     </Text>
@@ -195,7 +392,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 24,
   },
   avatar: {
@@ -216,6 +413,14 @@ const styles = StyleSheet.create({
   },
   statBlock: {
     marginLeft: 18,
+  },
+  pointsPressable: {
+    marginLeft: 18,
+    paddingVertical: 2,
+    alignItems: 'flex-start',
+  },
+  pointsPressed: {
+    opacity: 0.75,
   },
   statLabel: {
     fontSize: 12,
@@ -241,6 +446,83 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  nextUpCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  nextUpLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  nextUpTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  nextUpMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  nextUpMeta: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+    flex: 1,
+    marginRight: 12,
+  },
+  nextUpCategory: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  nextUpCategoryText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  nextUpEmpty: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  nextUpEmptyContainer: {
+    marginTop: 12,
+  },
+  startFocusButton: {
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginTop: 12,
+    alignSelf: 'flex-end',
+  },
+  startFocusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  summaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   planCard: {
     borderRadius: 24,
     borderWidth: 1,
@@ -256,16 +538,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 16,
   },
-  emptyState: {
+  planEmptyState: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  planEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  planEmptyHint: {
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'center',
+    marginTop: 6,
   },
   blockRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 18,
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     marginTop: 12,
   },
   blockAccent: {
@@ -273,6 +567,31 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 3,
     marginRight: 12,
+  },
+  blockCategoryIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionToggle: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 2,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completionCheck: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  blockCategoryIconText: {
+    fontSize: 16,
   },
   blockInfo: {
     flex: 1,

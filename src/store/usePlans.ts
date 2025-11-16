@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
 import { usePoints } from '@/store/usePoints';
+import { useStreak } from '@/store/useStreak';
 
 export type PlanCategory =
   | 'focus'
@@ -145,11 +146,15 @@ export const usePlans = create<PlansStore>((set, get) => ({
     const existing = get().blocks.find((block) => block.id === id);
     if (!existing) return;
     const nextCategory = patch.category ?? existing.category ?? 'other';
-    const nextDone = patch.done ?? existing.done ?? false;
+    const wasDone = existing.done ?? false;
+    const nextDone = patch.done ?? wasDone;
     const now = new Date();
     const rewardable = isRewardable(existing, nextDone, now);
     if (rewardable) {
       usePoints.getState().addPoints(REWARD_POINTS);
+    }
+    if (!wasDone && nextDone) {
+      void useStreak.getState().bump(existing.date);
     }
     const nextRewarded = rewardable
       ? true
