@@ -65,15 +65,18 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
   const [stage, setStage] = useState<'form' | 'preview'>('form');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState('');
 
   const dateLabel = useMemo(() => formatDateLabel(date), [date]);
-  const hasPreview = Array.isArray(previewBlocks) && previewBlocks.length > 0;
+  const previewList = previewBlocks ?? [];
+  const hasPreview = previewList.length > 0;
 
   const resetState = useCallback(() => {
     setStage('form');
     setPreviewBlocks([]);
     setLoading(false);
     setError(null);
+    setFeedback('');
   }, []);
 
   useEffect(() => {
@@ -82,35 +85,79 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
     }
   }, [resetState, visible]);
 
+  const buildRequestPayload = useCallback((): AiPlanRequest => {
+    const parsedFocus = Number(focusHours);
+    const normalizedFeedback = feedback.trim();
+    return {
+      date,
+      wakeTime: wakeTime.trim(),
+      sleepTime: sleepTime.trim(),
+      workStart: workStart.trim() || null,
+      workEnd: workEnd.trim() || null,
+      focusHours: Number.isFinite(parsedFocus) ? parsedFocus : null,
+      priorities: priorities.trim() || null,
+      habits: habits.trim() || null,
+      feedback: normalizedFeedback || null,
+    };
+  }, [
+    date,
+    focusHours,
+    habits,
+    feedback,
+    priorities,
+    wakeTime,
+    sleepTime,
+    workEnd,
+    workStart,
+  ]);
+
   const handleGenerate = useCallback(async () => {
     setLoading(true);
     try {
-      const parsedFocus = Number(focusHours);
-      const request: AiPlanRequest = {
-        date,
-        wakeTime: wakeTime.trim() || undefined,
-        sleepTime: sleepTime.trim() || undefined,
-        workStart: workStart.trim() || undefined,
-        workEnd: workEnd.trim() || undefined,
-        focusHours: Number.isFinite(parsedFocus) ? parsedFocus : undefined,
-        priorities: priorities.trim() || undefined,
-        habits: habits.trim() || undefined,
-      };
-      const { blocks } = await generatePlanFromAI(request);
-      setError(null);
-      setPreviewBlocks(Array.isArray(blocks) ? blocks : []);
-      if (!Array.isArray(blocks) || blocks.length === 0) {
+      const payload = buildRequestPayload();
+      console.log('[AiPlanModal] Request payload', payload);
+      const { blocks } = await generatePlanFromAI(payload);
+      console.log('[AiPlanModal] Received blocks', blocks);
+      const blocksArray = Array.isArray(blocks) ? blocks : [];
+      setPreviewBlocks(blocksArray);
+      if (blocksArray.length === 0) {
         setError('No blocks returned from AI.');
+      } else {
+        setError(null);
       }
       setStage('preview');
     } catch (err) {
-      console.error('[AiPlanModal]', err);
+      console.error('[AiPlanModal] Error generating plan', err);
       setPreviewBlocks([]);
-      setError('Unable to generate a plan right now. Please try again later.');
+      setError(String(err));
     } finally {
       setLoading(false);
     }
-  }, [date, focusHours, habits, priorities, wakeTime, sleepTime, workEnd, workStart]);
+  }, [buildRequestPayload]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!date) return;
+    setLoading(true);
+    try {
+      const payload = buildRequestPayload();
+      console.log('[AiPlanModal] Request payload (regenerate)', payload);
+      const { blocks } = await generatePlanFromAI(payload);
+      console.log('[AiPlanModal] Received blocks (regenerate)', blocks);
+      if (!Array.isArray(blocks) || blocks.length === 0) {
+        setError('AI could not create a better plan with this feedback.');
+        setPreviewBlocks([]);
+        return;
+      }
+      setError(null);
+      setPreviewBlocks(blocks);
+    } catch (err) {
+      console.error('[AiPlanModal] Error regenerating plan', err);
+      setPreviewBlocks([]);
+      setError(String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [buildRequestPayload, date]);
 
   const handleApply = useCallback(() => {
     const planBlocks = previewBlocks.map((block) => buildPlanBlock(date, block));
@@ -280,15 +327,19 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
               </View>
             </ScrollView>
           ) : (
-            <View style={styles.previewContainer}>
-              <Text style={[styles.previewTitle, { color: palette.text }]}>Suggested blocks</Text>
-              <ScrollView
-                style={styles.previewList}
-                contentContainerStyle={styles.previewListContent}
-                showsVerticalScrollIndicator={false}
+              <View style={styles.previewContainer}>
+                <Text style={[styles.previewTitle, { color: palette.text }]}>Suggested blocks</Text>
+                <ScrollView
+                  style={styles.previewList}
+                  contentContainerStyle={styles.previewListContent}
+                  showsVerticalScrollIndicator={false}
               >
-                {hasPreview ? (
-                  previewBlocks.map((block, index) => (
+                {previewList.length === 0 ? (
+                  <Text style={[styles.previewEmptyText, { color: palette.text }]}>
+                    {error ?? 'No blocks returned from AI.'}
+                  </Text>
+                ) : (
+                  previewList.map((block, index) => (
                     <View key={`${block.startMin}-${block.title}-${index}`} style={styles.previewItem}>
                       <Text style={[styles.previewTime, { color: palette.text }]}>
                         {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
@@ -297,13 +348,43 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
                       <Text style={[styles.previewCategory, { color: palette.text }]}>{block.category}</Text>
                     </View>
                   ))
-                ) : (
-                  <Text style={[styles.previewEmptyText, { color: palette.text }]}>
-                    {error ?? 'No blocks returned from AI.'}
-                  </Text>
                 )}
-              </ScrollView>
-              <View style={styles.buttonRow}>
+                  </ScrollView>
+                  {stage === 'preview' && (
+                    <View style={styles.feedbackSection}>
+                      <Text style={[styles.feedbackLabel, { color: palette.text }]}>
+                        Not quite right? Tell AI what to change
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.feedbackInput,
+                          { borderColor: palette.border, color: palette.text },
+                        ]}
+                        placeholder="e.g. Move gym to evening, fewer blocks in the morning"
+                        placeholderTextColor={palette.text}
+                        multiline
+                        value={feedback}
+                        onChangeText={setFeedback}
+                      />
+                      <Pressable
+                        onPress={handleRegenerate}
+                        disabled={loading}
+                        style={({ pressed }) => [
+                          styles.feedbackButton,
+                          {
+                            borderColor: palette.border,
+                            backgroundColor: palette.card,
+                            opacity: loading ? 0.6 : pressed ? 0.8 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.feedbackButtonText, { color: palette.text }]}>
+                          Regenerate with feedback
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
+                <View style={styles.buttonRow}>
                 <Pressable
                   onPress={() => setStage('form')}
                   style={({ pressed }) => [
@@ -469,6 +550,37 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     opacity: 0.75,
+  },
+  feedbackSection: {
+    marginTop: 16,
+  },
+  feedbackLabel: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  feedbackInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  feedbackButton: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  feedbackButtonText: {
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 

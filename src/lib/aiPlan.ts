@@ -1,5 +1,6 @@
 export type AiPlanBlock = {
   title: string;
+  note?: string | null;
   startMin: number;
   endMin: number;
   category: 'focus' | 'study' | 'work' | 'gym' | 'other';
@@ -7,10 +8,14 @@ export type AiPlanBlock = {
 
 export type AiPlanRequest = {
   date: string;
-  wakeTime?: string;
-  sleepTime?: string;
-  focusHours?: number;
-  hobbies?: string[];
+  wakeTime: string;
+  sleepTime: string;
+  workStart?: string | null;
+  workEnd?: string | null;
+  focusHours?: number | null;
+  habits?: string | null;
+  priorities?: string | null;
+  feedback?: string | null;
 };
 
 export type AiPlanResponse = {
@@ -20,10 +25,17 @@ export type AiPlanResponse = {
 export async function generatePlanFromAI(
   payload: AiPlanRequest,
 ): Promise<AiPlanResponse> {
-  const url = process.env.EXPO_PUBLIC_SUPABASE_FUNCTION_URL;
+  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_FUNCTION_URL;
   const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!url) {
+  console.log('[AIPlan] URL', baseUrl);
+  console.log('[AIPlan] Env present', {
+    hasAnonKey: !!anonKey,
+    hasUrl: !!baseUrl,
+  });
+  console.log('[AIPlan] Request payload', payload);
+
+  if (!baseUrl) {
     console.error('[AIPlan] Missing EXPO_PUBLIC_SUPABASE_FUNCTION_URL');
     throw new Error('Missing EXPO_PUBLIC_SUPABASE_FUNCTION_URL');
   }
@@ -33,14 +45,7 @@ export async function generatePlanFromAI(
     throw new Error('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY');
   }
 
-  console.log('[AIPlan] URL', url);
-  console.log('[AIPlan] Env present', {
-    hasUrl: Boolean(url),
-    hasAnonKey: Boolean(anonKey),
-  });
-  console.log('[AIPlan] Request payload', payload);
-
-  const response = await fetch(url, {
+  const response = await fetch(`${baseUrl}/functions/v1/ai-generate-plan`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
