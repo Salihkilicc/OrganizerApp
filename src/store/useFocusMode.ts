@@ -62,6 +62,11 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
     }
 
     const rewardMinutes = state.accumulatedMinutes;
+    const pointsState = usePoints.getState();
+    if (rewardMinutes > 0) {
+      pointsState.recordFocusSession();
+    }
+
     set({
       active: false,
       remainingMinutes: 0,
@@ -74,7 +79,6 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
 
     if (rewardMinutes > 0) {
       const today = todayDate();
-      const pointsState = usePoints.getState();
       pointsState.resetDailyIfNeeded(today);
       const remaining = Math.max(
         0,

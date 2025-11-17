@@ -1,17 +1,18 @@
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
-import { type ThemeKey, useTheme } from '@/store/useTheme';
+import { type ThemeId, useTheme } from '@/store/useTheme';
 import { useAuth } from '@/store/useAuth';
-import { useI18n } from '@/store/useI18n';
-import { useT } from '@/i18n';
-import type { Lang } from '@/i18n';
+import { LANGUAGE_LABELS, useLanguage } from '@/store/useLanguage';
+import { useTranslation } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { usePoints } from '@/store/usePoints';
 import { useRouter } from 'expo-router';
 
-const themeOptions: ThemeKey[] = ['light', 'dark', 'ninja'];
-const languageOptions: Lang[] = ['tr', 'en'];
-const themeLabelMap: Record<ThemeKey, 'lightTheme' | 'darkTheme' | 'ninjaTheme'> = {
+const themeOptions: ThemeId[] = ['light', 'dark', 'ninja'];
+const themeLabelMap: Record<
+  ThemeId,
+  'lightTheme' | 'darkTheme' | 'ninjaTheme'
+> = {
   light: 'lightTheme',
   dark: 'darkTheme',
   ninja: 'ninjaTheme',
@@ -24,9 +25,9 @@ export default function SettingsScreen() {
   const setTheme = useTheme((state) => state.setTheme);
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { lang, change } = useI18n();
-  const t = useT();
+  const { t } = useTranslation();
   const totalPoints = usePoints((state) => state.total);
+  const currentLanguage = useLanguage((state) => state.current);
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
   const userLabel = isGuest ? 'guest' : (user && (user as any).email) ?? 'guest';
@@ -35,7 +36,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
       <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <View style={styles.header}>
-          <Text style={[styles.heading, { color: palette.text }]}>Settings</Text>
+          <Text style={[styles.heading, { color: palette.text }]}>{t('settings.title')}</Text>
           <Text style={[styles.subheading, { color: palette.text }]}>{userLabel}</Text>
         </View>
 
@@ -52,13 +53,13 @@ export default function SettingsScreen() {
                 opacity: pressed ? 0.85 : 1,
               },
             ]}>
-            <Text style={[styles.profileRowLabel, { color: palette.text }]}>Profile & account</Text>
+            <Text style={[styles.profileRowLabel, { color: palette.text }]}>{t('settings.profile')}</Text>
             <Text style={[styles.profileRowChevron, { color: palette.text }]}>›</Text>
           </Pressable>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('theme')}</Text>
+          <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.theme')}</Text>
           <View style={styles.optionRow}>
             {themeOptions.map((option) => {
               const isActive = option === themeKey;
@@ -91,37 +92,30 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('language')}</Text>
-          <View style={styles.optionRow}>
-            {languageOptions.map((option) => {
-              const isActive = option === lang;
-              const label = option === 'tr' ? 'Türkçe' : 'English';
-              return (
-                <Pressable
-                  key={option}
-                  onPress={() => {
-                    void change(option);
-                  }}
-                  style={[
-                    styles.option,
-                    {
-                      backgroundColor: isActive ? palette.accent : palette.background,
-                      borderColor: isActive ? palette.accent : palette.border,
-                    },
-                  ]}>
-                  <Text
-                    style={[
-                      styles.optionText,
-                      {
-                        color: isActive ? '#fff' : palette.text,
-                      },
-                    ]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Pressable
+            onPress={() => router.push('/language')}
+            style={({ pressed }) => [
+              styles.pointsRow,
+              {
+                borderColor: palette.border,
+                backgroundColor: palette.card,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <View>
+            <Text style={[styles.pointsRowLabel, { color: palette.text }]}>
+              {t('settings.language')}
+            </Text>
+            <Text
+              style={[
+                styles.pointsRowSubtitle,
+                { color: palette.text, opacity: 0.7 },
+              ]}>
+              {LANGUAGE_LABELS[currentLanguage]}
+            </Text>
+            </View>
+            <Text style={[styles.profileRowChevron, { color: palette.text }]}>›</Text>
+          </Pressable>
         </View>
 
         <View style={styles.section}>
@@ -135,13 +129,15 @@ export default function SettingsScreen() {
                 opacity: pressed ? 0.85 : 1,
               },
             ]}>
-            <Text style={[styles.pointsRowLabel, { color: palette.text }]}>Points</Text>
+            <Text style={[styles.pointsRowLabel, { color: palette.text }]}>
+              {t('settings.pointsShop')}
+            </Text>
             <Text style={[styles.pointsRowValue, { color: palette.accent }]}>{totalPoints} XP</Text>
           </Pressable>
         </View>
 
         <View style={styles.footer}>
-          <Button title={t('signOut')} onPress={() => void signOut()} type="secondary" />
+          <Button title={t('settings.signOut')} onPress={() => void signOut()} type="secondary" />
         </View>
       </View>
     </SafeAreaView>
@@ -206,6 +202,10 @@ const styles = StyleSheet.create({
   pointsRowLabel: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  pointsRowSubtitle: {
+    fontSize: 12,
+    marginTop: 4,
   },
   pointsRowValue: {
     fontSize: 16,

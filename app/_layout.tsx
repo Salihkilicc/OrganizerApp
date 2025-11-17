@@ -14,9 +14,12 @@ import { useAuth } from '@/store/useAuth';
 import { useFocusMode } from '@/store/useFocusMode';
 import { usePremium } from '@/store/usePremium';
 import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
-import { useI18n } from '@/store/useI18n';
 import { useTheme } from '@/store/useTheme';
+import { useLanguage } from '@/store/useLanguage';
+import { useProfileAppearance } from '@/store/useProfileAppearance';
+import { configureRevenueCat, addCustomerInfoListener } from '@/lib/revenuecat';
 import { ensureInitialized } from '@/lib/notifications';
+import { useRevenueCatStore } from '@/store/useRevenueCat';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -58,11 +61,13 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const { user, loading, initialize } = useAuth();
-  const { ready: i18nReady, init: initI18n } = useI18n();
   const loadTheme = useTheme((state) => state.load);
   const themeKey = useTheme((state) => state.themeKey);
   const palette = useTheme((state) => state.palette);
   const focusTick = useFocusMode((state) => state.tick);
+  const refreshCustomerInfo = useRevenueCatStore((state) => state.refreshCustomerInfo);
+  const refreshOfferings = useRevenueCatStore((state) => state.refreshOfferings);
+  const setCustomerInfo = useRevenueCatStore((state) => state.setCustomerInfo);
 
   useEffect(() => {
     initialize();
@@ -77,12 +82,37 @@ export default function RootLayout() {
   }, [loadTheme]);
 
   useEffect(() => {
-    initI18n();
-  }, [initI18n]);
-
-  useEffect(() => {
     void usePremium.getState().hydrate();
   }, []);
+
+  useEffect(() => {
+    void useLanguage.getState().hydrate();
+  }, []);
+
+  useEffect(() => {
+    void useProfileAppearance.getState().hydrate();
+  }, []);
+
+  useEffect(() => {
+    configureRevenueCat();
+    const bootstrap = async () => {
+      try {
+        await refreshCustomerInfo();
+        await refreshOfferings();
+      } catch (error) {
+        console.error('[RevenueCat] bootstrap failed', error);
+      }
+    };
+
+    bootstrap();
+    const unsubscribe = addCustomerInfoListener((info) => {
+      setCustomerInfo(info);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [refreshCustomerInfo, refreshOfferings, setCustomerInfo]);
 
   useEffect(() => {
     if (loading) {
@@ -129,7 +159,7 @@ export default function RootLayout() {
     };
   }, [themeKey, palette]);
 
-  const showSplash = loading || !i18nReady;
+  const showSplash = loading;
 
   if (showSplash) {
     return (
@@ -155,6 +185,7 @@ export default function RootLayout() {
             <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="focus" options={{ headerShown: false }} />
             <Stack.Screen name="premium" options={{ headerShown: false }} />
+            <Stack.Screen name="language" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />

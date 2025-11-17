@@ -32,6 +32,7 @@ import { usePoints } from '@/store/usePoints';
 import { usePremium } from '@/store/usePremium';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useTranslation } from '@/i18n';
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -76,6 +77,7 @@ type EditorValues = {
 export default function PlanScreen() {
   const router = useRouter();
   const { palette } = useTheme();
+  const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState(() => toISO(new Date()));
   const [aiVisible, setAiVisible] = useState(false);
   const [aiDate, setAiDate] = useState(selectedDate);
@@ -105,6 +107,14 @@ export default function PlanScreen() {
   );
   const totalHours = totalMinutes / 60;
   const hasExistingBlocks = blockCount > 0;
+  const summaryMessage =
+    blockCount > 0
+      ? t('plan.summary.withPlans', {
+          total: blockCount,
+          plural: blockCount === 1 ? '' : 's',
+          hours: totalHours.toFixed(1),
+        })
+      : t('plan.summary.noPlans');
 
   const selectedDateInstance = useMemo(() => parseISO(selectedDate), [selectedDate]);
   const selectedMonthIndex = selectedDateInstance.getMonth();
@@ -173,14 +183,14 @@ export default function PlanScreen() {
       const current = blocks.find((block) => block.id === id);
       if (!current) return;
       if (isBeforeToday(current.date)) {
-        Alert.alert('Past plans cannot be edited.');
+        Alert.alert(t('plan.pastPlansAlert'));
         return;
       }
       setEditorInitial(current);
       setEditingId(id);
       setEditorVisible(true);
     },
-    [blocks],
+    [blocks, t],
   );
 
   const closeEditor = useCallback(() => {
@@ -251,17 +261,17 @@ export default function PlanScreen() {
 
   const handleClearDayPlans = useCallback(() => {
     if (blockCount === 0) return;
-    Alert.alert('Planları Sil', 'Bugünün planlarını silmek istediğine emin misin?', [
-      { text: 'Vazgeç', style: 'cancel' },
+    Alert.alert(t('plan.deleteAllConfirmTitle'), t('plan.deleteAllConfirmMessage'), [
+      { text: t('plan.deleteAllConfirmNo'), style: 'cancel' },
       {
-        text: 'Sil',
+        text: t('plan.deleteAllConfirmYes'),
         style: 'destructive',
         onPress: () => {
           clearPlansByDate(selectedDate);
         },
       },
     ]);
-  }, [blockCount, clearPlansByDate, selectedDate]);
+  }, [blockCount, clearPlansByDate, selectedDate, t]);
 
   const handleAiApply = useCallback(
     async (blocks: PlanBlock[]) => {
@@ -357,7 +367,7 @@ export default function PlanScreen() {
                   opacity: pressed ? 0.7 : 1,
                 },
               ]}>
-              <Text style={[styles.aiButtonText, { color: palette.text }]}>✨ AI Plan</Text>
+              <Text style={[styles.aiButtonText, { color: palette.text }]}>{t('plan.aiButton')}</Text>
             </Pressable>
             <Pressable
               onPress={openFocusMode}
@@ -368,7 +378,9 @@ export default function PlanScreen() {
                   opacity: pressed ? 0.8 : 1,
                 },
               ]}>
-              <Text style={[styles.focusButtonText, { color: palette.background }]}>Focus</Text>
+              <Text style={[styles.focusButtonText, { color: palette.background }]}>
+                {t('plan.focusButton')}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => router.push('/points')}
@@ -409,7 +421,9 @@ export default function PlanScreen() {
                 },
               ]}>
               <View style={[styles.monthModalHandle, { backgroundColor: palette.border }]} />
-              <Text style={[styles.monthModalTitle, { color: palette.text }]}>Select month</Text>
+              <Text style={[styles.monthModalTitle, { color: palette.text }]}>
+                {t('plan.selectMonth')}
+              </Text>
               <ScrollView
                 style={styles.monthModalList}
                 contentContainerStyle={styles.monthModalListContent}
@@ -443,11 +457,7 @@ export default function PlanScreen() {
           </View>
         </Modal>
         <View style={[styles.summaryRow, { borderColor: palette.border, backgroundColor: palette.card }]}>
-          <Text style={[styles.summaryText, { color: palette.text }]}>
-            {blockCount > 0
-              ? `${blockCount} plan${blockCount === 1 ? '' : 's'} and ${totalHours.toFixed(1)} hours total`
-              : 'No plan for this day yet. Use the grid below to add your first block.'}
-          </Text>
+          <Text style={[styles.summaryText, { color: palette.text }]}>{summaryMessage}</Text>
           <Pressable
             onPress={handleClearDayPlans}
             disabled={blockCount === 0}

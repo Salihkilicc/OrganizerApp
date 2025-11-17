@@ -3,7 +3,10 @@ import { usePoints } from '@/store/usePoints';
 import { useAuth } from '@/store/useAuth';
 import { useTheme } from '@/store/useTheme';
 import { useRouter } from 'expo-router';
+import { useProfileAppearance } from '@/store/useProfileAppearance';
+import { getFrameDecoration } from '@/lib/frameStyles';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '@/i18n';
 import {
   Alert,
   Pressable,
@@ -18,9 +21,26 @@ import {
 export default function ProfileScreen() {
   const palette = useTheme((state) => state.palette);
   const router = useRouter();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const totalPoints = usePoints((state) => state.total);
   const blocks = usePlans((state) => state.blocks);
+  const frameId = useProfileAppearance((state) => state.frameId);
+  const frameDecoration = getFrameDecoration(frameId);
+  const avatarFrameStyle = frameDecoration
+    ? {
+        borderWidth: frameDecoration.borderWidth,
+        borderColor: frameDecoration.borderColor,
+        shadowColor: frameDecoration.shadowColor ?? frameDecoration.borderColor,
+        shadowOpacity: frameDecoration.shadowOpacity ?? 0.4,
+        shadowOffset: frameDecoration.shadowOffset ?? { width: 0, height: 4 },
+        shadowRadius: frameDecoration.shadowRadius ?? 10,
+        elevation: frameDecoration.elevation ?? 4,
+      }
+    : {
+        borderWidth: 1,
+        borderColor: palette.border,
+      };
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
   const fallbackName = isGuest
@@ -119,10 +139,10 @@ export default function ProfileScreen() {
           </Pressable>
           <View style={styles.headerStats}>
             <Text style={[styles.headerStatValue, { color: palette.accent }]}>
-              Total: {totalPoints} pts
+              {t('profile.totalPoints')}: {totalPoints} pts
             </Text>
             <Text style={[styles.headerStatSub, { color: palette.text }]}>
-              Streak: {streakDays} days
+              {t('profile.streak')}: {streakDays} {t('profile.days')}
             </Text>
           </View>
         </View>
@@ -130,7 +150,11 @@ export default function ProfileScreen() {
         <View style={styles.avatarWrapper}>
           <Pressable
             onPress={handleAvatarPress}
-            style={[styles.avatar, { borderColor: palette.border, backgroundColor: palette.accent }]}>
+            style={[
+              styles.avatar,
+              { backgroundColor: palette.accent },
+              avatarFrameStyle,
+            ]}>
             <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
           </Pressable>
         </View>
@@ -140,11 +164,11 @@ export default function ProfileScreen() {
             styles.sectionCard,
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
-          <Text style={[styles.fieldLabel, { color: palette.text }]}>Full name</Text>
+          <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.name')}</Text>
           <TextInput
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Add your name"
+            placeholder={t('profile.name')}
             placeholderTextColor={palette.text + '99'}
             style={[
               styles.textInput,
@@ -156,7 +180,7 @@ export default function ProfileScreen() {
             ]}
           />
           <Pressable onPress={handleSaveName} style={styles.saveButton}>
-            <Text style={[styles.saveText, { color: palette.accent }]}>Save name</Text>
+            <Text style={[styles.saveText, { color: palette.accent }]}>{t('profile.saveName')}</Text>
           </Pressable>
         </View>
 
@@ -165,20 +189,22 @@ export default function ProfileScreen() {
             styles.sectionCard,
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
-          <Text style={[styles.fieldLabel, { color: palette.text }]}>Email</Text>
+          <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.email')}</Text>
           <View
             style={[
               styles.infoRow,
               { borderColor: palette.border, backgroundColor: palette.background },
             ]}>
             <View style={styles.infoText}>
-              <Text style={[styles.infoLabel, { color: palette.text }]}>Current</Text>
+              <Text style={[styles.infoLabel, { color: palette.text }]}>{t('profile.current')}</Text>
               <Text style={[styles.infoValue, { color: palette.text }]} numberOfLines={1}>
                 {displayEmail}
               </Text>
             </View>
             <Pressable onPress={handleEmailChange} style={styles.changeButton}>
-              <Text style={[styles.changeText, { color: palette.accent }]}>Change</Text>
+              <Text style={[styles.changeText, { color: palette.accent }]}>
+                {t('profile.changeEmail')}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -189,12 +215,14 @@ export default function ProfileScreen() {
             styles.passwordRow,
             { borderColor: palette.border, backgroundColor: palette.card },
           ]}>
-          <Text style={[styles.passwordText, { color: palette.text }]}>Change password</Text>
+          <Text style={[styles.passwordText, { color: palette.text }]}>
+            {t('profile.changePassword')}
+          </Text>
           <Text style={[styles.passwordText, { color: palette.accent }]}>›</Text>
         </Pressable>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>Badges</Text>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>{t('profile.badges')}</Text>
         </View>
         <View style={styles.badgesRow}>
           {badgeDefinitions.map((badge) => (
@@ -222,7 +250,9 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>Stats</Text>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t('profile.stats')}
+          </Text>
         </View>
         <View style={styles.statsRow}>
           <View
@@ -231,7 +261,7 @@ export default function ProfileScreen() {
               { borderColor: palette.border, backgroundColor: palette.card, marginRight: 10 },
             ]}>
             <Text style={[styles.statsLabel, { color: palette.text }]}>
-              Most active category
+              {t('profile.mostActiveCategory')}
             </Text>
             <Text style={[styles.statsValue, { color: palette.text }]}>
               {mostActiveCategory ? `${mostActiveCategory[0].toUpperCase()}${mostActiveCategory.slice(1)}` : 'None yet'}
@@ -242,7 +272,9 @@ export default function ProfileScreen() {
               styles.statsCard,
               { borderColor: palette.border, backgroundColor: palette.card },
             ]}>
-            <Text style={[styles.statsLabel, { color: palette.text }]}>Total focus time</Text>
+            <Text style={[styles.statsLabel, { color: palette.text }]}>
+              {t('profile.totalFocusTime')}
+            </Text>
             <Text style={[styles.statsValue, { color: palette.text }]}>{totalFocusMinutes} min</Text>
           </View>
         </View>
@@ -298,7 +330,6 @@ const styles = StyleSheet.create({
     borderRadius: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
   },
   avatarInitials: {
     fontSize: 36,

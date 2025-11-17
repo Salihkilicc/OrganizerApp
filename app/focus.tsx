@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useFocusMode } from '@/store/useFocusMode';
 import { useTheme } from '@/store/useTheme';
+import { useTranslation } from '@/i18n';
 import type { PlanCategory } from '@/store/usePlans';
 
 const DEFAULT_MINUTES = 30;
@@ -49,6 +50,7 @@ const getCategoryIcon = (category?: PlanCategory) => {
 export default function FocusScreen() {
   const { palette } = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<FocusParams>();
   const [tickTime, setTickTime] = useState(() => Date.now());
   const wasActiveRef = useRef(false);
@@ -116,7 +118,7 @@ export default function FocusScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
       <View style={styles.layout}>
         <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.heading, { color: palette.text }]}>Focus mode engaged</Text>
+          <Text style={[styles.heading, { color: palette.text }]}>{t('focus.title')}</Text>
           <Text style={[styles.sessionTitle, { color: palette.text }]} numberOfLines={2}>
             {title}
           </Text>
@@ -132,11 +134,14 @@ export default function FocusScreen() {
               {`${categoryIcon} ${categoryLabel}`}
             </Text>
           </View>
-          <Text style={[styles.description, { color: palette.text }]}>
-            This app can’t block calls or system notifications. For full silence, also enable your
-            phone’s Focus / Do Not Disturb mode.
-          </Text>
+          <Text style={[styles.description, { color: palette.text }]}>{t('focus.description')}</Text>
           <Text style={[styles.countdown, { color: palette.text }]}>{countdown}</Text>
+          <Text style={[styles.description, { color: palette.text, marginTop: 6 }]}>
+            {t('focus.minutesLabel', { minutes: displayMinutes })}
+          </Text>
+          <Text style={[styles.description, { color: palette.text, marginTop: 4 }]}>
+            {t('focus.pointsPerMinute', { points: 1 })}
+          </Text>
           <View style={styles.buttonRow}>
             <Pressable
               onPress={handleExit}
@@ -149,7 +154,7 @@ export default function FocusScreen() {
                   opacity: pressed ? 0.75 : 1,
                 },
               ]}>
-              <Text style={[styles.buttonLabel, { color: palette.text }]}>Exit mode</Text>
+              <Text style={[styles.buttonLabel, { color: palette.text }]}>{t('focus.exit')}</Text>
             </Pressable>
             <Pressable
               onPress={handleExtend}
@@ -162,7 +167,7 @@ export default function FocusScreen() {
                 },
               ]}>
               <Text style={[styles.buttonLabel, { color: palette.background }]}>
-                Add +15 minutes
+                {t('focus.addMinutes')}
               </Text>
             </Pressable>
           </View>

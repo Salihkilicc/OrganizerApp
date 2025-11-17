@@ -14,10 +14,13 @@ import { PlanEditor } from '@/components/PlanEditor';
 import { useAuth } from '@/store/useAuth';
 import { usePoints } from '@/store/usePoints';
 import { PlanBlock, todayDate, usePlans } from '@/store/usePlans';
+import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
+import { useTranslation } from '@/i18n';
 import { useRouter } from 'expo-router';
 import { fetchWeather, mapWeatherCodeToEmoji, WeatherDay } from '@/lib/weather';
+import { getFrameDecoration } from '@/lib/frameStyles';
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (totalMinutes: number) => {
@@ -56,6 +59,7 @@ const getCategoryIcon = (category: PlanBlock['category']) => {
 
 export default function TodayScreen() {
   const palette = useTheme((state) => state.palette);
+  const { t } = useTranslation();
   const router = useRouter();
   const goToPlan = () => {
     router.push('/plan');
@@ -79,6 +83,22 @@ export default function TodayScreen() {
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
+  const frameId = useProfileAppearance((state) => state.frameId);
+  const frameDecoration = getFrameDecoration(frameId);
+  const avatarFrameStyle = frameDecoration
+    ? {
+        borderWidth: frameDecoration.borderWidth,
+        borderColor: frameDecoration.borderColor,
+        shadowColor: frameDecoration.shadowColor ?? frameDecoration.borderColor,
+        shadowOpacity: frameDecoration.shadowOpacity ?? 0.4,
+        shadowOffset: frameDecoration.shadowOffset ?? { width: 0, height: 4 },
+        shadowRadius: frameDecoration.shadowRadius ?? 10,
+        elevation: frameDecoration.elevation ?? 3,
+      }
+    : {
+        borderWidth: 1,
+        borderColor: palette.border,
+      };
   const fallbackName = isGuest ? 'Guest User' : user?.email?.split('@')[0] ?? 'User';
   const displayName = user?.user_metadata?.full_name ?? user?.name ?? fallbackName;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
@@ -137,10 +157,18 @@ export default function TodayScreen() {
     todayBlocks.reduce((sum, block) => sum + (block.endMin - block.startMin), 0) / 60;
   const summaryText =
     totalPlans === 0
-      ? 'No plans yet - your day is wide open.'
-      : `${totalPlans} plan${totalPlans === 1 ? '' : 's'} • ${completedPlans} completed • ${totalHours.toFixed(
-          1,
-        )} hours`;
+      ? t('today.summary.noPlans')
+      : t('today.summary.withPlans', {
+          total: totalPlans,
+          plural: totalPlans === 1 ? '' : 's',
+          completed: completedPlans,
+          hours: totalHours.toFixed(1),
+        });
+  const pointsBreakdownText = t('today.pointsBreakdown', {
+    total: todayPoints,
+    plans: dailyPoints.planPoints,
+    focus: dailyPoints.focusPoints,
+  });
 
   const nextBlock = useMemo(() => {
     if (!todayBlocks.length) return null;
@@ -235,10 +263,10 @@ export default function TodayScreen() {
             style={({ pressed }) => [
               styles.avatar,
               {
-                borderColor: palette.border,
                 backgroundColor: palette.accent,
                 opacity: pressed ? 0.8 : 1,
               },
+              avatarFrameStyle,
             ]}>
             <Text style={[styles.avatarInitials, { color: palette.background }]}>
               {initials}
@@ -246,7 +274,7 @@ export default function TodayScreen() {
           </Pressable>
 
           <View style={styles.friendsStrip}>
-            <Text style={[styles.friendsLabel, { color: palette.text }]}>Friends</Text>
+            <Text style={[styles.friendsLabel, { color: palette.text }]}>{t('today.friends')}</Text>
             <ScrollView
               style={styles.friendsScroll}
               contentContainerStyle={styles.friendsScrollRow}
@@ -293,14 +321,16 @@ export default function TodayScreen() {
                   },
                 ]}>
                 <Text style={[styles.addFriendPlus, { color: palette.text }]}>+</Text>
-                <Text style={[styles.friendStreak, { color: palette.text }]}>Add</Text>
+                <Text style={[styles.friendStreak, { color: palette.text }]}>
+                  {t('today.addFriend')}
+                </Text>
               </Pressable>
             </ScrollView>
           </View>
 
           <View style={[styles.headerStats, { marginLeft: 12 }]}>
             <View style={styles.statBlock}>
-              <Text style={[styles.statLabel, { color: palette.text }]}>Streak</Text>
+            <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.streak')}</Text>
               <Text style={[styles.statValue, { color: palette.text }]}>
                 {streakDays} days
               </Text>
@@ -312,7 +342,7 @@ export default function TodayScreen() {
                 styles.pointsPressable,
                 pressed && styles.pointsPressed,
               ]}>
-              <Text style={[styles.statLabel, { color: palette.text }]}>Points</Text>
+              <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.points')}</Text>
               <View
                 style={[
                   styles.pointsBadge,
@@ -330,7 +360,9 @@ export default function TodayScreen() {
                 pressed && styles.weatherPressed,
               ]}
               disabled={weatherLoading && currentTemp === null}>
-              <Text style={[styles.weatherLabel, { color: palette.text }]}>Weather</Text>
+              <Text style={[styles.weatherLabel, { color: palette.text }]}>
+                {t('today.weather.title')}
+              </Text>
               <View style={styles.weatherRow}>
                 <Text style={styles.weatherEmoji}>{mapWeatherCodeToEmoji(currentCode)}</Text>
                 <Text style={[styles.weatherTemp, { color: palette.text }]}>
@@ -346,7 +378,7 @@ export default function TodayScreen() {
             styles.nextUpCard,
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
-          <Text style={[styles.nextUpLabel, { color: palette.text }]}>Next up</Text>
+          <Text style={[styles.nextUpLabel, { color: palette.text }]}>{t('today.nextUp')}</Text>
           {nextBlock ? (
             <>
               <Text style={[styles.nextUpTitle, { color: palette.text }]}>
@@ -381,14 +413,14 @@ export default function TodayScreen() {
                   },
                 ]}>
                 <Text style={[styles.startFocusText, { color: palette.background }]}>
-                  Start focus
+                  {t('today.startFocus')}
                 </Text>
               </Pressable>
             </>
           ) : (
             <View style={styles.nextUpEmptyContainer}>
               <Text style={[styles.nextUpEmpty, { color: palette.text }]}>
-                No upcoming blocks today.
+                {t('today.noNextBlock')}
               </Text>
               <Pressable
                 onPress={goToPlan}
@@ -401,7 +433,7 @@ export default function TodayScreen() {
                   },
                 ]}>
                 <Text style={[styles.startFocusText, { color: palette.background }]}>
-                  Create a plan
+                  {t('today.createPlan')}
                 </Text>
               </Pressable>
             </View>
@@ -413,18 +445,18 @@ export default function TodayScreen() {
           <Text style={[styles.summaryText, { color: palette.text }]}>{summaryText}</Text>
         </View>
         <Text style={[styles.todayPointsText, { color: palette.text }]}>
-          Today’s points: {todayPoints} (Plans {dailyPoints.planPoints} • Focus {dailyPoints.focusPoints})
+          {pointsBreakdownText}
         </Text>
 
         <View style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.planTitle, { color: palette.text }]}>Today’s plan</Text>
+          <Text style={[styles.planTitle, { color: palette.text }]}>{t('today.planSectionTitle')}</Text>
           {todayBlocks.length === 0 ? (
             <View style={styles.planEmptyState}>
               <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
-                You haven’t planned today yet.
+                {t('today.planEmptyTitle')}
               </Text>
               <Text style={[styles.planEmptyHint, { color: palette.text }]}>
-                Tap below to open the planner and create your first block.
+                {t('today.planEmptyHint')}
               </Text>
               <Pressable
                 onPress={goToPlan}
@@ -438,7 +470,7 @@ export default function TodayScreen() {
                   },
                 ]}>
                 <Text style={[styles.startFocusText, { color: palette.background }]}>
-                  Open planner
+                  {t('today.openPlanner')}
                 </Text>
               </Pressable>
             </View>
@@ -539,7 +571,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

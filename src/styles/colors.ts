@@ -7,6 +7,13 @@ export type Palette = {
 };
 
 export const themes = {
+  default: {
+    background: '#F9FAFB',
+    text: '#111827',
+    card: '#FFFFFF',
+    accent: '#2563EB',
+    border: '#E5E7EB',
+  },
   light: {
     background: '#FFFFFF',
     text: '#111827',
@@ -27,5 +34,68 @@ export const themes = {
     card: '#1f2833',
     accent: '#66fcf1',
     border: '#45a29e',
+  },
+  classic: {
+    background: '#F4F6FB',
+    text: '#0F172A',
+    card: '#FFFFFF',
+    accent: '#1D4ED8',
+    border: '#CBD5F5',
+  },
+  midnight: {
+    background: '#030712',
+    text: '#E0E7FF',
+    card: '#0F172A',
+    accent: '#7C3AED',
+    border: '#312E81',
+  },
+  forest: {
+    background: '#0C1F0E',
+    text: '#D9FCE3',
+    card: '#132313',
+    accent: '#34D399',
+    border: '#1F4511',
+  },
+  sunset: {
+    background: '#FFF7ED',
+    text: '#4C1D1D',
+    card: '#FFF1E6',
+    accent: '#FB923C',
+    border: '#FDBA74',
+  },
+  ocean: {
+    background: '#030D1F',
+    text: '#E0F2FE',
+    card: '#0F172A',
+    accent: '#38BDF8',
+    border: '#1D4ED8',
+  },
+  sakura: {
+    background: '#FFF3F8',
+    text: '#831843',
+    card: '#FFE4EC',
+    accent: '#EC4899',
+    border: '#F472B6',
+  },
+  neon: {
+    background: '#05050A',
+    text: '#E0F2FE',
+    card: '#0B0D1E',
+    accent: '#A855F7',
+    border: '#8B5CF6',
+  },
+  coffee: {
+    background: '#1A130F',
+    text: '#FDF4E3',
+    card: '#2D2118',
+    accent: '#FBBF24',
+    border: '#7C4D0A',
+  },
+  minimal: {
+    background: '#F8FAFC',
+    text: '#0F172A',
+    card: '#F1F5F9',
+    accent: '#475569',
+    border: '#E2E8F0',
   },
 } as const;

@@ -18,6 +18,9 @@ export type DailyPoints = {
 type PointsPayload = {
   total: number;
   daily: DailyPoints;
+  maxTotal: number;
+  focusSessions: number;
+  completedPlans: number;
 };
 
 const buildDailyPoints = (date: string): DailyPoints => ({
@@ -60,6 +63,18 @@ const loadPoints = async (set: (state: Partial<PointsState>) => void) => {
         payload = {
           total: parsed.total,
           daily: parsed.daily,
+          maxTotal:
+            typeof parsed.maxTotal === 'number' && Number.isFinite(parsed.maxTotal)
+              ? parsed.maxTotal
+              : parsed.total,
+          focusSessions:
+            typeof parsed.focusSessions === 'number' && Number.isFinite(parsed.focusSessions)
+              ? parsed.focusSessions
+              : 0,
+          completedPlans:
+            typeof parsed.completedPlans === 'number' && Number.isFinite(parsed.completedPlans)
+              ? parsed.completedPlans
+              : 0,
         };
       }
     } catch {
@@ -72,6 +87,9 @@ const loadPoints = async (set: (state: Partial<PointsState>) => void) => {
         payload = {
           total: parsedNumber,
           daily: buildDailyPoints(today),
+          maxTotal: parsedNumber,
+          focusSessions: 0,
+          completedPlans: 0,
         };
         shouldPersist = true;
       }
@@ -90,6 +108,9 @@ const loadPoints = async (set: (state: Partial<PointsState>) => void) => {
     set({
       total: payload.total,
       daily: payload.daily,
+      maxTotal: payload.maxTotal,
+      focusSessions: payload.focusSessions,
+      completedPlans: payload.completedPlans,
     });
 
     if (shouldPersist) {
@@ -103,18 +124,30 @@ const loadPoints = async (set: (state: Partial<PointsState>) => void) => {
 export type PointsState = {
   total: number;
   daily: DailyPoints;
+  maxTotal: number;
+  focusSessions: number;
+  completedPlans: number;
   resetDailyIfNeeded: (today: string) => void;
   addPlanPoints: (amount: number) => void;
   addFocusPoints: (amount: number) => void;
   reset: () => void;
+  spendPoints: (amount: number) => boolean;
+  recordPlanCompletion: () => void;
+  recordFocusSession: () => void;
 };
 
 export const usePoints = create<PointsState>((set, get) => {
   loadPoints(set);
 
   const persistCurrent = () => {
-    const { total, daily } = get();
-    void persistPoints({ total, daily });
+    const { total, daily, maxTotal, focusSessions, completedPlans } = get();
+    void persistPoints({
+      total,
+      daily,
+      maxTotal,
+      focusSessions,
+      completedPlans,
+    });
   };
 
   const resetDailyIfNeeded = (today: string) => {
@@ -123,7 +156,13 @@ export const usePoints = create<PointsState>((set, get) => {
     if (daily.date === today) return;
     const nextDaily = buildDailyPoints(today);
     set({ daily: nextDaily, total });
-    void persistPoints({ total, daily: nextDaily });
+    void persistPoints({
+      total,
+      daily: nextDaily,
+      maxTotal: get().maxTotal,
+      focusSessions: get().focusSessions,
+      completedPlans: get().completedPlans,
+    });
   };
 
   const addPlanPoints = (amount: number) => {
@@ -136,7 +175,8 @@ export const usePoints = create<PointsState>((set, get) => {
         planPoints: state.daily.planPoints + amount,
       };
       const total = Math.max(0, state.total + amount);
-      return { daily, total };
+      const maxTotal = Math.max(state.maxTotal, total);
+      return { daily, total, maxTotal };
     });
     persistCurrent();
   };
@@ -151,24 +191,68 @@ export const usePoints = create<PointsState>((set, get) => {
         focusPoints: state.daily.focusPoints + amount,
       };
       const total = Math.max(0, state.total + amount);
-      return { daily, total };
+      const maxTotal = Math.max(state.maxTotal, total);
+      return { daily, total, maxTotal };
     });
+    persistCurrent();
+  };
+
+  const spendPoints = (amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) return false;
+    const { total } = get();
+    if (amount > total) return false;
+    set((state) => ({
+      total: Math.max(0, state.total - amount),
+    }));
+    persistCurrent();
+    return true;
+  };
+
+  const recordPlanCompletion = () => {
+    set((state) => ({
+      completedPlans: state.completedPlans + 1,
+    }));
+    persistCurrent();
+  };
+
+  const recordFocusSession = () => {
+    set((state) => ({
+      focusSessions: state.focusSessions + 1,
+    }));
     persistCurrent();
   };
 
   const reset = () => {
     const today = todayDate();
     const nextDaily = buildDailyPoints(today);
-    set({ total: 0, daily: nextDaily });
-    void persistPoints({ total: 0, daily: nextDaily });
+    set({
+      total: 0,
+      daily: nextDaily,
+      maxTotal: 0,
+      focusSessions: 0,
+      completedPlans: 0,
+    });
+    void persistPoints({
+      total: 0,
+      daily: nextDaily,
+      maxTotal: 0,
+      focusSessions: 0,
+      completedPlans: 0,
+    });
   };
 
   return {
     total: 0,
     daily: buildDailyPoints(todayDate()),
+    maxTotal: 0,
+    focusSessions: 0,
+    completedPlans: 0,
     resetDailyIfNeeded,
     addPlanPoints,
     addFocusPoints,
     reset,
+    spendPoints,
+    recordPlanCompletion,
+    recordFocusSession,
   };
 });

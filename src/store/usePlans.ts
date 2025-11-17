@@ -248,6 +248,7 @@ export const usePlans = create<PlansStore>((set, get) => ({
     }
     if (!wasDone && nextDone) {
       void useStreak.getState().bump(existing.date);
+      usePoints.getState().recordPlanCompletion();
     }
     const nextRewarded =
       awardedPoints > 0
