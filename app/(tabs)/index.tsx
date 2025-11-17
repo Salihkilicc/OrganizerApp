@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   GestureResponderEvent,
   Pressable,
   SafeAreaView,
@@ -16,6 +17,7 @@ import { PlanBlock, todayDate, usePlans } from '@/store/usePlans';
 import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
 import { useRouter } from 'expo-router';
+import { fetchWeather, mapWeatherCodeToEmoji, WeatherDay } from '@/lib/weather';
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (totalMinutes: number) => {
@@ -68,6 +70,11 @@ export default function TodayScreen() {
 
   const [selectedBlock, setSelectedBlock] = useState<PlanBlock | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
+  const [currentTemp, setCurrentTemp] = useState<number | null>(null);
+  const [currentCode, setCurrentCode] = useState<number | undefined>(undefined);
+  const [weeklyDays, setWeeklyDays] = useState<WeatherDay[] | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
   const fallbackName = isGuest ? 'Guest User' : user?.email?.split('@')[0] ?? 'User';
@@ -76,6 +83,35 @@ export default function TodayScreen() {
   useEffect(() => {
     initializeStreak();
   }, [initializeStreak]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadWeather = async () => {
+      try {
+        setWeatherLoading(true);
+        setWeatherError(null);
+        const result = await fetchWeather();
+        if (!mounted) return;
+        setCurrentTemp(result.currentTemp);
+        setCurrentCode(result.currentCode);
+        setWeeklyDays(result.days);
+      } catch (err) {
+        console.error('[TodayScreen] Weather error', err);
+        if (mounted) {
+          setWeatherError('Weather unavailable');
+        }
+      } finally {
+        if (mounted) {
+          setWeatherLoading(false);
+        }
+      }
+    };
+
+    void loadWeather();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const today = todayDate();
   const friends = useMemo(
@@ -161,6 +197,29 @@ export default function TodayScreen() {
   const handleEditorDelete = async (id: string) => {
     await removePlan(id);
     closeEditor();
+  };
+
+  const handleWeatherPress = () => {
+    if (weatherError) {
+      Alert.alert('Weather', weatherError);
+      return;
+    }
+
+    if (!weeklyDays || weeklyDays.length === 0) {
+      Alert.alert('Weather', 'Weekly forecast not available yet.');
+      return;
+    }
+
+    const lines = weeklyDays.slice(0, 7).map((day) => {
+      const date = new Date(day.date);
+      const weekday = date.toLocaleDateString(undefined, { weekday: 'short' });
+      const emoji = mapWeatherCodeToEmoji(day.code);
+      const max = Math.round(day.tempMax);
+      const min = Math.round(day.tempMin);
+      return `${weekday}: ${max}° / ${min}° ${emoji}`;
+    });
+
+    Alert.alert("This week's weather", lines.join('\n'));
   };
 
   return (
@@ -259,6 +318,21 @@ export default function TodayScreen() {
                 ]}>
                 <Text style={[styles.pointsValue, { color: palette.background }]}>
                   {points}
+                </Text>
+              </View>
+            </Pressable>
+            <Pressable
+              onPress={handleWeatherPress}
+              style={({ pressed }) => [
+                styles.weatherBlock,
+                pressed && styles.weatherPressed,
+              ]}
+              disabled={weatherLoading && currentTemp === null}>
+              <Text style={[styles.weatherLabel, { color: palette.text }]}>Weather</Text>
+              <View style={styles.weatherRow}>
+                <Text style={styles.weatherEmoji}>{mapWeatherCodeToEmoji(currentCode)}</Text>
+                <Text style={[styles.weatherTemp, { color: palette.text }]}>
+                  {currentTemp !== null ? `${Math.round(currentTemp)}°` : '...'}
                 </Text>
               </View>
             </Pressable>
@@ -533,6 +607,32 @@ const styles = StyleSheet.create({
   },
   pointsPressed: {
     opacity: 0.75,
+  },
+  weatherBlock: {
+    marginLeft: 18,
+    paddingVertical: 2,
+    alignItems: 'flex-start',
+  },
+  weatherPressed: {
+    opacity: 0.75,
+  },
+  weatherLabel: {
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  weatherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  weatherEmoji: {
+    fontSize: 18,
+    marginRight: 4,
+  },
+  weatherTemp: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   statLabel: {
     fontSize: 12,
