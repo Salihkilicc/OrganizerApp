@@ -3,8 +3,41 @@ import { serve } from 'https://deno.land/std@0.201.0/http/server.ts';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4.1';
 const VALID_CATEGORIES = ['focus', 'study', 'work', 'gym', 'other'] as const;
-const BREAK_WORDS =
-  /break|rest|relax|wind ?down|chill|free time|downtime|lunch|dinner|breakfast|supper|snack|coffee|tea|nap/i;
+const BREAK_WORDS = [
+  'break',
+  'short break',
+  'rest',
+  'pause',
+  'free time',
+  'downtime',
+  'empty',
+  'gap',
+  'idle',
+  'relax',
+  'relaxing',
+  'chill',
+  'unwind',
+  'wind down',
+  'coffee',
+  'tea',
+  'snack',
+  'snacks',
+  'lunch',
+  'breakfast',
+  'dinner',
+  'meal',
+  'meals',
+  'eat',
+  'eating',
+  'recharge',
+];
+
+function removeBreaklikeBlocks(blocks: any[]) {
+  return blocks.filter((b) => {
+    const text = `${(b.title ?? '')} ${(b.note ?? '')}`.toLowerCase();
+    return !BREAK_WORDS.some((w) => text.includes(w));
+  });
+}
 
 const parseRequest = async (req: Request) => {
   const json = await req.json().catch(() => null);
@@ -44,50 +77,61 @@ const parseRequest = async (req: Request) => {
 };
 
 const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
+  const focusHoursLabel =
+    typeof payload.focusHours === 'number' ? `${payload.focusHours} hours` : 'not provided';
   const promptParts = [
     'You create a daily schedule for the Organizer app.',
     'You MUST respect: date, wakeTime / sleepTime, workStart / workEnd, focusHours, habits, priorities, and feedback.',
     'Treat `habits`, `priorities`, and `feedback` as HARD CONSTRAINTS, not just suggestions.',
-    'If the user says they run at night, schedule running only in the evening/night.',
-    'If the user says school or work is between certain hours, keep those hours reserved for school/work-focused blocks only.',
     '',
-    'Day overview:',
-    `- Date: ${payload.date}`,
-    `- Wake time: ${payload.wakeTime ?? 'not provided'}`,
-    `- Sleep time: ${payload.sleepTime ?? 'not provided'}`,
-    `- Work window: ${payload.workStart ?? 'not provided'} - ${payload.workEnd ?? 'not provided'}`,
-    `- Focus hours requested: ${payload.focusHours ?? 'not provided'}`,
-  ];
-
-  if (payload.priorities) {
-    promptParts.push(`User priorities for this day: ${payload.priorities}`);
-  }
-  if (payload.habits) {
-    promptParts.push(`User habits & preferences: ${payload.habits}`);
-  }
-  if (payload.feedback) {
-    promptParts.push(
-      `User feedback about the previous plan (YOU MUST FOLLOW THIS): ${payload.feedback}`,
-    );
-  }
-
-  promptParts.push(
+    'User context:',
+    `Date: ${payload.date}`,
+    `Wake time: ${payload.wakeTime ?? 'not provided'}`,
+    `Sleep time: ${payload.sleepTime ?? 'not provided'}`,
+    `Work/School: ${payload.workStart ?? 'not provided'} - ${payload.workEnd ?? 'not provided'}`,
+    `Focus hours target: ${focusHoursLabel}`,
+    `User habits: ${payload.habits ?? 'None provided.'}`,
+    `User priorities: ${payload.priorities ?? 'None provided.'}`,
+    `User feedback from previous plan: ${payload.feedback ?? 'None provided.'}`,
     '',
-    'Rules:',
+    'You must fully respect the user\'s habits, priorities, and feedback when scheduling activities. Treat them as hard constraints, not suggestions.',
+    '',
+    '⚠️ STRICT RULES (MUST FOLLOW EXACTLY):',
+    '1) DO NOT generate any break-like blocks.',
+    '   - No breakfast, lunch, dinner, snacks, coffee, tea, rest, relax, unwind, "short break", "break", "downtime", "free time", "gap", "empty slot" or any similar concept.',
+    '   - If you think a break is needed, DO NOT output a block for it. Just leave that time empty and output nothing for that period.',
+    '   - Only output focused, productive, or explicitly user-requested activities.',
+    '2) Respect user constraints as HARD constraints:',
+    '   - If the user says they run at night (e.g. "I run at night after 21:00"), you MUST schedule running only in that time window and NEVER in the morning.',
+    '   - If the user has school/work hours (e.g. "School is 09:00-15:00"), those hours are reserved and you MUST NOT place other activities in that window.',
+    '   - Use wakeTime and sleepTime as the bounds for the day. Do not schedule outside that range.',
+    '3) You must return ONLY valid activity blocks. No placeholder or "nothing" blocks. If there is nothing to do in a time range, just skip it.',
+    'You must obey these rules even if other instructions might suggest breaks or meals. These strict rules override everything else.',
+    '',
+    'Additional rules:',
     '1. Respect wake/sleep boundaries; do not schedule anything before wakeTime or after sleepTime.',
     '2. Treat workStart/workEnd as the dedicated work window and keep those hours reserved for school/work-focused blocks.',
     '3. Fill focusHours with multiple focus blocks between 25 and 90 minutes each.',
-    '4. DO NOT create any blocks that are only breaks, rest, relax, wind down, chill, free time, downtime, lunch, dinner, breakfast, supper, snack, coffee, tea, nap, or similar pauses—leave those windows empty instead.',
-    '5. If the user feels like a break is needed, simply leave that time empty; do not output a block just for downtime.',
-    '6. Output ONLY JSON with a top-level "blocks" array.',
-    `7. Each block must include title (English string), category (one of ${VALID_CATEGORIES
+    '4. Output ONLY JSON with a top-level "blocks" array.',
+    `5. Each block must include title (English string), category (one of ${VALID_CATEGORIES
       .map((c) => `"${c}"`)
       .join(', ')}), startMin, endMin, and an optional note.`,
-    '8. Do not add any text outside the JSON response.',
+    '6. Do not add any text outside the JSON response.',
     '',
-    'Respond with:',
-    '{"blocks":[{...}]}',
-  );
+    'Output ONLY valid JSON with this shape:',
+    '{',
+    '  "blocks": [',
+    '    {',
+    '      "title": string,',
+    '      "note": string | null,',
+    '      "category": "focus" | "study" | "work" | "gym" | "other",',
+    '      "startMin": number, // minutes from 00:00',
+    '      "endMin": number    // minutes from 00:00, > startMin',
+    '    }',
+    '  ]',
+    '}',
+    'No extra text, no explanations, only JSON.',
+  ];
 
   return promptParts.join('\n');
 };
@@ -223,18 +267,27 @@ serve(async (req) => {
 
   try {
     const blocksJson = await callOpenAI(payload);
-    const noBreakBlocks = (blocksJson ?? []).filter((block: any) => {
-      const title = (block?.title ?? '').toString();
-      const note = (block?.note ?? '').toString();
-      const text = `${title} ${note}`;
-      return !BREAK_WORDS.test(text);
+    const initialBlocks = blocksJson ?? [];
+    const withoutBreaks = removeBreaklikeBlocks(initialBlocks);
+    const withoutMicroBreaks = withoutBreaks.filter((block: any) => {
+      const startMin =
+        typeof block?.startMin === 'number' ? Math.floor(block.startMin) : undefined;
+      const endMin = typeof block?.endMin === 'number' ? Math.floor(block.endMin) : undefined;
+      if (startMin === undefined || endMin === undefined) {
+        return true;
+      }
+      return endMin - startMin >= 10;
     });
-    const validatedBlocksWithoutBreaks = validateBlocks(noBreakBlocks);
+    const validatedBlocksWithoutBreaks = validateBlocks(withoutMicroBreaks);
     console.log(
       '[ai-generate-plan] Generated blocks',
       validatedBlocksWithoutBreaks.length,
-      'after filtering break-like blocks',
-      blocksJson.length - noBreakBlocks.length,
+      'after filtering strict constraints',
+      {
+        total: initialBlocks.length,
+        breakLikeRemoved: initialBlocks.length - withoutBreaks.length,
+        microRemoved: withoutBreaks.length - withoutMicroBreaks.length,
+      },
     );
     return Response.json({ blocks: validatedBlocksWithoutBreaks });
   } catch (error) {
