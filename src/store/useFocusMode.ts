@@ -1,8 +1,12 @@
 import { create } from 'zustand';
 
+import { todayDate } from '@/store/usePlans';
 import { usePoints } from '@/store/usePoints';
 
 const MINUTE_MS = 60 * 1000;
+const MAX_FOCUS_POINTS_PER_DAY = 90;
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export type FocusModeState = {
   active: boolean;
@@ -69,7 +73,17 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
     });
 
     if (rewardMinutes > 0) {
-      usePoints.getState().addPoints(rewardMinutes);
+      const today = todayDate();
+      const pointsState = usePoints.getState();
+      pointsState.resetDailyIfNeeded(today);
+      const remaining = Math.max(
+        0,
+        MAX_FOCUS_POINTS_PER_DAY - pointsState.daily.focusPoints,
+      );
+      const toAward = clamp(rewardMinutes, 0, remaining);
+      if (toAward > 0) {
+        pointsState.addFocusPoints(toAward);
+      }
     }
   },
   addMinutes(extra) {

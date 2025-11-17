@@ -62,6 +62,8 @@ export default function TodayScreen() {
   };
   const user = useAuth((state) => state.user);
   const points = usePoints((state) => state.total);
+  const dailyPoints = usePoints((state) => state.daily);
+  const todayPoints = dailyPoints.planPoints + dailyPoints.focusPoints;
   const blocks = usePlans((state) => state.blocks);
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
@@ -410,6 +412,9 @@ export default function TodayScreen() {
           style={[styles.summaryCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <Text style={[styles.summaryText, { color: palette.text }]}>{summaryText}</Text>
         </View>
+        <Text style={[styles.todayPointsText, { color: palette.text }]}>
+          Today’s points: {todayPoints} (Plans {dailyPoints.planPoints} • Focus {dailyPoints.focusPoints})
+        </Text>
 
         <View style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <Text style={[styles.planTitle, { color: palette.text }]}>Today’s plan</Text>
@@ -734,6 +739,12 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  todayPointsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    marginBottom: 16,
   },
   planCard: {
     borderRadius: 24,

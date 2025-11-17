@@ -58,7 +58,55 @@ export const isAfterToday = (date: string): boolean => {
 const STORAGE_KEY = 'plans_v1';
 
 const MIN_REWARD_AGE_MINUTES = 30;
-const REWARD_POINTS = 10;
+const MIN_REWARD_DURATION_MINUTES = 30;
+const MAX_PLAN_POINTS_PER_DAY = 300;
+
+const CATEGORY_MULTIPLIER: Record<PlanCategory, number> = {
+  focus: 1.4,
+  study: 1.3,
+  work: 1.2,
+  gym: 1.1,
+  meeting: 1.0,
+  reading: 1.0,
+  break: 1.0,
+  personal: 1.0,
+  other: 1.0,
+};
+
+const getCategoryMultiplier = (category: PlanCategory) =>
+  CATEGORY_MULTIPLIER[category] ?? CATEGORY_MULTIPLIER.other;
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const getStreakMultiplier = (streakDays: number): number => {
+  if (streakDays >= 30) return 1.3;
+  if (streakDays >= 7) return 1.2;
+  if (streakDays >= 3) return 1.1;
+  return 1.0;
+};
+
+type PlanPointsContext = {
+  durationMinutes: number;
+  category: PlanCategory;
+  streakDays: number;
+  dailyPlanPoints: number;
+};
+
+const calculatePlanPointsToAward = ({
+  durationMinutes,
+  category,
+  streakDays,
+  dailyPlanPoints,
+}: PlanPointsContext): number => {
+  const durationBlocks = Math.max(0, Math.floor(durationMinutes / 30));
+  const base = 10;
+  const durationBonus = durationBlocks * 2;
+  const rawPoints = base + durationBonus;
+  const blockPoints = Math.round(rawPoints * getCategoryMultiplier(category));
+  const finalPoints = Math.round(blockPoints * getStreakMultiplier(streakDays));
+  const remaining = Math.max(0, MAX_PLAN_POINTS_PER_DAY - dailyPlanPoints);
+  return clamp(finalPoints, 0, remaining);
+};
 
 const hasReachedRewardAge = (block: PlanBlock, now: Date): boolean => {
   if (!block.createdAt) return false;
@@ -68,12 +116,19 @@ const hasReachedRewardAge = (block: PlanBlock, now: Date): boolean => {
   return ageMinutes >= MIN_REWARD_AGE_MINUTES;
 };
 
-const isRewardable = (block: PlanBlock, nextDone: boolean, now: Date): boolean => {
-  if (isBeforeToday(block.date)) return false;
+const isRewardable = (
+  block: PlanBlock,
+  nextDone: boolean,
+  now: Date,
+  durationMinutes: number,
+  today: string,
+): boolean => {
   if (block.rewarded) return false;
   const wasDone = block.done ?? false;
   if (wasDone) return false;
   if (!nextDone) return false;
+  if (block.date !== today) return false;
+  if (durationMinutes < MIN_REWARD_DURATION_MINUTES) return false;
   return hasReachedRewardAge(block, now);
 };
 
@@ -168,17 +223,36 @@ export const usePlans = create<PlansStore>((set, get) => ({
     const nextCategory = patch.category ?? existing.category ?? 'other';
     const wasDone = existing.done ?? false;
     const nextDone = patch.done ?? wasDone;
+    const nextStartMin = patch.startMin ?? existing.startMin;
+    const nextEndMin = patch.endMin ?? existing.endMin;
+    const durationMinutes = Math.max(0, nextEndMin - nextStartMin);
     const now = new Date();
-    const rewardable = isRewardable(existing, nextDone, now);
+    const today = todayDate();
+    const rewardable = isRewardable(existing, nextDone, now, durationMinutes, today);
+    let awardedPoints = 0;
     if (rewardable) {
-      usePoints.getState().addPoints(REWARD_POINTS);
+      const pointsState = usePoints.getState();
+      pointsState.resetDailyIfNeeded(today);
+      const { planPoints } = pointsState.daily;
+      const streakDays = useStreak.getState().streakDays;
+      awardedPoints = calculatePlanPointsToAward({
+        durationMinutes,
+        category: nextCategory,
+        streakDays,
+        dailyPlanPoints: planPoints,
+      });
+      if (awardedPoints > 0) {
+        pointsState.addPlanPoints(awardedPoints);
+        // TODO: show +XX pts micro-feedback.
+      }
     }
     if (!wasDone && nextDone) {
       void useStreak.getState().bump(existing.date);
     }
-    const nextRewarded = rewardable
-      ? true
-      : patch.rewarded ?? existing.rewarded ?? false;
+    const nextRewarded =
+      awardedPoints > 0
+        ? true
+        : patch.rewarded ?? existing.rewarded ?? false;
 
     const updated = get().blocks.map((block) =>
       block.id === id

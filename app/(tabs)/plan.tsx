@@ -380,7 +380,9 @@ export default function PlanScreen() {
                   opacity: pressed ? 0.8 : 1,
                 },
               ]}>
-              <Text style={[styles.pointsLabel, { color: palette.text }]}>{totalPoints} pts</Text>
+              <Text style={[styles.pointsLabel, { color: palette.text }]}>
+                {totalPoints} pts
+              </Text>
             </Pressable>
           </View>
         </View>
