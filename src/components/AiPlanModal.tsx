@@ -19,6 +19,7 @@ type AiPlanModalProps = {
   date: string;
   onClose: () => void;
   onApply: (blocks: PlanBlock[]) => void;
+  hasExistingBlocks?: boolean;
 };
 
 const formatDateLabel = (value: string) => {
@@ -52,7 +53,13 @@ const buildPlanBlock = (date: string, block: AiPlanBlock): PlanBlock => ({
   rewarded: false,
 });
 
-export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProps) {
+export function AiPlanModal({
+  visible,
+  date,
+  onClose,
+  onApply,
+  hasExistingBlocks,
+}: AiPlanModalProps) {
   const { palette } = useTheme();
   const [wakeTime, setWakeTime] = useState('07:30');
   const [sleepTime, setSleepTime] = useState('23:30');
@@ -112,6 +119,10 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
   ]);
 
   const handleGenerate = useCallback(async () => {
+    if (hasExistingBlocks) {
+      setError('There should not be any plan for this day');
+      return;
+    }
     setLoading(true);
     try {
       const payload = buildRequestPayload();
@@ -133,7 +144,7 @@ export function AiPlanModal({ visible, date, onClose, onApply }: AiPlanModalProp
     } finally {
       setLoading(false);
     }
-  }, [buildRequestPayload]);
+  }, [buildRequestPayload, hasExistingBlocks]);
 
   const handleRegenerate = useCallback(async () => {
     if (!date) return;

@@ -36,6 +36,7 @@ export type PlansStore = {
   addMany: (blocks: Omit<PlanBlock, 'id'>[]) => Promise<string[]>;
   update: (id: string, patch: Partial<PlanBlock>) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  clearByDate: (date: string) => void;
   byDate: (dateISO: string) => PlanBlock[];
 };
 
@@ -197,6 +198,12 @@ export const usePlans = create<PlansStore>((set, get) => ({
   remove: async (id) => {
     console.log('[usePlans/remove]', id);
     const updated = get().blocks.filter((block) => block.id !== id);
+    set({ blocks: updated });
+    schedulePersist(updated);
+  },
+
+  clearByDate: (date) => {
+    const updated = get().blocks.filter((block) => block.date !== date);
     set({ blocks: updated });
     schedulePersist(updated);
   },

@@ -84,6 +84,7 @@ export default function PlanScreen() {
   const addMany = usePlans((state) => state.addMany);
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
+  const clearPlansByDate = usePlans((state) => state.clearByDate);
   const blocks = usePlans((state) => state.blocks);
   const isPremium = usePremium((state) => state.isPremium);
   const isPast = isBeforeToday(selectedDate);
@@ -103,6 +104,7 @@ export default function PlanScreen() {
     0,
   );
   const totalHours = totalMinutes / 60;
+  const hasExistingBlocks = blockCount > 0;
 
   const selectedDateInstance = useMemo(() => parseISO(selectedDate), [selectedDate]);
   const selectedMonthIndex = selectedDateInstance.getMonth();
@@ -246,6 +248,20 @@ export default function PlanScreen() {
     setAiDate(selectedDate);
     setAiVisible(true);
   }, [isPremium, router, selectedDate, setAiDate, setAiVisible]);
+
+  const handleClearDayPlans = useCallback(() => {
+    if (blockCount === 0) return;
+    Alert.alert('Planları Sil', 'Bugünün planlarını silmek istediğine emin misin?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: () => {
+          clearPlansByDate(selectedDate);
+        },
+      },
+    ]);
+  }, [blockCount, clearPlansByDate, selectedDate]);
 
   const handleAiApply = useCallback(
     async (blocks: PlanBlock[]) => {
@@ -430,6 +446,18 @@ export default function PlanScreen() {
               ? `${blockCount} plan${blockCount === 1 ? '' : 's'} and ${totalHours.toFixed(1)} hours total`
               : 'No plan for this day yet. Use the grid below to add your first block.'}
           </Text>
+          <Pressable
+            onPress={handleClearDayPlans}
+            disabled={blockCount === 0}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.summaryIconWrapper,
+              {
+                opacity: blockCount === 0 ? 0.4 : pressed ? 0.6 : 1,
+              },
+            ]}>
+            <Ionicons name="trash-outline" size={18} color={palette.text} />
+          </Pressable>
         </View>
         <View style={styles.gridRow}>
           <ScrollView
@@ -465,6 +493,7 @@ export default function PlanScreen() {
           date={aiDate}
           onClose={closeAiModal}
           onApply={handleAiApply}
+          hasExistingBlocks={hasExistingBlocks}
         />
       {!isPast && (
         <Pressable
@@ -643,9 +672,18 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 12,
     backgroundColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   summaryText: {
     fontSize: 14,
+    flex: 1,
+  },
+  summaryIconWrapper: {
+    marginLeft: 10,
+    padding: 2,
+    borderRadius: 6,
   },
   fab: {
     position: 'absolute',
