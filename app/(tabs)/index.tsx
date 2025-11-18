@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   GestureResponderEvent,
   Pressable,
   SafeAreaView,
@@ -19,8 +18,9 @@ import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
 import { useTranslation } from '@/i18n';
 import { useRouter } from 'expo-router';
-import { fetchWeather, mapWeatherCodeToEmoji, WeatherDay } from '@/lib/weather';
+import { useWeather } from '@/store/useWeather';
 import { getFrameDecoration } from '@/lib/frameStyles';
+import * as Location from 'expo-location';
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (totalMinutes: number) => {
@@ -76,11 +76,14 @@ export default function TodayScreen() {
 
   const [selectedBlock, setSelectedBlock] = useState<PlanBlock | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
-  const [currentTemp, setCurrentTemp] = useState<number | null>(null);
-  const [currentCode, setCurrentCode] = useState<number | undefined>(undefined);
-  const [weeklyDays, setWeeklyDays] = useState<WeatherDay[] | null>(null);
-  const [weatherLoading, setWeatherLoading] = useState(false);
-  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [showWeeklyForecast, setShowWeeklyForecast] = useState(false);
+  const temperature = useWeather((state) => state.temperature);
+  const icon = useWeather((state) => state.icon);
+  const weekly = useWeather((state) => state.weekly);
+  const weatherLoading = useWeather((state) => state.loading);
+  const weatherError = useWeather((state) => state.error);
+  const fetchWeather = useWeather((state) => state.fetchWeather);
+  const setError = useWeather((state) => state.setError);
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
   const frameId = useProfileAppearance((state) => state.frameId);
@@ -107,33 +110,33 @@ export default function TodayScreen() {
   }, [initializeStreak]);
 
   useEffect(() => {
-    let mounted = true;
-    const loadWeather = async () => {
+    let active = true;
+    const loadWeatherForLocation = async () => {
       try {
-        setWeatherLoading(true);
-        setWeatherError(null);
-        const result = await fetchWeather();
-        if (!mounted) return;
-        setCurrentTemp(result.currentTemp);
-        setCurrentCode(result.currentCode);
-        setWeeklyDays(result.days);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (!active) return;
+        if (status !== 'granted') {
+          setError('Location off');
+          setShowWeeklyForecast(false);
+          return;
+        }
+        const location = await Location.getCurrentPositionAsync({});
+        if (!active) return;
+        await fetchWeather(location.coords.latitude, location.coords.longitude);
       } catch (err) {
         console.error('[TodayScreen] Weather error', err);
-        if (mounted) {
-          setWeatherError('Weather unavailable');
-        }
-      } finally {
-        if (mounted) {
-          setWeatherLoading(false);
+        if (active) {
+          setError('Weather unavailable');
+          setShowWeeklyForecast(false);
         }
       }
     };
 
-    void loadWeather();
+    void loadWeatherForLocation();
     return () => {
-      mounted = false;
+      active = false;
     };
-  }, []);
+  }, [fetchWeather, setError]);
 
   const today = todayDate();
   const friends = useMemo(
@@ -144,6 +147,7 @@ export default function TodayScreen() {
     ],
     [],
   );
+  const weeklyPreview = weekly.slice(0, 7);
 
   const todayBlocks = useMemo(() => {
     return blocks
@@ -229,34 +233,16 @@ export default function TodayScreen() {
     closeEditor();
   };
 
-  const handleWeatherPress = () => {
-    if (weatherError) {
-      Alert.alert('Weather', weatherError);
-      return;
-    }
-
-    if (!weeklyDays || weeklyDays.length === 0) {
-      Alert.alert('Weather', 'Weekly forecast not available yet.');
-      return;
-    }
-
-    const lines = weeklyDays.slice(0, 7).map((day) => {
-      const date = new Date(day.date);
-      const weekday = date.toLocaleDateString(undefined, { weekday: 'short' });
-      const emoji = mapWeatherCodeToEmoji(day.code);
-      const max = Math.round(day.tempMax);
-      const min = Math.round(day.tempMin);
-      return `${weekday}: ${max}° / ${min}° ${emoji}`;
-    });
-
-    Alert.alert("This week's weather", lines.join('\n'));
-  };
-
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
       <ScrollView
         contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        onTouchStart={() => {
+          if (showWeeklyForecast) {
+            setShowWeeklyForecast(false);
+          }
+        }}>
         <View style={styles.headerRow}>
           <Pressable
             onPress={handleAvatarPress}
@@ -354,24 +340,71 @@ export default function TodayScreen() {
               </View>
             </Pressable>
             <Pressable
-              onPress={handleWeatherPress}
+              onPress={() => setShowWeeklyForecast((prev) => !prev)}
+              onTouchStart={(event) => event.stopPropagation()}
               style={({ pressed }) => [
-                styles.weatherBlock,
-                pressed && styles.weatherPressed,
-              ]}
-              disabled={weatherLoading && currentTemp === null}>
-              <Text style={[styles.weatherLabel, { color: palette.text }]}>
-                {t('today.weather.title')}
+                styles.weatherBubble,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                },
+                pressed && styles.weatherBubblePressed,
+              ]}>
+              <Text
+                style={[
+                  styles.weatherBubbleIcon,
+                  { color: weatherError ? palette.accent : palette.text },
+                ]}>
+                {weatherLoading ? '' : weatherError ? '❗' : icon ?? '🌡️'}
               </Text>
-              <View style={styles.weatherRow}>
-                <Text style={styles.weatherEmoji}>{mapWeatherCodeToEmoji(currentCode)}</Text>
-                <Text style={[styles.weatherTemp, { color: palette.text }]}>
-                  {currentTemp !== null ? `${Math.round(currentTemp)}°` : '...'}
-                </Text>
-              </View>
+              <Text style={[styles.weatherBubbleTemp, { color: palette.text }]}>
+                {weatherLoading
+                  ? '--°'
+                  : weatherError
+                  ? weatherError === 'Location off'
+                    ? weatherError
+                    : '--°'
+                  : temperature !== null
+                  ? `${Math.round(temperature)}°`
+                  : '--°'}
+              </Text>
             </Pressable>
           </View>
         </View>
+
+        {showWeeklyForecast && (
+          <View
+            onStartShouldSetResponder={() => true}
+            onTouchStart={(event) => event.stopPropagation()}
+            style={[
+              styles.weeklyCard,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+              },
+            ]}>
+            {weeklyPreview.length ? (
+              weeklyPreview.map((day, index) => (
+                <View
+                  key={`${day.day}-${index}`}
+                  style={[
+                    styles.weeklyRow,
+                    index === weeklyPreview.length - 1 && styles.weeklyRowLast,
+                  ]}>
+                  <Text style={[styles.weeklyDay, { color: palette.text }]}>{day.day}</Text>
+                  <Text style={[styles.weeklyIcon, { color: palette.accent }]}>{day.icon}</Text>
+                  <Text style={[styles.weeklyTemp, { color: palette.text }]}>
+                    {day.temp}°C
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text style={[styles.weeklyUnavailable, { color: palette.text }]}>
+                Weather unavailable
+              </Text>
+            )}
+          </View>
+        )}
 
         <View
           style={[
@@ -644,31 +677,57 @@ const styles = StyleSheet.create({
   pointsPressed: {
     opacity: 0.75,
   },
-  weatherBlock: {
+  weatherBubble: {
     marginLeft: 18,
-    paddingVertical: 2,
-    alignItems: 'flex-start',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignItems: 'center',
+    minWidth: 72,
   },
-  weatherPressed: {
+  weatherBubblePressed: {
     opacity: 0.75,
   },
-  weatherLabel: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 4,
-  },
-  weatherRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  weatherEmoji: {
+  weatherBubbleIcon: {
     fontSize: 18,
-    marginRight: 4,
+    marginBottom: 2,
   },
-  weatherTemp: {
-    fontSize: 16,
+  weatherBubbleTemp: {
+    fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  weeklyCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    marginTop: 12,
+  },
+  weeklyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  weeklyRowLast: {
+    marginBottom: 0,
+  },
+  weeklyDay: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  weeklyIcon: {
+    fontSize: 16,
+  },
+  weeklyTemp: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  weeklyUnavailable: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   statLabel: {
     fontSize: 12,
