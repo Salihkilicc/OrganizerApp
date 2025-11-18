@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import Purchases, {
   CustomerInfo,
   PACKAGE_TYPE,
@@ -35,6 +37,7 @@ const PACKAGE_PRIORITY: Partial<Record<PACKAGE_TYPE, number>> = {
 };
 
 const REVENUECAT_API_KEY = 'test_QSlbGcDaxfriPMXHavEkaXDQDUg';
+const IS_WEB = Platform.OS === 'web';
 
 let isConfigured = false;
 
@@ -46,11 +49,22 @@ export function configureRevenueCat() {
   if (isConfigured) {
     return;
   }
+  if (IS_WEB) {
+    isConfigured = true;
+    if (__DEV__) {
+      console.info('[RevenueCat] Skipping configuration: not supported on web.');
+    }
+    return;
+  }
   Purchases.configure({
     apiKey: REVENUECAT_API_KEY,
     shouldShowInAppMessagesAutomatically: false,
   });
-  void Purchases.setDebugLogsEnabled(__DEV__);
+  void Purchases.setDebugLogsEnabled(__DEV__).catch((error) => {
+    if (__DEV__) {
+      console.info('[RevenueCat] Debug logs not enabled:', error?.message ?? error);
+    }
+  });
   isConfigured = true;
 }
 

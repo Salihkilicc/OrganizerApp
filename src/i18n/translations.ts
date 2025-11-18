@@ -61,6 +61,23 @@ export type TranslationKey =
   | 'settings.title'
   | 'settings.profile'
   | 'settings.language'
+  | 'settings.languageDescription'
+  | 'settings.account'
+  | 'settings.deleteAccount'
+  | 'settings.deleteAccountWarning'
+  | 'settings.deleteAccountConfirm'
+  | 'settings.deleteAccountCancel'
+  | 'settings.deleteAccountSupport'
+  | 'settings.notifications'
+  | 'settings.vibration'
+  | 'settings.vibrationDescription'
+  | 'settings.notificationTypes'
+  | 'settings.notificationType.planReminders'
+  | 'settings.notificationType.focusMode'
+  | 'settings.notificationType.dailySummary'
+  | 'settings.notificationType.streakWarning'
+  | 'settings.waterReminder'
+  | 'settings.waterReminderDescription'
   | 'settings.focus'
   | 'settings.pointsShop'
   | 'settings.signOut'
@@ -155,6 +172,24 @@ const english: TranslationTable = {
   'settings.title': 'Settings',
   'settings.profile': 'Profile & account',
   'settings.language': 'Language',
+  'settings.languageDescription': 'Change the app language to keep the UI readable for you.',
+  'settings.account': 'Account',
+  'settings.deleteAccount': 'Delete account',
+  'settings.deleteAccountWarning':
+    'Deleting your account removes your plans, streaks, and points forever.',
+  'settings.deleteAccountConfirm': 'Delete account',
+  'settings.deleteAccountCancel': 'Cancel',
+  'settings.deleteAccountSupport': 'Contact support to permanently delete your account.',
+  'settings.notifications': 'Notifications',
+  'settings.vibration': 'Vibration',
+  'settings.vibrationDescription': 'Allow brief vibration whenever you receive an alert.',
+  'settings.notificationTypes': 'Notification types',
+  'settings.notificationType.planReminders': 'Plan reminders',
+  'settings.notificationType.focusMode': 'Focus mode',
+  'settings.notificationType.dailySummary': 'Daily summary',
+  'settings.notificationType.streakWarning': 'Streak warning',
+  'settings.waterReminder': 'Water reminder',
+  'settings.waterReminderDescription': 'Gentle nudges to stay hydrated during the day.',
   'settings.focus': 'Focus mode',
   'settings.pointsShop': 'Points shop',
   'settings.signOut': 'Sign out',
@@ -251,6 +286,24 @@ const turkish: TranslationTable = {
   'settings.title': 'Ayarlar',
   'settings.profile': 'Profil & hesap',
   'settings.language': 'Dil',
+  'settings.languageDescription': 'Uygulama dilini değiştirerek arayüzü kendine uygun hale getir.',
+  'settings.account': 'Hesap',
+  'settings.deleteAccount': 'Hesabı sil',
+  'settings.deleteAccountWarning':
+    'Hesabını silmek planlarını, serilerini ve puanlarını geri dönülemez şekilde kaldırır.',
+  'settings.deleteAccountConfirm': 'Hesabı sil',
+  'settings.deleteAccountCancel': 'Vazgeç',
+  'settings.deleteAccountSupport': 'Hesabını kalıcı olarak silmek için destek ekibiyle iletişime geç.',
+  'settings.notifications': 'Bildirimler',
+  'settings.vibration': 'Titreşim',
+  'settings.vibrationDescription': 'Bildirimler için kısa titreşimlere izin ver.',
+  'settings.notificationTypes': 'Bildirim türleri',
+  'settings.notificationType.planReminders': 'Plan hatırlatmaları',
+  'settings.notificationType.focusMode': 'Fokus modu',
+  'settings.notificationType.dailySummary': 'Günlük özet',
+  'settings.notificationType.streakWarning': 'Seri uyarısı',
+  'settings.waterReminder': 'Su hatırlatıcısı',
+  'settings.waterReminderDescription': 'Gün boyu su içmeni hatırlatan nazik uyarılar al.',
   'settings.focus': 'Fokus modu',
   'settings.pointsShop': 'Puan dükkanı',
   'settings.signOut': 'Çıkış yap',
