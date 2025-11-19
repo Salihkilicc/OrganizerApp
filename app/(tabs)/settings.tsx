@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -16,8 +17,8 @@ import { LANGUAGE_LABELS, LANGUAGE_OPTIONS, useLanguage } from '@/store/useLangu
 import { useSettings, type NotificationTypes } from '@/store/useSettings';
 import { useTranslation } from '@/i18n';
 import { Button } from '@/components/ui/Button';
-import { usePoints } from '@/store/usePoints';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const themeOptions: ThemeId[] = ['light', 'dark', 'ninja'];
 const themeLabelMap: Record<ThemeId, 'lightTheme' | 'darkTheme' | 'ninjaTheme'> = {
@@ -27,14 +28,14 @@ const themeLabelMap: Record<ThemeId, 'lightTheme' | 'darkTheme' | 'ninjaTheme'> 
 };
 
 export default function SettingsScreen() {
-  const [languageExpanded, setLanguageExpanded] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const palette = useTheme((state) => state.palette);
   const themeKey = useTheme((state) => state.themeKey);
   const setTheme = useTheme((state) => state.setTheme);
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
-  const totalPoints = usePoints((state) => state.total);
   const currentLanguage = useLanguage((state) => state.current);
 
   const setLanguage = useSettings((state) => state.setLanguage);
@@ -51,6 +52,8 @@ export default function SettingsScreen() {
     { key: 'dailySummary', label: t('settings.notificationType.dailySummary') },
     { key: 'streakWarning', label: t('settings.notificationType.streakWarning') },
   ];
+
+  const enabledNotificationCount = Object.values(notificationTypes).filter(Boolean).length;
 
   const handleSelectLanguage = (code: typeof LANGUAGE_OPTIONS[number]['code']) => {
     setLanguage(code);
@@ -139,10 +142,14 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.language')}</Text>
+            <Text style={[styles.sectionSubtitle, { color: palette.text }]}>
+              {t('settings.languageDescription')}
+            </Text>
             <Pressable
-              onPress={() => setLanguageExpanded((prev) => !prev)}
+              onPress={() => setLanguageModalVisible(true)}
               style={({ pressed }) => [
-                styles.languageToggle,
+                styles.selectorButton,
                 {
                   borderColor: palette.border,
                   backgroundColor: palette.card,
@@ -150,59 +157,15 @@ export default function SettingsScreen() {
                 },
               ]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.language')}</Text>
-                <Text style={[styles.sectionSubtitle, { color: palette.text }]}>
-                  {t('settings.languageDescription')}
+                <Text style={[styles.selectorButtonText, { color: palette.text }]}>
+                  {LANGUAGE_LABELS[currentLanguage]}
                 </Text>
-                <Text
-                  style={[
-                    styles.pointsRowSubtitle,
-                    { color: palette.text, opacity: 0.7, marginTop: 6 },
-                  ]}>
-                  {t('language.current')}: {LANGUAGE_LABELS[currentLanguage]}
+                <Text style={[styles.selectorButtonSubtext, { color: palette.text }]}>
+                  {t('language.current')}
                 </Text>
               </View>
-              <Text style={[styles.languageChevron, { color: palette.text }]}>
-                {languageExpanded ? '−' : '+'}
-              </Text>
+              <Ionicons name="chevron-down" size={20} color={palette.text} />
             </Pressable>
-            {languageExpanded && (
-              <View
-                style={[
-                  styles.languageFrame,
-                  { backgroundColor: palette.background, borderColor: palette.border },
-                ]}>
-                {LANGUAGE_OPTIONS.map((option) => {
-                  const isActive = option.code === currentLanguage;
-                  return (
-                    <Pressable
-                      key={option.code}
-                      onPress={() => handleSelectLanguage(option.code)}
-                      style={({ pressed }) => [
-                        styles.languageRow,
-                        {
-                          borderColor: palette.border,
-                          backgroundColor: isActive ? palette.accent : palette.card,
-                          opacity: pressed ? 0.85 : 1,
-                        },
-                      ]}>
-                      <Text
-                        style={[
-                          styles.languageLabel,
-                          {
-                            color: isActive ? '#fff' : palette.text,
-                          },
-                        ]}>
-                        {option.label}
-                      </Text>
-                      {isActive && (
-                        <Text style={[styles.languageCheckmark, { color: '#fff' }]}>✓</Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
           </View>
 
           <View style={styles.section}>
@@ -227,30 +190,30 @@ export default function SettingsScreen() {
             <Text style={[styles.sectionSubtitle, { color: palette.text, marginTop: 12 }]}>
               {t('settings.notificationTypes')}
             </Text>
-            <View style={styles.notificationList}>
-              {notificationTypeOptions.map((option) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() => toggleNotificationType(option.key)}
-                  style={({ pressed }) => [
-                    styles.toggleRow,
-                    {
-                      borderColor: palette.border,
-                      backgroundColor: palette.card,
-                      opacity: pressed ? 0.85 : 1,
-                    },
+            <Pressable
+              onPress={() => setNotificationModalVisible(true)}
+              style={({ pressed }) => [
+                styles.selectorButton,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.selectorButtonText, { color: palette.text }]}>
+                  {t('settings.notificationCenter')}
+                </Text>
+                <Text
+                  style={[
+                    styles.selectorButtonSubtext,
+                    { color: palette.text, opacity: 0.65 },
                   ]}>
-                  <Text style={[styles.toggleLabel, { color: palette.text }]}>{option.label}</Text>
-                  <Switch
-                    value={notificationTypes[option.key]}
-                    onValueChange={() => toggleNotificationType(option.key)}
-                    trackColor={{ false: palette.border, true: palette.accent }}
-                    thumbColor={palette.card}
-                    ios_backgroundColor={palette.border}
-                  />
-                </Pressable>
-              ))}
-            </View>
+                  {t('settings.notificationCount', { count: enabledNotificationCount })}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={20} color={palette.text} />
+            </Pressable>
           </View>
 
           <View style={styles.section}>
@@ -278,24 +241,6 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.section}>
-            <Pressable
-              onPress={() => router.push('/points')}
-              style={({ pressed }) => [
-                styles.pointsRow,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}>
-              <Text style={[styles.pointsRowLabel, { color: palette.text }]}>
-                {t('settings.pointsShop')}
-              </Text>
-              <Text style={[styles.pointsRowValue, { color: palette.accent }]}>{totalPoints} XP</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.account')}</Text>
             <Text style={[styles.accountWarning, { color: palette.text }]}>
               {t('settings.deleteAccountWarning')}
@@ -320,6 +265,112 @@ export default function SettingsScreen() {
             <Button title={t('settings.signOut')} onPress={() => void signOut()} type="secondary" />
           </View>
         </ScrollView>
+        <Modal
+          visible={languageModalVisible}
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          onRequestClose={() => setLanguageModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setLanguageModalVisible(false)} />
+            <View
+              style={[
+                styles.selectorModal,
+                { backgroundColor: palette.card, borderColor: palette.border },
+              ]}>
+              <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
+              <Text style={[styles.selectorModalTitle, { color: palette.text }]}>
+                {t('settings.language')}
+              </Text>
+              <ScrollView
+                style={styles.selectorModalList}
+                contentContainerStyle={styles.selectorModalListContent}
+                showsVerticalScrollIndicator={false}>
+                {LANGUAGE_OPTIONS.map((option) => {
+                  const isActive = option.code === currentLanguage;
+                  return (
+                    <Pressable
+                      key={option.code}
+                      onPress={() => {
+                        handleSelectLanguage(option.code);
+                        setLanguageModalVisible(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.selectorItem,
+                        {
+                          borderColor: palette.border,
+                          backgroundColor: isActive ? palette.accent : palette.card,
+                          opacity: pressed ? 0.85 : 1,
+                        },
+                      ]}>
+                      <Text
+                        style={[
+                          styles.selectorItemText,
+                          { color: isActive ? palette.background : palette.text },
+                        ]}>
+                        {option.label}
+                      </Text>
+                      {isActive && (
+                        <Text style={[styles.selectorItemCheck, { color: palette.background }]}>
+                          ✓
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={notificationModalVisible}
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          onRequestClose={() => setNotificationModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setNotificationModalVisible(false)} />
+            <View
+              style={[
+                styles.selectorModal,
+                { backgroundColor: palette.card, borderColor: palette.border },
+              ]}>
+              <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
+              <Text style={[styles.selectorModalTitle, { color: palette.text }]}>
+                {t('settings.notificationCenter')}
+              </Text>
+              <ScrollView
+                style={styles.selectorModalList}
+                contentContainerStyle={styles.selectorModalListContent}
+                showsVerticalScrollIndicator={false}>
+                {notificationTypeOptions.map((option) => (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => toggleNotificationType(option.key)}
+                    style={({ pressed }) => [
+                      styles.notificationItem,
+                      {
+                        borderColor: palette.border,
+                        backgroundColor: palette.card,
+                        opacity: pressed ? 0.85 : 1,
+                      },
+                    ]}>
+                    <Text style={[styles.notificationItemText, { color: palette.text }]}>
+                      {option.label}
+                    </Text>
+                    <Switch
+                      value={notificationTypes[option.key]}
+                      onValueChange={() => toggleNotificationType(option.key)}
+                      trackColor={{ false: palette.border, true: palette.accent }}
+                      thumbColor={palette.card}
+                      ios_backgroundColor={palette.border}
+                    />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -379,7 +430,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  pointsRow: {
+  selectorButton: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  selectorButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  selectorButtonSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  selectorModal: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  selectorModalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 12,
+  },
+  selectorModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  selectorModalList: {
+    maxHeight: 320,
+  },
+  selectorModalListContent: {
+    paddingBottom: 16,
+  },
+  selectorItem: {
     borderWidth: 1,
     borderRadius: 16,
     paddingHorizontal: 14,
@@ -387,18 +490,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  pointsRowLabel: {
+  selectorItemText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  pointsRowSubtitle: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  pointsRowValue: {
-    fontSize: 16,
+  selectorItemCheck: {
+    fontSize: 18,
     fontWeight: '700',
+  },
+  notificationItem: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  notificationItemText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   footer: {
     marginTop: 30,
@@ -420,43 +535,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  languageToggle: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  languageFrame: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginTop: 12,
-  },
-  languageRow: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  languageLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  languageCheckmark: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  languageChevron: {
-    fontSize: 28,
-    fontWeight: '600',
-    marginLeft: 12,
-  },
   toggleRow: {
     borderWidth: 1,
     borderRadius: 16,
@@ -471,9 +549,6 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  notificationList: {
-    marginTop: 6,
   },
   accountWarning: {
     fontSize: 13,

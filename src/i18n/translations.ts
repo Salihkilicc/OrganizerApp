@@ -75,6 +75,8 @@ export type TranslationKey =
   | 'settings.vibration'
   | 'settings.vibrationDescription'
   | 'settings.notificationTypes'
+  | 'settings.notificationCenter'
+  | 'settings.notificationCount'
   | 'settings.notificationType.planReminders'
   | 'settings.notificationType.focusMode'
   | 'settings.notificationType.dailySummary'
@@ -190,6 +192,8 @@ const english: TranslationTable = {
   'settings.vibration': 'Vibration',
   'settings.vibrationDescription': 'Allow brief vibration whenever you receive an alert.',
   'settings.notificationTypes': 'Notification types',
+  'settings.notificationCenter': 'All notifications',
+  'settings.notificationCount': '{{count}} enabled',
   'settings.notificationType.planReminders': 'Plan reminders',
   'settings.notificationType.focusMode': 'Focus mode',
   'settings.notificationType.dailySummary': 'Daily summary',
@@ -306,6 +310,8 @@ const turkish: TranslationTable = {
   'settings.vibration': 'Titreşim',
   'settings.vibrationDescription': 'Bildirimler için kısa titreşimlere izin ver.',
   'settings.notificationTypes': 'Bildirim türleri',
+  'settings.notificationCenter': 'Tüm bildirimler',
+  'settings.notificationCount': '{{count}} etkin',
   'settings.notificationType.planReminders': 'Plan hatırlatmaları',
   'settings.notificationType.focusMode': 'Fokus modu',
   'settings.notificationType.dailySummary': 'Günlük özet',
