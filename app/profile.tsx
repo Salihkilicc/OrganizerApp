@@ -137,88 +137,99 @@ export default function ProfileScreen() {
               <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
             </Pressable>
           </View>
-          <View style={styles.headerStats}>
-            <Text style={[styles.headerStatValue, { color: palette.accent }]}>
-              {t('profile.totalPoints')}: {totalPoints} pts
-            </Text>
-            <Text style={[styles.headerStatSub, { color: palette.text }]}>
-              {t('profile.streak')}: {streakDays} {t('profile.days')}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.back()}
-            style={[
-              styles.backButton,
-              {
-                borderColor: palette.border,
-                backgroundColor: palette.card,
-              },
-            ]}>
-            <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
-          </Pressable>
-        </View>
-
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: palette.card, borderColor: palette.border },
-          ]}>
-          <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.name')}</Text>
-          <TextInput
-            value={fullName}
-            onChangeText={setFullName}
-            placeholder={t('profile.name')}
-            placeholderTextColor={palette.text + '99'}
-            style={[
-              styles.textInput,
-              {
-                borderColor: palette.border,
-                backgroundColor: palette.background,
-                color: palette.text,
-              },
-            ]}
-          />
-          <Pressable onPress={handleSaveName} style={styles.saveButton}>
-            <Text style={[styles.saveText, { color: palette.accent }]}>{t('profile.saveName')}</Text>
-          </Pressable>
-        </View>
-
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: palette.card, borderColor: palette.border },
-          ]}>
-          <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.email')}</Text>
-          <View
-            style={[
-              styles.infoRow,
-              { borderColor: palette.border, backgroundColor: palette.background },
-            ]}>
-            <View style={styles.infoText}>
-              <Text style={[styles.infoLabel, { color: palette.text }]}>{t('profile.current')}</Text>
-              <Text style={[styles.infoValue, { color: palette.text }]} numberOfLines={1}>
-                {displayEmail}
+          <View style={styles.headerRightColumn}>
+            <View style={styles.headerStats}>
+              <Text style={[styles.headerStatValue, { color: palette.accent }]}>
+                {t('profile.totalPoints')}: {totalPoints} pts
+              </Text>
+              <Text style={[styles.headerStatSub, { color: palette.text }]}>
+                {t('profile.streak')}: {streakDays} {t('profile.days')}
               </Text>
             </View>
-            <Pressable onPress={handleEmailChange} style={styles.changeButton}>
-              <Text style={[styles.changeText, { color: palette.accent }]}>
-                {t('profile.changeEmail')}
-              </Text>
+            <Pressable
+              onPress={() => router.back()}
+              style={[
+                styles.backButton,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                },
+              ]}>
+              <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
             </Pressable>
           </View>
         </View>
 
-        <Pressable
-          onPress={handlePasswordChange}
+        <View
           style={[
-            styles.passwordRow,
+            styles.sectionStack,
             { borderColor: palette.border, backgroundColor: palette.card },
           ]}>
-          <Text style={[styles.passwordText, { color: palette.text }]}>
-            {t('profile.changePassword')}
-          </Text>
-          <Text style={[styles.passwordText, { color: palette.accent }]}>›</Text>
-        </Pressable>
+          <View style={[styles.sectionStackRow, styles.sectionStackColumn]}>
+            <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.name')}</Text>
+            <TextInput
+              value={fullName}
+              onChangeText={setFullName}
+              placeholder={t('profile.name')}
+              placeholderTextColor={palette.text + '99'}
+              style={[
+                styles.textInput,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.background,
+                  color: palette.text,
+                },
+              ]}
+            />
+            <Pressable onPress={handleSaveName} style={styles.saveButton}>
+              <Text style={[styles.saveText, { color: palette.accent }]}>{t('profile.saveName')}</Text>
+            </Pressable>
+          </View>
+
+          <View
+            style={[
+              styles.sectionStackRow,
+              styles.sectionStackColumn,
+              { borderTopWidth: 1, borderColor: palette.border },
+            ]}>
+            <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.email')}</Text>
+            <View
+              style={[
+                styles.infoRow,
+                styles.infoRowCompact,
+                { borderColor: palette.border, backgroundColor: palette.background },
+              ]}>
+              <View style={styles.infoText}>
+                <Text style={[styles.infoLabel, { color: palette.text }]}>{t('profile.current')}</Text>
+                <Text style={[styles.infoValue, { color: palette.text }]} numberOfLines={1}>
+                  {displayEmail}
+                </Text>
+              </View>
+              <Pressable onPress={handleEmailChange} style={styles.changeButton}>
+                <Text style={[styles.changeText, { color: palette.accent }]}>
+                  {t('profile.changeEmail')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <Pressable
+            onPress={handlePasswordChange}
+            style={[
+              styles.sectionStackRow,
+              styles.sectionStackLastRow,
+              {
+                borderTopWidth: 1,
+                borderColor: palette.border,
+                backgroundColor: palette.card,
+              },
+            ]}>
+            <Text style={[styles.passwordText, { color: palette.text }]}>
+              {t('profile.changePassword')}
+            </Text>
+            <Text style={[styles.passwordText, { color: palette.accent }]}>›</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>{t('profile.badges')}</Text>
@@ -253,12 +264,12 @@ export default function ProfileScreen() {
             {t('profile.stats')}
           </Text>
         </View>
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statsCard,
-              { borderColor: palette.border, backgroundColor: palette.card, marginRight: 10 },
-            ]}>
+          <View style={styles.statsRow}>
+            <View
+              style={[
+                styles.statsCard,
+                { borderColor: palette.border, backgroundColor: palette.card, marginRight: scaleValue(10) },
+              ]}>
             <Text style={[styles.statsLabel, { color: palette.text }]}>
               {t('profile.mostActiveCategory')}
             </Text>
@@ -282,135 +293,154 @@ export default function ProfileScreen() {
   );
 }
 
+const SIZE_SCALE = 0.9;
+const scaleValue = (value: number) => value * SIZE_SCALE;
+const AVATAR_BASE_SIZE = 112;
+const AVATAR_SIZE = Math.round(AVATAR_BASE_SIZE * 1.5 * 0.9);
+const AVATAR_RADIUS = AVATAR_SIZE / 2;
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
   container: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: scaleValue(16),
+    paddingBottom: scaleValue(32),
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 18,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    marginBottom: scaleValue(18),
   },
   avatarColumn: {
-    marginRight: 10,
+    marginRight: scaleValue(10),
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: scaleValue(36),
+    height: scaleValue(36),
+    borderRadius: scaleValue(18),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   backIcon: {
-    fontSize: 20,
+    fontSize: scaleValue(20),
     fontWeight: '700',
+  },
+  headerRightColumn: {
+    flex: 1,
+    alignItems: 'flex-end',
   },
   headerStats: {
-    flex: 1,
-    alignItems: 'flex-start',
-    marginHorizontal: 10,
+    alignItems: 'flex-end',
+    marginBottom: scaleValue(6),
   },
   headerStatValue: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: scaleValue(13),
+    fontWeight: '400',
   },
   headerStatSub: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: scaleValue(11),
+    fontWeight: '400',
+    marginTop: scaleValue(2),
   },
   avatar: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_RADIUS,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitials: {
-    fontSize: 34,
+    fontSize: scaleValue(32),
     fontWeight: '700',
   },
-  sectionCard: {
+  sectionStack: {
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 14,
+    borderRadius: scaleValue(18),
+    marginBottom: scaleValue(16),
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+    width: '95%',
+  },
+  sectionStackRow: {
+    paddingHorizontal: scaleValue(14),
+    paddingVertical: scaleValue(10),
+  },
+  sectionStackColumn: {
+    flexDirection: 'column',
+  },
+  sectionStackLastRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: scaleValue(12),
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: scaleValue(6),
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: scaleValue(0.4),
   },
   textInput: {
-    height: 42,
+    height: scaleValue(42),
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 14,
+    borderRadius: scaleValue(12),
+    paddingHorizontal: scaleValue(14),
+    fontSize: scaleValue(14),
   },
   saveButton: {
-    marginTop: 10,
+    marginTop: scaleValue(10),
     alignSelf: 'flex-end',
   },
   saveText: {
-    fontSize: 13,
+    fontSize: scaleValue(13),
     fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderRadius: scaleValue(14),
+    padding: scaleValue(10),
     borderWidth: 1,
-    borderRadius: 14,
-    padding: 10,
+  },
+  infoRowCompact: {
+    borderWidth: 0,
+    paddingVertical: scaleValue(8),
+    paddingHorizontal: scaleValue(10),
   },
   infoText: {
     flex: 1,
-    marginRight: 10,
+    marginRight: scaleValue(10),
   },
   infoLabel: {
-    fontSize: 11,
-    letterSpacing: 0.5,
-    marginBottom: 2,
+    fontSize: scaleValue(11),
+    letterSpacing: scaleValue(0.5),
+    marginBottom: scaleValue(2),
   },
   infoValue: {
-    fontSize: 15,
+    fontSize: scaleValue(15),
     fontWeight: '600',
   },
   changeButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: scaleValue(6),
+    paddingVertical: scaleValue(2),
   },
   changeText: {
-    fontSize: 12,
+    fontSize: scaleValue(12),
     fontWeight: '600',
   },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 20,
-  },
   passwordText: {
-    fontSize: 15,
+    fontSize: scaleValue(15),
     fontWeight: '600',
   },
   sectionHeader: {
-    marginBottom: 12,
+    marginBottom: scaleValue(12),
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: scaleValue(15),
     fontWeight: '700',
   },
   badgesRow: {
@@ -421,18 +451,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
+    borderRadius: scaleValue(14),
+    paddingHorizontal: scaleValue(10),
+    paddingVertical: scaleValue(6),
+    marginRight: scaleValue(8),
+    marginBottom: scaleValue(8),
   },
   badgeIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    fontSize: scaleValue(16),
+    marginRight: scaleValue(6),
   },
   badgeLabel: {
-    fontSize: 13,
+    fontSize: scaleValue(13),
     fontWeight: '600',
   },
   statsRow: {
@@ -442,18 +472,18 @@ const styles = StyleSheet.create({
   statsCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: scaleValue(16),
+    padding: scaleValue(12),
   },
   statsLabel: {
-    fontSize: 11,
-    letterSpacing: 0.4,
+    fontSize: scaleValue(11),
+    letterSpacing: scaleValue(0.4),
     textTransform: 'uppercase',
-    marginBottom: 6,
+    marginBottom: scaleValue(6),
     fontWeight: '600',
   },
   statsValue: {
-    fontSize: 15,
+    fontSize: scaleValue(15),
     fontWeight: '700',
   },
 });
