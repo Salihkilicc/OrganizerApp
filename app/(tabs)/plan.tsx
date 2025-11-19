@@ -119,15 +119,13 @@ export default function PlanScreen() {
   const selectedDateInstance = useMemo(() => parseISO(selectedDate), [selectedDate]);
   const selectedMonthIndex = selectedDateInstance.getMonth();
   const selectedYear = selectedDateInstance.getFullYear();
-  const dateLabel = useMemo(() => {
+  const selectedDateLabel = useMemo(() => {
     const dayName = selectedDateInstance.toLocaleDateString(undefined, { weekday: 'long' });
+    const dayNumber = selectedDateInstance.getDate().toString().padStart(2, '0');
     const monthName = selectedDateInstance.toLocaleDateString(undefined, { month: 'long' });
-    return `${dayName} • ${selectedDateInstance.getDate()} ${monthName}`;
+    const yearNumber = selectedDateInstance.getFullYear();
+    return `${dayName}, ${dayNumber} ${monthName} ${yearNumber}`;
   }, [selectedDateInstance]);
-  const monthTitle = selectedDateInstance.toLocaleDateString(undefined, {
-    month: 'long',
-    year: 'numeric',
-  });
   const selectedMonthKey = `${selectedYear}-${selectedMonthIndex}`;
   const monthOptions = useMemo(() => {
     const now = new Date();
@@ -341,12 +339,12 @@ export default function PlanScreen() {
               style={({ pressed }) => [
                 styles.monthSelector,
                 {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.8 : 1,
+                  opacity: pressed ? 0.65 : 1,
                 },
               ]}>
-              <Text style={[styles.monthTitle, { color: palette.text }]}>{monthTitle}</Text>
+              <Text style={[styles.monthLabel, { color: palette.text }]}>
+                {t('plan.monthsLabel')}
+              </Text>
               <Ionicons
                 name="chevron-down"
                 size={16}
@@ -354,7 +352,9 @@ export default function PlanScreen() {
                 style={styles.monthIcon}
               />
             </Pressable>
-            <Text style={[styles.subtitle, { color: palette.text }]}>{dateLabel}</Text>
+            <Text style={[styles.selectedDate, { color: palette.text }]} numberOfLines={1}>
+              {selectedDateLabel}
+            </Text>
           </View>
           <View style={styles.headerActions}>
             <Pressable
@@ -362,39 +362,17 @@ export default function PlanScreen() {
               style={({ pressed }) => [
                 styles.aiButton,
                 {
-                  borderColor: palette.border,
+                  borderColor: palette.text,
                   backgroundColor: palette.card,
                   opacity: pressed ? 0.7 : 1,
                 },
               ]}>
-              <Text style={[styles.aiButtonText, { color: palette.text }]}>{t('plan.aiButton')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={openFocusMode}
-              style={({ pressed }) => [
-                styles.focusButton,
-                {
-                  backgroundColor: palette.accent,
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}>
-              <Text style={[styles.focusButtonText, { color: palette.background }]}>
-                {t('plan.focusButton')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/points')}
-              style={({ pressed }) => [
-                styles.pointsBadge,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}>
-              <Text style={[styles.pointsLabel, { color: palette.text }]}>
-                {totalPoints} pts
-              </Text>
+              <View style={styles.aiButtonContent}>
+                <Text style={[styles.aiButtonSpark, { color: palette.accent }]}>✨</Text>
+                <Text style={[styles.aiButtonText, { color: palette.text }]}>
+                  {t('plan.aiButton')}
+                </Text>
+              </View>
             </Pressable>
           </View>
         </View>
@@ -545,71 +523,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   headerRow: {
-    marginBottom: 4,
+    marginBottom: 12,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   headerTitles: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginRight: 6,
   },
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginBottom: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    marginBottom: 0,
     alignSelf: 'flex-start',
   },
-  monthTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+  monthLabel: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   monthIcon: {
     marginLeft: 6,
   },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 4,
-    opacity: 0.8,
-  },
-  pointsBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  pointsLabel: {
-    fontWeight: '600',
+  selectedDate: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 0,
+    marginLeft: 12,
   },
   aiButton: {
     borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
+    borderWidth: 2,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  aiButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiButtonSpark: {
+    fontSize: 14,
+    marginRight: 6,
   },
   aiButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  focusButton: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-  },
-  focusButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   modalOverlay: {

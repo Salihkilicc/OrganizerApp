@@ -30,12 +30,16 @@ export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect
   );
 
   return (
-    <View style={[styles.container, { borderColor: palette.border }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+    <View style={[styles.container, { backgroundColor: palette.background }]}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
         {days.map((day) => {
           const iso = toISO(day);
           const isSelected = iso === selected;
           const isToday = iso === todayISO;
+          const textColor = isSelected ? palette.background : palette.text;
           return (
             <Pressable
               key={iso}
@@ -43,26 +47,23 @@ export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect
               style={({ pressed }) => [
                 styles.day,
                 {
-                  borderColor: palette.border,
                   backgroundColor: isSelected ? palette.accent : palette.card,
+                  borderColor: isSelected ? palette.accent : palette.border,
+                  shadowColor: palette.accent,
+                  shadowOpacity: isSelected ? 0.25 : 0,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowRadius: isSelected ? 12 : 0,
+                  elevation: isSelected ? 4 : 0,
                 },
-                isToday && !isSelected && { borderWidth: 1, borderColor: palette.accent },
-                pressed && { opacity: 0.75 },
+                pressed && styles.dayPressed,
               ]}>
-              <Text
-                style={[
-                  styles.weekday,
-                  { color: isSelected ? palette.background : palette.text },
-                ]}>
+              <Text style={[styles.weekday, { color: textColor }]}>
                 {day.toLocaleDateString(undefined, { weekday: 'short' })}
               </Text>
-              <Text
-                style={[
-                  styles.date,
-                  { color: isSelected ? palette.background : palette.text },
-                ]}>
-                {pad(day.getDate())}
-              </Text>
+              <Text style={[styles.date, { color: textColor }]}>{pad(day.getDate())}</Text>
+              {!isSelected && isToday && (
+                <View style={[styles.todayDot, { backgroundColor: palette.accent }]} />
+              )}
             </Pressable>
           );
         })}
@@ -75,11 +76,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
   },
   scrollContent: {
     flexDirection: 'row',
@@ -91,15 +89,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 8,
-    borderRadius: 10,
+    borderRadius: 999,
     borderWidth: 1,
-    minWidth: 52,
+    minWidth: 40,
+    marginRight: 8,
+  },
+  dayPressed: {
+    transform: [{ scale: 0.97 }],
   },
   weekday: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   date: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  todayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 4,
   },
 });

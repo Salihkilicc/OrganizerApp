@@ -25,6 +25,7 @@ export type TranslationKey =
   | 'plan.deleteAllConfirmYes'
   | 'plan.deleteAllConfirmNo'
   | 'plan.selectMonth'
+  | 'plan.monthsLabel'
   | 'plan.summary.withPlans'
   | 'plan.summary.noPlans'
   | 'lightTheme'
@@ -125,7 +126,7 @@ const english: TranslationTable = {
   'today.summary.withPlans': '{{total}} plan{{plural}} • {{completed}} completed • {{hours}} hours',
   'today.pointsBreakdown': 'Today’s points: {{total}} (Plans {{plans}} • Focus {{focus}})',
 
-  'plan.aiButton': '✨ AI Plan',
+  'plan.aiButton': 'AI Generate',
   'plan.focusButton': 'Focus',
   'plan.pastPlansAlert': 'Past plans cannot be edited.',
   'plan.deleteAllConfirmTitle': 'Delete all plans?',
@@ -133,6 +134,7 @@ const english: TranslationTable = {
   'plan.deleteAllConfirmYes': 'Delete',
   'plan.deleteAllConfirmNo': 'Cancel',
   'plan.selectMonth': 'Select month',
+  'plan.monthsLabel': 'Months',
   'plan.summary.withPlans': '{{total}} plan{{plural}} • {{hours}} hours total',
   'plan.summary.noPlans': 'No plan for this day yet. Use the grid below to add your first block.',
   'lightTheme': 'Light',
