@@ -96,7 +96,8 @@ export default function TodayScreen() {
   const setError = useWeather((state) => state.setError);
 
   const water = useWater((state) => state.water);
-  const toggleWater = useWater((state) => state.toggleWater);
+  const ensureTodayInitialized = useWater((state) => state.ensureTodayInitialized);
+  const drinkBottle = useWater((state) => state.drinkBottle);
   const bottleScaleRef = useRef<Animated.Value[]>(createBottleScaleValues());
   const bottleScales = bottleScaleRef.current;
   const bottleStates = useMemo(
@@ -104,7 +105,8 @@ export default function TodayScreen() {
       Array.from({ length: WATER_BOTTLE_COUNT }, (_, index) => water[index] ?? true),
     [water],
   );
-  const handleWaterPress = (index: number) => {
+  const handleWaterPress = (index: number, isFull: boolean) => {
+    if (!isFull) return;
     const scaleValue = bottleScales[index];
     if (!scaleValue) return;
     Animated.sequence([
@@ -120,7 +122,7 @@ export default function TodayScreen() {
       }),
     ]).start();
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    toggleWater(index);
+    drinkBottle(index);
   };
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
@@ -177,6 +179,9 @@ export default function TodayScreen() {
   }, [fetchWeather, setError]);
 
   const today = todayDate();
+  useEffect(() => {
+    ensureTodayInitialized();
+  }, [ensureTodayInitialized, today]);
   const weeklyPreview = weekly.slice(0, 7);
 
   const todayBlocks = useMemo(() => {
@@ -454,118 +459,121 @@ export default function TodayScreen() {
           )}
         </View>
 
-        <View style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <View style={styles.planHeaderRow}>
-            <Text style={[styles.planTitle, { color: palette.text }]}>{t('today.planSectionTitle')}</Text>
-            <View style={styles.waterRow}>
-              {bottleStates.map((isFull, index) => (
-                <AnimatedTouchableOpacity
-                  key={`water-${index}`}
-                  onPress={() => handleWaterPress(index)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  style={[
-                    styles.waterButton,
-                    {
-                      transform: [{ scale: bottleScales[index] }],
-                    },
-                  ]}>
-                  <Text style={[styles.waterIcon, { color: palette.text }]}>
-                    {isFull ? WATER_FULL_ICON : WATER_EMPTY_ICON}
-                  </Text>
-                </AnimatedTouchableOpacity>
-              ))}
+        <View style={styles.planWaterRow}>
+          {bottleStates.map((isFull, index) => (
+            <AnimatedTouchableOpacity
+              key={`water-${index}`}
+            onPress={() => handleWaterPress(index, isFull)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              style={[
+                styles.waterButton,
+                {
+                  transform: [{ scale: bottleScales[index] }],
+                },
+              ]}>
+              <Text style={[styles.waterIcon, { color: palette.text }]}>
+                {isFull ? WATER_FULL_ICON : WATER_EMPTY_ICON}
+              </Text>
+            </AnimatedTouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.planCardContainer}>
+          <View
+            style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+            <View style={styles.planHeaderRow}>
+              <Text style={[styles.planTitle, { color: palette.text }]}>{t('today.planSectionTitle')}</Text>
+              <Text style={[styles.planStatsText, { color: palette.text }]}>{planStatsText}</Text>
             </View>
-          </View>
-          <Text style={[styles.planStatsText, { color: palette.text }]}>{planStatsText}</Text>
-          {todayBlocks.length === 0 ? (
-            <View style={styles.planEmptyState}>
-              <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
-                {t('today.planEmptyTitle')}
-              </Text>
-              <Text style={[styles.planEmptyHint, { color: palette.text }]}>
-                {t('today.planEmptyHint')}
-              </Text>
-              <Pressable
-                onPress={goToPlan}
-                style={({ pressed }) => [
-                  styles.startFocusButton,
-                  {
-                    alignSelf: 'center',
-                    backgroundColor: palette.accent,
-                    opacity: pressed ? 0.85 : 1,
-                    marginTop: 16,
-                  },
-                ]}>
-                <Text style={[styles.startFocusText, { color: palette.background }]}>
-                  {t('today.openPlanner')}
+            {todayBlocks.length === 0 ? (
+              <View style={styles.planEmptyState}>
+                <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
+                  {t('today.planEmptyTitle')}
                 </Text>
-              </Pressable>
-            </View>
-          ) : (
-            todayBlocks.map((block) => {
-              const accentColor = block.color ?? palette.accent;
-              const isDone = Boolean(block.done);
-              return (
+                <Text style={[styles.planEmptyHint, { color: palette.text }]}>
+                  {t('today.planEmptyHint')}
+                </Text>
                 <Pressable
-                  key={block.id}
-                  onPress={() => handleBlockPress(block)}
+                  onPress={goToPlan}
                   style={({ pressed }) => [
-                    styles.blockRow,
+                    styles.startFocusButton,
                     {
-                      borderColor: palette.border,
-                      backgroundColor: palette.background,
-                      opacity: pressed ? 0.65 : 1,
+                      alignSelf: 'center',
+                      backgroundColor: palette.accent,
+                      opacity: pressed ? 0.85 : 1,
+                      marginTop: 16,
                     },
                   ]}>
+                  <Text style={[styles.startFocusText, { color: palette.background }]}>
+                    {t('today.openPlanner')}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              todayBlocks.map((block) => {
+                const accentColor = block.color ?? palette.accent;
+                const isDone = Boolean(block.done);
+                return (
                   <Pressable
-                    onPress={(event) => toggleDone(block, event)}
-                    style={[
-                      styles.completionToggle,
-                      {
-                        borderColor: palette.accent,
-                        backgroundColor: isDone ? palette.accent : 'transparent',
-                      },
-                    ]}
-                    hitSlop={6}>
-                    {isDone && (
-                      <Text style={[styles.completionCheck, { color: palette.background }]}>✓</Text>
-                    )}
-                  </Pressable>
-                  <View style={[styles.blockAccent, { backgroundColor: accentColor }]} />
-                  <View
-                    style={[
-                      styles.blockCategoryIcon,
+                    key={block.id}
+                    onPress={() => handleBlockPress(block)}
+                    style={({ pressed }) => [
+                      styles.blockRow,
                       {
                         borderColor: palette.border,
-                        backgroundColor: palette.card,
+                        backgroundColor: palette.background,
+                        opacity: pressed ? 0.65 : 1,
                       },
                     ]}>
-                    <Text style={[styles.blockCategoryIconText, { color: palette.text }]}>
-                      {getCategoryIcon(block.category)}
-                    </Text>
-                  </View>
-                  <View style={styles.blockInfo}>
-                    <Text style={[styles.blockTime, { color: palette.text }]}>
-                      {formatRange(block)}
-                    </Text>
-                    <Text
+                    <Pressable
+                      onPress={(event) => toggleDone(block, event)}
                       style={[
-                        styles.blockTitle,
+                        styles.completionToggle,
                         {
-                          color: palette.text,
-                          textDecorationLine: isDone ? 'line-through' : 'none',
-                          opacity: isDone ? 0.6 : 1,
+                          borderColor: palette.accent,
+                          backgroundColor: isDone ? palette.accent : 'transparent',
                         },
                       ]}
-                      numberOfLines={1}>
-                      {block.title}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })
-          )}
+                      hitSlop={6}>
+                      {isDone && (
+                        <Text style={[styles.completionCheck, { color: palette.background }]}>✓</Text>
+                      )}
+                    </Pressable>
+                    <View style={[styles.blockAccent, { backgroundColor: accentColor }]} />
+                    <View
+                      style={[
+                        styles.blockCategoryIcon,
+                        {
+                          borderColor: palette.border,
+                          backgroundColor: palette.card,
+                        },
+                      ]}>
+                      <Text style={[styles.blockCategoryIconText, { color: palette.text }]}>
+                        {getCategoryIcon(block.category)}
+                      </Text>
+                    </View>
+                    <View style={styles.blockInfo}>
+                      <Text style={[styles.blockTime, { color: palette.text }]}>
+                        {formatRange(block)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.blockTitle,
+                          {
+                            color: palette.text,
+                            textDecorationLine: isDone ? 'line-through' : 'none',
+                            opacity: isDone ? 0.6 : 1,
+                          },
+                        ]}
+                        numberOfLines={1}>
+                        {block.title}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -780,16 +788,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  planCardContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   planCard: {
     borderRadius: 24,
     borderWidth: 1,
-    padding: 16,
+    padding: 20,
     marginBottom: 8,
-    alignSelf: 'flex-end',
-    width: '60%',
-    minWidth: 280,
-    maxWidth: 380,
-    flexShrink: 0,
+    width: '90%',
+    maxWidth: 420,
+    alignSelf: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 4 },
@@ -809,12 +820,7 @@ const styles = StyleSheet.create({
   planStatsText: {
     fontSize: 12,
     fontWeight: '400',
-    alignSelf: 'flex-end',
-    marginTop: 6,
-  },
-  waterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: 4,
   },
   waterButton: {
     width: 32,
@@ -827,6 +833,12 @@ const styles = StyleSheet.create({
   waterIcon: {
     fontSize: 26,
     lineHeight: 32,
+  },
+  planWaterRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   planEmptyState: {
     marginTop: 8,
