@@ -126,6 +126,25 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
+          <View style={styles.avatarColumn}>
+            <Pressable
+              onPress={handleAvatarPress}
+              style={[
+                styles.avatar,
+                { backgroundColor: palette.accent },
+                avatarFrameStyle,
+              ]}>
+              <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+            </Pressable>
+          </View>
+          <View style={styles.headerStats}>
+            <Text style={[styles.headerStatValue, { color: palette.accent }]}>
+              {t('profile.totalPoints')}: {totalPoints} pts
+            </Text>
+            <Text style={[styles.headerStatSub, { color: palette.text }]}>
+              {t('profile.streak')}: {streakDays} {t('profile.days')}
+            </Text>
+          </View>
           <Pressable
             onPress={() => router.back()}
             style={[
@@ -136,26 +155,6 @@ export default function ProfileScreen() {
               },
             ]}>
             <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
-          </Pressable>
-          <View style={styles.headerStats}>
-            <Text style={[styles.headerStatValue, { color: palette.accent }]}>
-              {t('profile.totalPoints')}: {totalPoints} pts
-            </Text>
-            <Text style={[styles.headerStatSub, { color: palette.text }]}>
-              {t('profile.streak')}: {streakDays} {t('profile.days')}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.avatarWrapper}>
-          <Pressable
-            onPress={handleAvatarPress}
-            style={[
-              styles.avatar,
-              { backgroundColor: palette.accent },
-              avatarFrameStyle,
-            ]}>
-            <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
           </Pressable>
         </View>
 
@@ -288,41 +287,42 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: 16,
+    paddingBottom: 32,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 18,
+  },
+  avatarColumn: {
+    marginRight: 10,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
   backIcon: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
   },
   headerStats: {
-    alignItems: 'flex-end',
+    flex: 1,
+    alignItems: 'flex-start',
+    marginHorizontal: 10,
   },
   headerStatValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   headerStatSub: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  avatarWrapper: {
-    alignItems: 'center',
-    marginBottom: 24,
+    fontSize: 12,
+    marginTop: 2,
   },
   avatar: {
     width: 112,
@@ -332,35 +332,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInitials: {
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '700',
   },
   sectionCard: {
     borderWidth: 1,
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 14,
   },
   fieldLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   textInput: {
-    height: 48,
+    height: 42,
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 14,
-    fontSize: 16,
+    fontSize: 14,
   },
   saveButton: {
-    marginTop: 12,
+    marginTop: 10,
     alignSelf: 'flex-end',
   },
   saveText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   infoRow: {
@@ -368,28 +368,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 14,
+    padding: 10,
   },
   infoText: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
   },
   infoLabel: {
-    fontSize: 12,
-    letterSpacing: 0.6,
+    fontSize: 11,
+    letterSpacing: 0.5,
     marginBottom: 2,
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   changeButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   changeText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   passwordRow: {
@@ -397,20 +397,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    marginBottom: 24,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 20,
   },
   passwordText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   sectionHeader: {
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
   badgesRow: {
@@ -421,18 +421,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 10,
-    marginBottom: 10,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
   },
   badgeIcon: {
-    fontSize: 18,
-    marginRight: 8,
+    fontSize: 16,
+    marginRight: 6,
   },
   badgeLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   statsRow: {
@@ -442,18 +442,18 @@ const styles = StyleSheet.create({
   statsCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 16,
+    padding: 12,
   },
   statsLabel: {
-    fontSize: 13,
+    fontSize: 11,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
     marginBottom: 6,
     fontWeight: '600',
   },
   statsValue: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
   },
 });
