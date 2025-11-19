@@ -12,6 +12,8 @@ export type TranslationKey =
   | 'today.planSectionTitle'
   | 'today.planEmptyTitle'
   | 'today.planEmptyHint'
+  | 'today.planStats'
+  | 'today.planStatsEmpty'
   | 'today.openPlanner'
   | 'today.startFocus'
   | 'today.summary.noPlans'
@@ -120,6 +122,8 @@ const english: TranslationTable = {
   'today.planSectionTitle': "Today’s plan",
   'today.planEmptyTitle': 'You haven’t planned today yet.',
   'today.planEmptyHint': 'Tap below to open the planner and create your first block.',
+  'today.planStats': '{{total}} plan{{plural}} • {{hours}}h',
+  'today.planStatsEmpty': 'No plans yet.',
   'today.openPlanner': 'Open planner',
   'today.startFocus': 'Start focus',
   'today.summary.noPlans': 'No plans yet - your day is wide open.',
@@ -235,6 +239,8 @@ const turkish: TranslationTable = {
   'today.planSectionTitle': 'Bugünün planı',
   'today.planEmptyTitle': 'Bugün için henüz plan yapmadın.',
   'today.planEmptyHint': 'Planlayıcıyı açıp ilk bloğunu oluşturmak için aşağıya dokun.',
+  'today.planStats': '{{total}} plan • {{hours}} saat',
+  'today.planStatsEmpty': 'Henüz plan yok.',
   'today.openPlanner': 'Planlayıcıyı aç',
   'today.startFocus': 'Fokusa başla',
   'today.summary.noPlans': 'Bugün için plan yok - günün geniş ve sakin.',

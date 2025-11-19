@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   GestureResponderEvent,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -19,6 +21,8 @@ import { useTheme } from '@/store/useTheme';
 import { useTranslation } from '@/i18n';
 import { useRouter } from 'expo-router';
 import { useWeather } from '@/store/useWeather';
+import * as Haptics from 'expo-haptics';
+import { useWater, WATER_BOTTLE_COUNT } from '@/store/useWater';
 import { getFrameDecoration } from '@/lib/frameStyles';
 import * as Location from 'expo-location';
 
@@ -57,6 +61,12 @@ const getCategoryIcon = (category: PlanBlock['category']) => {
   }
 };
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+const WATER_FULL_ICON = '💧';
+const WATER_EMPTY_ICON = '🫙';
+const createBottleScaleValues = () =>
+  Array.from({ length: WATER_BOTTLE_COUNT }, () => new Animated.Value(1));
+
 export default function TodayScreen() {
   const palette = useTheme((state) => state.palette);
   const { t } = useTranslation();
@@ -84,6 +94,34 @@ export default function TodayScreen() {
   const weatherError = useWeather((state) => state.error);
   const fetchWeather = useWeather((state) => state.fetchWeather);
   const setError = useWeather((state) => state.setError);
+
+  const water = useWater((state) => state.water);
+  const toggleWater = useWater((state) => state.toggleWater);
+  const bottleScaleRef = useRef<Animated.Value[]>(createBottleScaleValues());
+  const bottleScales = bottleScaleRef.current;
+  const bottleStates = useMemo(
+    () =>
+      Array.from({ length: WATER_BOTTLE_COUNT }, (_, index) => water[index] ?? true),
+    [water],
+  );
+  const handleWaterPress = (index: number) => {
+    const scaleValue = bottleScales[index];
+    if (!scaleValue) return;
+    Animated.sequence([
+      Animated.timing(scaleValue, {
+        toValue: 0.92,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleValue, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleWater(index);
+  };
 
   const isGuest = Boolean(user && 'guest' in user && user.guest);
   const frameId = useProfileAppearance((state) => state.frameId);
@@ -139,14 +177,6 @@ export default function TodayScreen() {
   }, [fetchWeather, setError]);
 
   const today = todayDate();
-  const friends = useMemo(
-    () => [
-      { id: '1', name: 'Alex Johnson', streak: 5 },
-      { id: '2', name: 'Mina K.', streak: 12 },
-      { id: '3', name: 'Jonas', streak: 3 },
-    ],
-    [],
-  );
   const weeklyPreview = weekly.slice(0, 7);
 
   const todayBlocks = useMemo(() => {
@@ -156,24 +186,20 @@ export default function TodayScreen() {
   }, [blocks, today]);
 
   const totalPlans = todayBlocks.length;
-  const completedPlans = todayBlocks.filter((block) => Boolean(block.done)).length;
   const totalHours =
     todayBlocks.reduce((sum, block) => sum + (block.endMin - block.startMin), 0) / 60;
-  const summaryText =
+  const planHoursDisplay =
+    Math.abs(totalHours - Math.round(totalHours)) < 0.0001
+      ? Math.round(totalHours).toString()
+      : totalHours.toFixed(1);
+  const planStatsText =
     totalPlans === 0
-      ? t('today.summary.noPlans')
-      : t('today.summary.withPlans', {
+      ? t('today.planStatsEmpty')
+      : t('today.planStats', {
           total: totalPlans,
           plural: totalPlans === 1 ? '' : 's',
-          completed: completedPlans,
-          hours: totalHours.toFixed(1),
+          hours: planHoursDisplay,
         });
-  const pointsBreakdownText = t('today.pointsBreakdown', {
-    total: todayPoints,
-    plans: dailyPoints.planPoints,
-    focus: dailyPoints.focusPoints,
-  });
-
   const nextBlock = useMemo(() => {
     if (!todayBlocks.length) return null;
     const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
@@ -244,101 +270,30 @@ export default function TodayScreen() {
           }
         }}>
         <View style={styles.headerRow}>
-          <Pressable
-            onPress={handleAvatarPress}
-            style={({ pressed }) => [
-              styles.avatar,
-              {
-                backgroundColor: palette.accent,
-                opacity: pressed ? 0.8 : 1,
-              },
-              avatarFrameStyle,
-            ]}>
-            <Text style={[styles.avatarInitials, { color: palette.background }]}>
-              {initials}
-            </Text>
-          </Pressable>
+          <View style={styles.avatarColumn}>
+            <Pressable
+              onPress={handleAvatarPress}
+              style={({ pressed }) => [
+                styles.avatar,
+                {
+                  backgroundColor: palette.accent,
+                  opacity: pressed ? 0.8 : 1,
+                },
+                avatarFrameStyle,
+              ]}>
+              <Text style={[styles.avatarInitials, { color: palette.background }]}>
+                {initials}
+              </Text>
+            </Pressable>
 
-          <View style={styles.friendsStrip}>
-            <Text style={[styles.friendsLabel, { color: palette.text }]}>{t('today.friends')}</Text>
-            <ScrollView
-              style={styles.friendsScroll}
-              contentContainerStyle={styles.friendsScrollRow}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              nestedScrollEnabled>
-              {friends.map((friend) => (
-                <Pressable
-                  key={friend.id}
-                  onPress={() => console.log('[TodayScreen] friend tapped', friend.id)}
-                  style={({ pressed }) => [
-                    styles.friendChip,
-                    pressed && styles.friendPressed,
-                    {
-                      borderColor: palette.border,
-                      backgroundColor: palette.card,
-                    },
-                  ]}>
-                  <View
-                    style={[
-                      styles.friendAvatar,
-                      {
-                        borderColor: palette.border,
-                        backgroundColor: palette.background,
-                      },
-                    ]}>
-                    <Text style={[styles.friendInitials, { color: palette.text }]}>
-                      {getInitials(friend.name)}
-                    </Text>
-                  </View>
-                  <Text style={[styles.friendStreak, { color: palette.text }]}>
-                    {friend.streak}d
-                  </Text>
-                </Pressable>
-              ))}
-              <Pressable
-                onPress={() => console.log('[TodayScreen] add friend')}
-                style={({ pressed }) => [
-                  styles.addFriendChip,
-                  pressed && styles.friendPressed,
-                  {
-                    borderColor: palette.border,
-                    backgroundColor: palette.background,
-                  },
-                ]}>
-                <Text style={[styles.addFriendPlus, { color: palette.text }]}>+</Text>
-                <Text style={[styles.friendStreak, { color: palette.text }]}>
-                  {t('today.addFriend')}
-                </Text>
-              </Pressable>
-            </ScrollView>
-          </View>
-
-          <View style={[styles.headerStats, { marginLeft: 12 }]}>
-            <View style={styles.statBlock}>
-            <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.streak')}</Text>
-              <Text style={[styles.statValue, { color: palette.text }]}>
-                {streakDays} days
+            <View style={styles.friendsStrip}>
+              <Text style={[styles.friendsLabel, { color: palette.text }]}>
+                {t('today.friends')}
               </Text>
             </View>
-            <Pressable
-              onPress={() => router.push('/points')}
-              style={({ pressed }) => [
-                styles.statBlock,
-                styles.pointsPressable,
-                pressed && styles.pointsPressed,
-              ]}>
-              <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.points')}</Text>
-              <View
-                style={[
-                  styles.pointsBadge,
-                  { backgroundColor: palette.accent, shadowColor: palette.text },
-                ]}>
-                <Text style={[styles.pointsValue, { color: palette.background }]}>
-                  {points}
-                </Text>
-              </View>
-            </Pressable>
+          </View>
+
+          <View style={styles.headerStats}>
             <Pressable
               onPress={() => setShowWeeklyForecast((prev) => !prev)}
               onTouchStart={(event) => event.stopPropagation()}
@@ -368,6 +323,32 @@ export default function TodayScreen() {
                   ? `${Math.round(temperature)}°`
                   : '--°'}
               </Text>
+            </Pressable>
+
+            <View style={[styles.statBlock, styles.streakBlock]}>
+              <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.streak')}</Text>
+              <Text style={[styles.statValue, { color: palette.text }]}>
+                {streakDays} days
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => router.push('/points')}
+              style={({ pressed }) => [
+                styles.statBlock,
+                styles.pointsPressable,
+                pressed && styles.pointsPressed,
+              ]}>
+              <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.points')}</Text>
+              <View
+                style={[
+                  styles.pointsBadge,
+                  { backgroundColor: palette.accent, shadowColor: palette.text },
+                ]}>
+                <Text style={[styles.pointsValue, { color: palette.background }]}>
+                  {points}
+                </Text>
+              </View>
             </Pressable>
           </View>
         </View>
@@ -473,16 +454,30 @@ export default function TodayScreen() {
           )}
         </View>
 
-        <View
-          style={[styles.summaryCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.summaryText, { color: palette.text }]}>{summaryText}</Text>
-        </View>
-        <Text style={[styles.todayPointsText, { color: palette.text }]}>
-          {pointsBreakdownText}
-        </Text>
-
         <View style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.planTitle, { color: palette.text }]}>{t('today.planSectionTitle')}</Text>
+          <View style={styles.planHeaderRow}>
+            <Text style={[styles.planTitle, { color: palette.text }]}>{t('today.planSectionTitle')}</Text>
+            <View style={styles.waterRow}>
+              {bottleStates.map((isFull, index) => (
+                <AnimatedTouchableOpacity
+                  key={`water-${index}`}
+                  onPress={() => handleWaterPress(index)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  style={[
+                    styles.waterButton,
+                    {
+                      transform: [{ scale: bottleScales[index] }],
+                    },
+                  ]}>
+                  <Text style={[styles.waterIcon, { color: palette.text }]}>
+                    {isFull ? WATER_FULL_ICON : WATER_EMPTY_ICON}
+                  </Text>
+                </AnimatedTouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <Text style={[styles.planStatsText, { color: palette.text }]}>{planStatsText}</Text>
           {todayBlocks.length === 0 ? (
             <View style={styles.planEmptyState}>
               <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
@@ -596,14 +591,14 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
     marginBottom: 24,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -611,9 +606,13 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
   },
+  avatarColumn: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    flexShrink: 1,
+  },
   friendsStrip: {
-    flex: 1,
-    marginHorizontal: 12,
+    marginTop: 12,
   },
   friendsLabel: {
     fontSize: 10,
@@ -621,64 +620,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginBottom: 6,
   },
-  friendsScroll: {
-    paddingVertical: 2,
-  },
-  friendsScrollRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 6,
-  },
-  friendChip: {
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  friendPressed: {
-    opacity: 0.75,
-  },
-  friendAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  friendInitials: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  friendStreak: {
-    fontSize: 11,
-    marginTop: 4,
-  },
-  addFriendChip: {
-    alignItems: 'center',
-    marginRight: 4,
-    justifyContent: 'center',
-  },
-  addFriendPlus: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
   headerStats: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     flexShrink: 0,
+    marginLeft: 'auto',
+    justifyContent: 'flex-end',
+    marginTop: 12,
   },
   statBlock: {
-    marginLeft: 18,
+    alignItems: 'flex-start',
+  },
+  streakBlock: {
+    marginLeft: 12,
+    marginRight: 12,
   },
   pointsPressable: {
-    marginLeft: 18,
     paddingVertical: 2,
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
   },
   pointsPressed: {
     opacity: 0.75,
   },
   weatherBubble: {
-    marginLeft: 18,
+    marginRight: 12,
     borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -756,8 +721,8 @@ const styles = StyleSheet.create({
   nextUpCard: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 20,
-    marginBottom: 16,
+    padding: 18,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 4 },
@@ -815,31 +780,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  summaryCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  summaryText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  todayPointsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-    marginBottom: 16,
-  },
   planCard: {
     borderRadius: 24,
     borderWidth: 1,
-    padding: 20,
+    padding: 16,
+    marginBottom: 8,
+    alignSelf: 'flex-end',
+    width: '60%',
+    minWidth: 280,
+    maxWidth: 380,
+    flexShrink: 0,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 4 },
@@ -849,7 +799,34 @@ const styles = StyleSheet.create({
   planTitle: {
     fontSize: 22,
     fontWeight: '700',
-    marginBottom: 16,
+  },
+  planHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  planStatsText: {
+    fontSize: 12,
+    fontWeight: '400',
+    alignSelf: 'flex-end',
+    marginTop: 6,
+  },
+  waterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  waterButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 14,
+    marginHorizontal: 4,
+  },
+  waterIcon: {
+    fontSize: 26,
+    lineHeight: 32,
   },
   planEmptyState: {
     marginTop: 8,
@@ -871,9 +848,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 18,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 14,
-    marginTop: 12,
+    marginTop: 6,
   },
   blockAccent: {
     width: 4,
