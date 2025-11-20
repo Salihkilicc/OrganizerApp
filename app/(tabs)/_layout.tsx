@@ -15,6 +15,28 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.text,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarStyle: {
+          position: 'absolute',
+          marginHorizontal: 16,
+          marginBottom: -6,
+          bottom: -6,
+          borderRadius: 26,
+          height: 78,
+          paddingTop: 8,
+          backgroundColor: palette.card,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.1,
+          shadowRadius: 16,
+          elevation: 8,
+        },
+        tabBarItemStyle: {
+          paddingTop: 10,
+          paddingBottom: 10,
+        },
+        tabBarIconStyle: {
+          marginBottom: 2,
+        },
       }}>
       <Tabs.Screen
         name="index"

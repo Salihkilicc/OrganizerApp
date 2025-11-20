@@ -48,7 +48,6 @@ export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect
                 styles.day,
                 {
                   backgroundColor: isSelected ? palette.accent : palette.card,
-                  borderColor: isSelected ? palette.accent : palette.border,
                   shadowColor: palette.accent,
                   shadowOpacity: isSelected ? 0.25 : 0,
                   shadowOffset: { width: 0, height: 6 },
@@ -60,7 +59,7 @@ export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect
               <Text style={[styles.weekday, { color: textColor }]}>
                 {day.toLocaleDateString(undefined, { weekday: 'short' })}
               </Text>
-              <Text style={[styles.date, { color: textColor }]}>{pad(day.getDate())}</Text>
+              <Text style={[styles.date, { color: textColor }]}>{day.getDate()}</Text>
               {!isSelected && isToday && (
                 <View style={[styles.todayDot, { backgroundColor: palette.accent }]} />
               )}
@@ -87,12 +86,12 @@ const styles = StyleSheet.create({
   },
   day: {
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    minWidth: 40,
-    marginRight: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+    borderRadius: 18,
+    borderWidth: 0,
+    minWidth: 46,
+    marginRight: 10,
   },
   dayPressed: {
     transform: [{ scale: 0.97 }],

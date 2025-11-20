@@ -142,7 +142,7 @@ const english: TranslationTable = {
   'plan.selectMonth': 'Select month',
   'plan.monthsLabel': 'Months',
   'plan.summary.withPlans': '{{total}} plan{{plural}} • {{hours}} hours total',
-  'plan.summary.noPlans': 'No plan for this day yet. Use the grid below to add your first block.',
+  'plan.summary.noPlans': 'No plan for this day yet. Click the grid below to add your first block.',
   'lightTheme': 'Light',
   'darkTheme': 'Dark',
   'ninjaTheme': 'Ninja',

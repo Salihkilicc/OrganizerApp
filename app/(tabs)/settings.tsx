@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -6,30 +6,38 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
 
-import { type ThemeId, useTheme } from '@/store/useTheme';
 import { useAuth } from '@/store/useAuth';
+import { type ThemeId, useTheme } from '@/store/useTheme';
 import { LANGUAGE_LABELS, LANGUAGE_OPTIONS, useLanguage } from '@/store/useLanguage';
-import { useSettings, type NotificationTypes } from '@/store/useSettings';
+import { useSettings } from '@/store/useSettings';
+import { usePremium } from '@/store/usePremium';
 import { useTranslation } from '@/i18n';
 import { Button } from '@/components/ui/Button';
-import { useRouter } from 'expo-router';
+import { CrownIcon } from '@/components/icons/CrownIcon';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
-const themeOptions: ThemeId[] = ['light', 'dark', 'ninja'];
 const themeLabelMap: Record<ThemeId, 'lightTheme' | 'darkTheme' | 'ninjaTheme'> = {
   light: 'lightTheme',
   dark: 'darkTheme',
   ninja: 'ninjaTheme',
 };
 
+const getInitials = (value: string) => {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'U';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  const first = parts[0][0];
+  const last = parts[parts.length - 1][0];
+  return `${first}${last}`.toUpperCase();
+};
+
 export default function SettingsScreen() {
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
-  const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const palette = useTheme((state) => state.palette);
   const themeKey = useTheme((state) => state.themeKey);
   const setTheme = useTheme((state) => state.setTheme);
@@ -37,26 +45,21 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
   const currentLanguage = useLanguage((state) => state.current);
-
   const setLanguage = useSettings((state) => state.setLanguage);
-  const waterReminderEnabled = useSettings((state) => state.waterReminderEnabled);
-  const toggleWaterReminder = useSettings((state) => state.toggleWaterReminder);
-  const vibrationEnabled = useSettings((state) => state.vibrationEnabled);
-  const toggleVibration = useSettings((state) => state.toggleVibration);
-  const notificationTypes = useSettings((state) => state.notificationTypes);
-  const toggleNotificationType = useSettings((state) => state.toggleNotificationType);
+  const isPremium = usePremium((state) => state.isPremium);
 
-  const notificationTypeOptions: { key: keyof NotificationTypes; label: string }[] = [
-    { key: 'planReminders', label: t('settings.notificationType.planReminders') },
-    { key: 'focusMode', label: t('settings.notificationType.focusMode') },
-    { key: 'dailySummary', label: t('settings.notificationType.dailySummary') },
-    { key: 'streakWarning', label: t('settings.notificationType.streakWarning') },
-  ];
-
-  const enabledNotificationCount = Object.values(notificationTypes).filter(Boolean).length;
+  const displayName = user?.user_metadata?.full_name ?? user?.name ?? 'User';
+  const isGuest = Boolean(user && 'guest' in user && user.guest);
+  const userLabel = isGuest ? 'guest' : (user && (user as any).email) ?? 'guest';
+  const initials = useMemo(() => getInitials(displayName), [displayName]);
 
   const handleSelectLanguage = (code: typeof LANGUAGE_OPTIONS[number]['code']) => {
     setLanguage(code);
+  };
+
+  const handleCycleTheme = () => {
+    const nextTheme: ThemeId = themeKey === 'light' ? 'dark' : 'light';
+    void setTheme(nextTheme);
   };
 
   const handleDeleteAccount = () => {
@@ -78,300 +81,265 @@ export default function SettingsScreen() {
     );
   };
 
-  const isGuest = Boolean(user && 'guest' in user && user.guest);
-  const userLabel = isGuest ? 'guest' : (user && (user as any).email) ?? 'guest';
-
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Text style={[styles.heading, { color: palette.text }]}>{t('settings.title')}</Text>
-            <Text style={[styles.subheading, { color: palette.text }]}>{userLabel}</Text>
-          </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={[styles.header, styles.headerMargin]}>
+          <Text style={[styles.heading, { color: palette.text }]}>{t('settings.title')}</Text>
+        </View>
 
-          <View style={styles.section}>
-            <Pressable
-              onPress={() => {
-                router.push('/profile');
-              }}
-              style={({ pressed }) => [
-                styles.profileRow,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}>
-              <Text style={[styles.profileRowLabel, { color: palette.text }]}>{t('settings.profile')}</Text>
-              <Text style={[styles.profileRowChevron, { color: palette.text }]}>›</Text>
-            </Pressable>
+        <View
+          style={[styles.profileCard, styles.cardShadow, { backgroundColor: palette.card, borderColor: palette.border }]}>
+          <View style={[styles.avatar, { backgroundColor: palette.accent }]}>
+            <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
           </View>
+          <View style={styles.profileBody}>
+            <Text style={[styles.profileName, { color: palette.text }]}>{displayName}</Text>
+            <Text style={[styles.profileSubtitle, { color: palette.text }]}>{userLabel}</Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/profile')}
+            style={({ pressed }) => [
+              styles.profileAction,
+              {
+                backgroundColor: palette.background,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}>
+            <Ionicons name="pencil" size={20} color={palette.text} />
+          </Pressable>
+        </View>
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.theme')}</Text>
-            <View style={styles.optionRow}>
-              {themeOptions.map((option) => {
-                const isActive = option === themeKey;
+        <View
+          style={[
+            styles.sectionCard,
+            styles.cardShadow,
+            {
+              backgroundColor: palette.card,
+              borderColor: palette.border,
+              marginTop: 16,
+            },
+          ]}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>Your settings</Text>
+          <Pressable
+            onPress={() => router.push('/profile')}
+            style={({ pressed }) => [
+              styles.sectionRow,
+              styles.sectionShadow,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Ionicons name="person-outline" size={20} color={palette.text} />
+            <View style={styles.sectionText}>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>Personal details</Text>
+              <Text style={[styles.sectionHint, { color: palette.text }]}>Update name, email, and avatar</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          </Pressable>
+          <Pressable
+            onPress={() => setLanguageModalVisible(true)}
+            style={({ pressed }) => [
+              styles.sectionRow,
+              styles.sectionShadow,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Ionicons name="language-outline" size={20} color={palette.text} />
+            <View style={styles.sectionText}>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>Language</Text>
+              <Text style={[styles.sectionHint, { color: palette.text }]}>{LANGUAGE_LABELS[currentLanguage]}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          </Pressable>
+          <Pressable
+            onPress={handleCycleTheme}
+            style={({ pressed }) => [
+              styles.sectionRow,
+              styles.sectionShadow,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Ionicons name="sunny-outline" size={20} color={palette.text} />
+            <View style={styles.sectionText}>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>Appearance</Text>
+              <Text
+                style={[styles.sectionHint, { color: palette.text }]}>
+                {t(themeLabelMap[themeKey] ?? 'lightTheme')}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          </Pressable>
+        </View>
+
+        <View
+          style={[
+            styles.sectionCard,
+            styles.cardShadow,
+            { backgroundColor: palette.card, borderColor: palette.border },
+          ]}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.sectionRow,
+              styles.sectionShadow,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Ionicons name="document-text-outline" size={20} color={palette.text} />
+            <View style={styles.sectionText}>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>Terms and Conditions</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.sectionRow,
+              styles.sectionShadow,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Ionicons name="lock-closed-outline" size={20} color={palette.text} />
+            <View style={styles.sectionText}>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>Privacy Policy</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.sectionRow,
+              styles.sectionShadow,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Ionicons name="mail-outline" size={20} color={palette.text} />
+            <View style={styles.sectionText}>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>Support Email</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={palette.text} />
+          </Pressable>
+          <Pressable
+            onPress={handleDeleteAccount}
+            style={({ pressed }) => [
+              styles.sectionRow,
+              styles.sectionShadow,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Ionicons name="trash-outline" size={20} color="#D32F2F" />
+            <View style={styles.sectionText}>
+              <Text style={[styles.sectionLabel, { color: '#D32F2F' }]}>Delete Account</Text>
+            </View>
+          </Pressable>
+        </View>
+
+        <View style={styles.footer}>
+          <View style={styles.footerButtonShadow}>
+            <Button title={t('settings.signOut')} onPress={() => void signOut()} type="secondary" />
+          </View>
+        </View>
+
+        <View style={styles.premiumWrapper}>
+          <Pressable
+            onPress={() => router.push('/premium')}
+            style={({ pressed }) => [
+              styles.premiumPromo,
+              styles.cardShadow,
+              styles.premiumOutline,
+              {
+                opacity: pressed ? 0.9 : 1,
+                backgroundColor: palette.card,
+              },
+            ]}>
+            <View style={styles.premiumTextWrapper}>
+              <CrownIcon color="#000" size={40} style={styles.premiumIcon} />
+              <View style={styles.premiumTextGroup}>
+                <Text style={styles.premiumPromoTitle}>Premium is calling</Text>
+                <Text style={styles.premiumPromoSubtitle}>Tap to unlock powerful focus tools</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#000" />
+          </Pressable>
+        </View>
+
+      </ScrollView>
+
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setLanguageModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setLanguageModalVisible(false)} />
+          <View
+            style={[
+              styles.selectorModal,
+              { backgroundColor: palette.card, borderColor: palette.border },
+            ]}>
+            <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
+            <Text style={[styles.selectorModalTitle, { color: palette.text }]}>
+              {t('settings.language')}
+            </Text>
+            <ScrollView
+              style={styles.selectorModalList}
+              contentContainerStyle={styles.selectorModalListContent}
+              showsVerticalScrollIndicator={false}>
+              {LANGUAGE_OPTIONS.map((option) => {
+                const isActive = option.code === currentLanguage;
                 return (
                   <Pressable
-                    key={option}
+                    key={option.code}
                     onPress={() => {
-                      void setTheme(option);
+                      handleSelectLanguage(option.code);
+                      setLanguageModalVisible(false);
                     }}
-                    style={[
-                      styles.option,
+                    style={({ pressed }) => [
+                      styles.selectorItem,
                       {
-                        backgroundColor: isActive ? palette.accent : palette.background,
-                        borderColor: isActive ? palette.accent : palette.border,
+                        borderColor: palette.border,
+                        backgroundColor: isActive ? palette.accent : palette.card,
+                        opacity: pressed ? 0.85 : 1,
                       },
                     ]}>
                     <Text
                       style={[
-                        styles.optionText,
-                        {
-                          color: isActive ? '#fff' : palette.text,
-                        },
+                        styles.selectorItemText,
+                        { color: isActive ? palette.background : palette.text },
                       ]}>
-                      {t(themeLabelMap[option])}
+                      {option.label}
                     </Text>
+                    {isActive && (
+                      <Text style={[styles.selectorItemCheck, { color: palette.background }]}>
+                        ✓
+                      </Text>
+                    )}
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.language')}</Text>
-            <Text style={[styles.sectionSubtitle, { color: palette.text }]}>
-              {t('settings.languageDescription')}
-            </Text>
-            <Pressable
-              onPress={() => setLanguageModalVisible(true)}
-              style={({ pressed }) => [
-                styles.selectorButton,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.selectorButtonText, { color: palette.text }]}>
-                  {LANGUAGE_LABELS[currentLanguage]}
-                </Text>
-                <Text style={[styles.selectorButtonSubtext, { color: palette.text }]}>
-                  {t('language.current')}
-                </Text>
-              </View>
-              <Ionicons name="chevron-down" size={20} color={palette.text} />
-            </Pressable>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.notifications')}</Text>
-            <Text style={[styles.sectionSubtitle, { color: palette.text }]}>
-              {t('settings.vibrationDescription')}
-            </Text>
-            <View
-              style={[
-                styles.toggleRow,
-                { borderColor: palette.border, backgroundColor: palette.card },
-              ]}>
-              <Text style={[styles.toggleLabel, { color: palette.text }]}>{t('settings.vibration')}</Text>
-              <Switch
-                value={vibrationEnabled}
-                onValueChange={toggleVibration}
-                trackColor={{ false: palette.border, true: palette.accent }}
-                thumbColor={palette.card}
-                ios_backgroundColor={palette.border}
-              />
-            </View>
-            <Text style={[styles.sectionSubtitle, { color: palette.text, marginTop: 12 }]}>
-              {t('settings.notificationTypes')}
-            </Text>
-            <Pressable
-              onPress={() => setNotificationModalVisible(true)}
-              style={({ pressed }) => [
-                styles.selectorButton,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.selectorButtonText, { color: palette.text }]}>
-                  {t('settings.notificationCenter')}
-                </Text>
-                <Text
-                  style={[
-                    styles.selectorButtonSubtext,
-                    { color: palette.text, opacity: 0.65 },
-                  ]}>
-                  {t('settings.notificationCount', { count: enabledNotificationCount })}
-                </Text>
-              </View>
-              <Ionicons name="chevron-down" size={20} color={palette.text} />
-            </Pressable>
-          </View>
-
-          <View style={styles.section}>
-            <View
-              style={[
-                styles.toggleRow,
-                { borderColor: palette.border, backgroundColor: palette.card },
-              ]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.toggleLabel, { color: palette.text }]}>
-                  {t('settings.waterReminder')}
-                </Text>
-                <Text style={[styles.sectionSubtitle, { color: palette.text, marginTop: 6 }]}>
-                  {t('settings.waterReminderDescription')}
-                </Text>
-              </View>
-              <Switch
-                value={waterReminderEnabled}
-                onValueChange={toggleWaterReminder}
-                trackColor={{ false: palette.border, true: palette.accent }}
-                thumbColor={palette.card}
-                ios_backgroundColor={palette.border}
-              />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: palette.text }]}>{t('settings.account')}</Text>
-            <Text style={[styles.accountWarning, { color: palette.text }]}>
-              {t('settings.deleteAccountWarning')}
-            </Text>
-            <Pressable
-              onPress={handleDeleteAccount}
-              style={({ pressed }) => [
-                styles.deleteButton,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}>
-              <Text style={[styles.deleteButtonText, { color: palette.accent }]}>
-                {t('settings.deleteAccount')}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.footer}>
-            <Button title={t('settings.signOut')} onPress={() => void signOut()} type="secondary" />
-          </View>
-        </ScrollView>
-        <Modal
-          visible={languageModalVisible}
-          transparent
-          animationType="slide"
-          statusBarTranslucent
-          onRequestClose={() => setLanguageModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <Pressable style={styles.modalBackdrop} onPress={() => setLanguageModalVisible(false)} />
-            <View
-              style={[
-                styles.selectorModal,
-                { backgroundColor: palette.card, borderColor: palette.border },
-              ]}>
-              <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
-              <Text style={[styles.selectorModalTitle, { color: palette.text }]}>
-                {t('settings.language')}
-              </Text>
-              <ScrollView
-                style={styles.selectorModalList}
-                contentContainerStyle={styles.selectorModalListContent}
-                showsVerticalScrollIndicator={false}>
-                {LANGUAGE_OPTIONS.map((option) => {
-                  const isActive = option.code === currentLanguage;
-                  return (
-                    <Pressable
-                      key={option.code}
-                      onPress={() => {
-                        handleSelectLanguage(option.code);
-                        setLanguageModalVisible(false);
-                      }}
-                      style={({ pressed }) => [
-                        styles.selectorItem,
-                        {
-                          borderColor: palette.border,
-                          backgroundColor: isActive ? palette.accent : palette.card,
-                          opacity: pressed ? 0.85 : 1,
-                        },
-                      ]}>
-                      <Text
-                        style={[
-                          styles.selectorItemText,
-                          { color: isActive ? palette.background : palette.text },
-                        ]}>
-                        {option.label}
-                      </Text>
-                      {isActive && (
-                        <Text style={[styles.selectorItemCheck, { color: palette.background }]}>
-                          ✓
-                        </Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-        <Modal
-          visible={notificationModalVisible}
-          transparent
-          animationType="slide"
-          statusBarTranslucent
-          onRequestClose={() => setNotificationModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <Pressable style={styles.modalBackdrop} onPress={() => setNotificationModalVisible(false)} />
-            <View
-              style={[
-                styles.selectorModal,
-                { backgroundColor: palette.card, borderColor: palette.border },
-              ]}>
-              <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
-              <Text style={[styles.selectorModalTitle, { color: palette.text }]}>
-                {t('settings.notificationCenter')}
-              </Text>
-              <ScrollView
-                style={styles.selectorModalList}
-                contentContainerStyle={styles.selectorModalListContent}
-                showsVerticalScrollIndicator={false}>
-                {notificationTypeOptions.map((option) => (
-                  <Pressable
-                    key={option.key}
-                    onPress={() => toggleNotificationType(option.key)}
-                    style={({ pressed }) => [
-                      styles.notificationItem,
-                      {
-                        borderColor: palette.border,
-                        backgroundColor: palette.card,
-                        opacity: pressed ? 0.85 : 1,
-                      },
-                    ]}>
-                    <Text style={[styles.notificationItemText, { color: palette.text }]}>
-                      {option.label}
-                    </Text>
-                    <Switch
-                      value={notificationTypes[option.key]}
-                      onValueChange={() => toggleNotificationType(option.key)}
-                      trackColor={{ false: palette.border, true: palette.accent }}
-                      thumbColor={palette.card}
-                      ios_backgroundColor={palette.border}
-                    />
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -380,74 +348,178 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
-  card: {
-    flex: 1,
-    margin: 16,
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-  },
   scrollContent: {
-    flexGrow: 1,
+    padding: 20,
     paddingBottom: 32,
   },
   header: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   heading: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
   },
   subheading: {
     fontSize: 14,
     marginTop: 4,
   },
-  section: {
-    marginTop: 22,
+  headerMargin: {
+    marginBottom: 8,
+    marginTop: 12,
   },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  optionRow: {
+  profileCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  option: {
+    alignItems: 'center',
+    borderRadius: 20,
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginRight: 10,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 18,
   },
-  optionText: {
-    fontSize: 14,
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  avatarInitials: {
+    fontSize: 20,
     fontWeight: '600',
   },
-  selectorButton: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+  profileBody: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  profileSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  profileAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumCard: {
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 18,
+  },
+  premiumTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  premiumSubtitle: {
+    fontSize: 14,
+    marginTop: 6,
+    color: '#fff',
+  },
+  premiumPromo: {
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
   },
-  selectorButtonText: {
+  premiumPromoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  premiumPromoSubtitle: {
+    fontSize: 12,
+    color: '#000',
+    marginTop: 4,
+  },
+  premiumIcon: {
+    marginRight: 12,
+  },
+  premiumTextWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  premiumTextGroup: {
+    flex: 1,
+  },
+  cardShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  premiumOutline: {
+    borderWidth: 1,
+    borderColor: '#000',
+  },
+  premiumWrapper: {
+    marginTop: 18,
+    paddingBottom: 24,
+  },
+  sectionCard: {
+    borderRadius: 28,
+    borderWidth: 1,
+    marginBottom: 18,
+    paddingTop: 16,
+    overflow: 'hidden',
+    paddingBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 18,
+  },
+  sectionShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  sectionText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  sectionLabel: {
     fontSize: 16,
     fontWeight: '600',
   },
-  selectorButtonSubtext: {
+  sectionHint: {
     fontSize: 12,
-    fontWeight: '500',
     marginTop: 4,
+  },
+  footer: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  footerButtonShadow: {
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 5,
+    width: '100%',
   },
   modalOverlay: {
     flex: 1,
@@ -469,18 +541,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    marginBottom: 12,
+    alignSelf: 'center',
+    marginBottom: 10,
   },
   selectorModalTitle: {
     fontSize: 18,
     fontWeight: '600',
+    textAlign: 'center',
     marginBottom: 12,
   },
   selectorModalList: {
     maxHeight: 320,
   },
   selectorModalListContent: {
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   selectorItem: {
     borderWidth: 1,
@@ -499,70 +573,5 @@ const styles = StyleSheet.create({
   selectorItemCheck: {
     fontSize: 18,
     fontWeight: '700',
-  },
-  notificationItem: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  notificationItemText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 30,
-  },
-  profileRow: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  profileRowLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  profileRowChevron: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  toggleRow: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  toggleLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  accountWarning: {
-    fontSize: 13,
-    marginTop: 6,
-  },
-  deleteButton: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: 14,
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

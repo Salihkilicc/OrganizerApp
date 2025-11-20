@@ -62,8 +62,33 @@ const getCategoryIcon = (category: PlanBlock['category']) => {
 };
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
-const WATER_FULL_ICON = '💧';
-const WATER_EMPTY_ICON = '🫙';
+const BOTTLE_RIDGE_OFFSETS = [10, 22, 34, 46];
+const BUTTON_CORNER_RADIUS = 20;
+const WaterBottleIcon = ({ color, filled }: { color: string; filled: boolean }) => {
+  const fillOpacity = filled ? 0.8 : 0;
+  return (
+    <View style={styles.bottleWrapper}>
+      <View style={[styles.bottleBody, { borderColor: color }]}>
+        <View style={[styles.bottleFill, { backgroundColor: color, opacity: fillOpacity }]} />
+        {BOTTLE_RIDGE_OFFSETS.map((offset) => (
+          <View
+            key={offset}
+            style={[
+              styles.bottleRidge,
+              {
+                bottom: `${offset}%`,
+                opacity: filled ? 1 : 0.25,
+                backgroundColor: color,
+              },
+            ]}
+          />
+        ))}
+        <View style={[styles.bottleNeck, { backgroundColor: color }]} />
+        <View style={[styles.bottleCap, { backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+};
 const createBottleScaleValues = () =>
   Array.from({ length: WATER_BOTTLE_COUNT }, () => new Animated.Value(1));
 
@@ -304,6 +329,7 @@ export default function TodayScreen() {
               onTouchStart={(event) => event.stopPropagation()}
               style={({ pressed }) => [
                 styles.weatherBubble,
+                styles.buttonShadow,
                 {
                   borderColor: palette.border,
                   backgroundColor: palette.card,
@@ -342,6 +368,7 @@ export default function TodayScreen() {
               style={({ pressed }) => [
                 styles.statBlock,
                 styles.pointsPressable,
+                styles.buttonShadow,
                 pressed && styles.pointsPressed,
               ]}>
               <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.points')}</Text>
@@ -359,16 +386,17 @@ export default function TodayScreen() {
         </View>
 
         {showWeeklyForecast && (
-          <View
-            onStartShouldSetResponder={() => true}
-            onTouchStart={(event) => event.stopPropagation()}
-            style={[
-              styles.weeklyCard,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-              },
-            ]}>
+        <View
+          onStartShouldSetResponder={() => true}
+          onTouchStart={(event) => event.stopPropagation()}
+          style={[
+            styles.weeklyCard,
+            styles.buttonShadow,
+            {
+              backgroundColor: palette.card,
+              borderColor: palette.border,
+            },
+          ]}>
             {weeklyPreview.length ? (
               weeklyPreview.map((day, index) => (
                 <View
@@ -395,6 +423,7 @@ export default function TodayScreen() {
         <View
           style={[
             styles.nextUpCard,
+            styles.buttonShadow,
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
           <Text style={[styles.nextUpLabel, { color: palette.text }]}>{t('today.nextUp')}</Text>
@@ -426,6 +455,7 @@ export default function TodayScreen() {
                 onPress={() => handleStartFocus(nextBlock)}
                 style={({ pressed }) => [
                   styles.startFocusButton,
+                  styles.buttonShadow,
                   {
                     backgroundColor: palette.accent,
                     opacity: pressed ? 0.85 : 1,
@@ -445,6 +475,7 @@ export default function TodayScreen() {
                 onPress={goToPlan}
                 style={({ pressed }) => [
                   styles.startFocusButton,
+                  styles.buttonShadow,
                   {
                     alignSelf: 'flex-start',
                     backgroundColor: palette.accent,
@@ -463,18 +494,17 @@ export default function TodayScreen() {
           {bottleStates.map((isFull, index) => (
             <AnimatedTouchableOpacity
               key={`water-${index}`}
-            onPress={() => handleWaterPress(index, isFull)}
+              onPress={() => handleWaterPress(index, isFull)}
               activeOpacity={0.7}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               style={[
                 styles.waterButton,
                 {
                   transform: [{ scale: bottleScales[index] }],
+                  opacity: isFull ? 1 : 0.25,
                 },
               ]}>
-              <Text style={[styles.waterIcon, { color: palette.text }]}>
-                {isFull ? WATER_FULL_ICON : WATER_EMPTY_ICON}
-              </Text>
+              <WaterBottleIcon color={palette.tint} filled={isFull} />
             </AnimatedTouchableOpacity>
           ))}
         </View>
@@ -497,6 +527,7 @@ export default function TodayScreen() {
                   onPress={goToPlan}
                   style={({ pressed }) => [
                     styles.startFocusButton,
+                    styles.buttonShadow,
                     {
                       alignSelf: 'center',
                       backgroundColor: palette.accent,
@@ -519,6 +550,7 @@ export default function TodayScreen() {
                     onPress={() => handleBlockPress(block)}
                     style={({ pressed }) => [
                       styles.blockRow,
+                      styles.buttonShadow,
                       {
                         borderColor: palette.border,
                         backgroundColor: palette.background,
@@ -643,7 +675,15 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     marginRight: 12,
   },
+  buttonShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+  },
   pointsPressable: {
+    borderRadius: BUTTON_CORNER_RADIUS,
     paddingVertical: 2,
     alignItems: 'flex-end',
   },
@@ -652,7 +692,7 @@ const styles = StyleSheet.create({
   },
   weatherBubble: {
     marginRight: 12,
-    borderRadius: 16,
+    borderRadius: BUTTON_CORNER_RADIUS,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -778,7 +818,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   startFocusButton: {
-    borderRadius: 999,
+    borderRadius: BUTTON_CORNER_RADIUS,
     paddingHorizontal: 18,
     paddingVertical: 10,
     marginTop: 12,
@@ -823,16 +863,61 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   waterButton: {
-    width: 32,
-    height: 32,
+    width: 48,
+    height: 54,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
     marginHorizontal: 4,
   },
-  waterIcon: {
-    fontSize: 26,
-    lineHeight: 32,
+  bottleWrapper: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: 38,
+    height: 56,
+    transform: [{ rotate: '-8deg' }],
+    paddingTop: 6,
+  },
+  bottleBody: {
+    width: 28,
+    height: 40,
+    borderRadius: 14,
+    borderWidth: 1.8,
+    borderColor: '#cfdce9',
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  bottleFill: {
+    position: 'absolute',
+    left: 3,
+    right: 3,
+    bottom: 6,
+    borderRadius: 10,
+    height: '72%',
+  },
+  bottleRidge: {
+    position: 'absolute',
+    alignSelf: 'center',
+    width: '66%',
+    height: 3,
+    borderRadius: 999,
+  },
+  bottleNeck: {
+    position: 'absolute',
+    top: -4,
+    alignSelf: 'center',
+    width: 22,
+    height: 12,
+    borderRadius: 6,
+  },
+  bottleCap: {
+    position: 'absolute',
+    top: -10,
+    alignSelf: 'center',
+    width: 26,
+    height: 8,
+    borderRadius: 4,
   },
   planWaterRow: {
     flexDirection: 'row',

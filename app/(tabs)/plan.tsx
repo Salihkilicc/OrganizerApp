@@ -121,10 +121,9 @@ export default function PlanScreen() {
   const selectedYear = selectedDateInstance.getFullYear();
   const selectedDateLabel = useMemo(() => {
     const dayName = selectedDateInstance.toLocaleDateString(undefined, { weekday: 'long' });
-    const dayNumber = selectedDateInstance.getDate().toString().padStart(2, '0');
     const monthName = selectedDateInstance.toLocaleDateString(undefined, { month: 'long' });
-    const yearNumber = selectedDateInstance.getFullYear();
-    return `${dayName}, ${dayNumber} ${monthName} ${yearNumber}`;
+    const dayNumber = selectedDateInstance.getDate();
+    return `${dayName} ${dayNumber} ${monthName}`;
   }, [selectedDateInstance]);
   const selectedMonthKey = `${selectedYear}-${selectedMonthIndex}`;
   const monthOptions = useMemo(() => {
@@ -347,12 +346,15 @@ export default function PlanScreen() {
               </Text>
               <Ionicons
                 name="chevron-down"
-                size={16}
+                size={14}
                 color={palette.text}
                 style={styles.monthIcon}
               />
             </Pressable>
-            <Text style={[styles.selectedDate, { color: palette.text }]} numberOfLines={1}>
+            <Text
+              style={[styles.selectedDate, { color: palette.text }]}
+              numberOfLines={2}
+              ellipsizeMode="tail">
               {selectedDateLabel}
             </Text>
           </View>
@@ -362,7 +364,6 @@ export default function PlanScreen() {
               style={({ pressed }) => [
                 styles.aiButton,
                 {
-                  borderColor: palette.text,
                   backgroundColor: palette.card,
                   opacity: pressed ? 0.7 : 1,
                 },
@@ -527,6 +528,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    marginTop: 8,
   },
   headerTitles: {
     flex: 1,
@@ -534,11 +536,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
+    marginTop: 4,
   },
   headerActions: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginRight: 6,
+    alignItems: 'flex-end',
+    marginRight: 18,
+    marginTop: 8,
   },
   monthSelector: {
     flexDirection: 'row',
@@ -547,25 +551,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     marginBottom: 0,
     alignSelf: 'flex-start',
+    marginTop: 4,
+    marginLeft: 12,
   },
   monthLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '400',
   },
   monthIcon: {
     marginLeft: 6,
   },
   selectedDate: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 0,
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
     marginLeft: 12,
+    flexShrink: 1,
+    lineHeight: 22,
   },
   aiButton: {
     borderRadius: 999,
-    borderWidth: 2,
+    borderWidth: 0,
     paddingHorizontal: 18,
     paddingVertical: 8,
+    marginLeft: -10,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
   },
   aiButtonContent: {
     flexDirection: 'row',
@@ -666,11 +681,11 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 999,
+    right: 16,
+    bottom: 12,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 5,

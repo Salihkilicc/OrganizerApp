@@ -219,18 +219,18 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
               styles.input,
               {
                 backgroundColor: palette.background,
-                color: palette.text,
+                color: '#000',
                 borderColor: palette.border,
               },
             ]}
             placeholder="Title"
-            placeholderTextColor={palette.border}
+            placeholderTextColor="#000"
             value={title}
             onChangeText={setTitle}
           />
           <View style={styles.sectionGap}>
             <View style={styles.timeRow}>
-              <View style={[styles.timeInputContainer, { borderColor: palette.border }]}>
+            <View style={styles.timeInputContainer}>
                 <Text style={[styles.label, { color: palette.text }]}>Start</Text>
                 <View style={styles.timeInputRow}>
                   <TextInput
@@ -271,7 +271,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 </View>
               </View>
               <View
-                style={[styles.timeInputContainer, styles.timeInputContainerRight, { borderColor: palette.border }]}>
+                style={[styles.timeInputContainer, styles.timeInputContainerRight]}>
                 <Text style={[styles.label, { color: palette.text }]}>End</Text>
                 <View style={styles.timeInputRow}>
                   <TextInput
@@ -347,12 +347,12 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 styles.noteInput,
                 {
                   backgroundColor: palette.background,
-                  color: palette.text,
+                  color: '#000',
                   borderColor: palette.border,
                 },
               ]}
               placeholder="Note (optional)"
-              placeholderTextColor={palette.border}
+              placeholderTextColor="#000"
               multiline
               textAlignVertical="top"
               value={note}
@@ -469,7 +469,6 @@ const styles = StyleSheet.create({
   timeInputContainer: {
     flex: 1,
     borderRadius: 12,
-    borderWidth: 1,
     padding: 16,
   },
   timeInputContainerRight: {
