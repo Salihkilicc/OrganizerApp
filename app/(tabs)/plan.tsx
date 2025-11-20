@@ -492,11 +492,12 @@ export default function PlanScreen() {
           style={({ pressed }) => [
             styles.fab,
             {
-              backgroundColor: palette.accent,
+              backgroundColor: palette.card,
               opacity: pressed ? 0.8 : 1,
+              shadowColor: palette.border,
             },
           ]}>
-          <Text style={[styles.fabText, { color: palette.background }]}>+</Text>
+          <Ionicons name="add-circle" size={48} color={palette.tint} />
         </Pressable>
       )}
       <PlanEditor
@@ -682,13 +683,18 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 12,
+    bottom: 90,
     width: 64,
     height: 64,
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 5,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   fabText: {
     fontSize: 32,

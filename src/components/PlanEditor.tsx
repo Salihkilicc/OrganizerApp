@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   sectionGap: {
-    marginTop: 18,
+    marginTop: 10,
   },
   input: {
     borderRadius: 12,
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     borderWidth: 1,
     borderRadius: 12,
-    padding: 8,
+    padding: 6,
   },
   categoryChip: {
     borderRadius: 10,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   timeSegmentInput: {
     width: 60,

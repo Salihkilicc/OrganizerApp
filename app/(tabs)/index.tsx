@@ -324,64 +324,70 @@ export default function TodayScreen() {
           </View>
 
           <View style={styles.headerStats}>
-            <Pressable
-              onPress={() => setShowWeeklyForecast((prev) => !prev)}
-              onTouchStart={(event) => event.stopPropagation()}
-              style={({ pressed }) => [
-                styles.weatherBubble,
-                styles.buttonShadow,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                },
-                pressed && styles.weatherBubblePressed,
-              ]}>
-              <Text
-                style={[
-                  styles.weatherBubbleIcon,
-                  { color: weatherError ? palette.accent : palette.text },
-                ]}>
-                {weatherLoading ? '' : weatherError ? '❗' : icon ?? '🌡️'}
-              </Text>
-              <Text style={[styles.weatherBubbleTemp, { color: palette.text }]}>
-                {weatherLoading
-                  ? '--°'
-                  : weatherError
-                  ? weatherError === 'Location off'
-                    ? weatherError
-                    : '--°'
-                  : temperature !== null
-                  ? `${Math.round(temperature)}°`
-                  : '--°'}
-              </Text>
-            </Pressable>
-
-            <View style={[styles.statBlock, styles.streakBlock]}>
-              <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.streak')}</Text>
-              <Text style={[styles.statValue, { color: palette.text }]}>
-                {streakDays} days
-              </Text>
-            </View>
-
-            <Pressable
-              onPress={() => router.push('/points')}
-              style={({ pressed }) => [
-                styles.statBlock,
-                styles.pointsPressable,
-                styles.buttonShadow,
-                pressed && styles.pointsPressed,
-              ]}>
-              <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.points')}</Text>
-              <View
-                style={[
-                  styles.pointsBadge,
-                  { backgroundColor: palette.accent, shadowColor: palette.text },
-                ]}>
-                <Text style={[styles.pointsValue, { color: palette.background }]}>
-                  {points}
+            <View style={styles.statsInline}>
+              <View style={[styles.statBlock, styles.streakBlock]}>
+                <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.streak')}</Text>
+                <Text
+                  style={[
+                    styles.streakValue,
+                    { color: palette.text },
+                  ]}>
+                  {streakDays} days
                 </Text>
               </View>
-            </Pressable>
+
+              <Pressable
+                onPress={() => setShowWeeklyForecast((prev) => !prev)}
+                onTouchStart={(event) => event.stopPropagation()}
+                style={({ pressed }) => [
+                  styles.weatherBubble,
+                  styles.buttonShadow,
+                  {
+                    borderColor: palette.border,
+                    backgroundColor: palette.card,
+                  },
+                  pressed && styles.weatherBubblePressed,
+                ]}>
+                <Text
+                  style={[
+                    styles.weatherBubbleIcon,
+                    { color: weatherError ? palette.accent : palette.text },
+                  ]}>
+                  {weatherLoading ? '' : weatherError ? '❗' : icon ?? '🌡️'}
+                </Text>
+                <Text style={[styles.weatherBubbleTemp, { color: palette.text }]}>
+                  {weatherLoading
+                    ? '--°'
+                    : weatherError
+                    ? weatherError === 'Location off'
+                      ? weatherError
+                      : '--°'
+                    : temperature !== null
+                    ? `${Math.round(temperature)}°`
+                    : '--°'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => router.push('/points')}
+                style={({ pressed }) => [
+                  styles.statBlock,
+                  styles.pointsPressable,
+                  styles.buttonShadow,
+                  pressed && styles.pointsPressed,
+                ]}>
+                <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.points')}</Text>
+                <View
+                  style={[
+                    styles.pointsBadge,
+                    { backgroundColor: palette.accent, shadowColor: palette.text },
+                  ]}>
+                  <Text style={[styles.pointsValue, { color: palette.background }]}>
+                    {points}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -653,6 +659,7 @@ const styles = StyleSheet.create({
   },
   friendsStrip: {
     marginTop: 12,
+    marginLeft: 4,
   },
   friendsLabel: {
     fontSize: 10,
@@ -668,6 +675,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginTop: 12,
   },
+  statsInline: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginLeft: 12,
+    marginRight: 8,
+  },
   statBlock: {
     alignItems: 'flex-start',
   },
@@ -677,21 +690,23 @@ const styles = StyleSheet.create({
   },
   buttonShadow: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 10,
   },
   pointsPressable: {
     borderRadius: BUTTON_CORNER_RADIUS,
     paddingVertical: 2,
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
+    marginLeft: 12,
+    marginTop: -2,
   },
   pointsPressed: {
     opacity: 0.75,
   },
   weatherBubble: {
-    marginRight: 12,
+    marginLeft: 12,
     borderRadius: BUTTON_CORNER_RADIUS,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -750,6 +765,10 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 18,
+    fontWeight: '600',
+  },
+  streakValue: {
+    fontSize: 16,
     fontWeight: '600',
   },
   pointsBadge: {

@@ -138,6 +138,18 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
           <View style={styles.headerRightColumn}>
+            <Pressable
+              onPress={() => router.back()}
+              style={[
+                styles.backButton,
+                styles.backButtonSpacing,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                },
+              ]}>
+              <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
+            </Pressable>
             <View style={styles.headerStats}>
               <Text style={[styles.headerStatValue, { color: palette.accent }]}>
                 {t('profile.totalPoints')}: {totalPoints} pts
@@ -146,17 +158,6 @@ export default function ProfileScreen() {
                 {t('profile.streak')}: {streakDays} {t('profile.days')}
               </Text>
             </View>
-            <Pressable
-              onPress={() => router.back()}
-              style={[
-                styles.backButton,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                },
-              ]}>
-              <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
-            </Pressable>
           </View>
         </View>
 
@@ -323,6 +324,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+  backButtonSpacing: {
+    marginBottom: scaleValue(8),
   },
   backIcon: {
     fontSize: scaleValue(20),

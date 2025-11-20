@@ -110,6 +110,32 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.premiumWrapper}>
+          <Pressable
+            onPress={() => router.push('/premium')}
+            style={({ pressed }) => [
+              styles.premiumPromo,
+              styles.cardShadow,
+              styles.premiumOutline,
+              {
+                opacity: pressed ? 0.9 : 1,
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+              },
+            ]}>
+            <View style={styles.premiumTextWrapper}>
+              <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
+              <View style={styles.premiumTextGroup}>
+                <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>Premium is calling</Text>
+                <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
+                  Tap to unlock powerful focus tools
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={palette.text} />
+          </Pressable>
+        </View>
+
         <View
           style={[
             styles.sectionCard,
@@ -117,7 +143,7 @@ export default function SettingsScreen() {
             {
               backgroundColor: palette.card,
               borderColor: palette.border,
-              marginTop: 16,
+              marginTop: 0,
             },
           ]}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>Your settings</Text>
@@ -250,35 +276,11 @@ export default function SettingsScreen() {
               <Text style={[styles.sectionLabel, { color: '#D32F2F' }]}>Delete Account</Text>
             </View>
           </Pressable>
-        </View>
-
-        <View style={styles.footer}>
-          <View style={styles.footerButtonShadow}>
-            <Button title={t('settings.signOut')} onPress={() => void signOut()} type="secondary" />
-          </View>
-        </View>
-
-        <View style={styles.premiumWrapper}>
-          <Pressable
-            onPress={() => router.push('/premium')}
-            style={({ pressed }) => [
-              styles.premiumPromo,
-              styles.cardShadow,
-              styles.premiumOutline,
-              {
-                opacity: pressed ? 0.9 : 1,
-                backgroundColor: palette.card,
-              },
-            ]}>
-            <View style={styles.premiumTextWrapper}>
-              <CrownIcon color="#000" size={40} style={styles.premiumIcon} />
-              <View style={styles.premiumTextGroup}>
-                <Text style={styles.premiumPromoTitle}>Premium is calling</Text>
-                <Text style={styles.premiumPromoSubtitle}>Tap to unlock powerful focus tools</Text>
-              </View>
+          <View style={styles.signOutInline}>
+            <View style={styles.footerButtonShadow}>
+              <Button title={t('settings.signOut')} onPress={() => void signOut()} type="secondary" />
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#000" />
-          </Pressable>
+          </View>
         </View>
 
       </ScrollView>
@@ -424,7 +426,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 16,
-    marginBottom: 18,
+    marginBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -432,11 +434,9 @@ const styles = StyleSheet.create({
   premiumPromoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
   },
   premiumPromoSubtitle: {
     fontSize: 12,
-    color: '#000',
     marginTop: 4,
   },
   premiumIcon: {
@@ -459,11 +459,9 @@ const styles = StyleSheet.create({
   },
   premiumOutline: {
     borderWidth: 1,
-    borderColor: '#000',
   },
   premiumWrapper: {
-    marginTop: 18,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   sectionCard: {
     borderRadius: 28,
@@ -508,10 +506,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  footer: {
-    marginTop: 12,
-    marginBottom: 12,
-  },
   footerButtonShadow: {
     borderRadius: 22,
     shadowColor: '#000',
@@ -520,6 +514,10 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 5,
     width: '100%',
+  },
+  signOutInline: {
+    marginTop: 16,
+    paddingHorizontal: 8,
   },
   modalOverlay: {
     flex: 1,

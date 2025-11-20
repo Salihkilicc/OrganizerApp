@@ -48,11 +48,12 @@ export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect
                 styles.day,
                 {
                   backgroundColor: isSelected ? palette.accent : palette.card,
+                  borderColor: isSelected ? 'transparent' : palette.border,
                   shadowColor: palette.accent,
-                  shadowOpacity: isSelected ? 0.25 : 0,
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowRadius: isSelected ? 12 : 0,
-                  elevation: isSelected ? 4 : 0,
+                  shadowOpacity: isSelected ? 0.3 : 0.12,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowRadius: isSelected ? 14 : 6,
+                  elevation: isSelected ? 6 : 3,
                 },
                 pressed && styles.dayPressed,
               ]}>
@@ -77,6 +78,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 4,
     paddingHorizontal: 2,
+    marginTop: -8,
   },
   scrollContent: {
     flexDirection: 'row',

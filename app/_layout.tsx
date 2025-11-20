@@ -3,7 +3,7 @@ import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 /* eslint-enable import/no-duplicates */
 import React, { useEffect, useMemo } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +22,32 @@ import { ensureInitialized } from '@/lib/notifications';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
 
 WebBrowser.maybeCompleteAuthSession();
+
+// Force SF Pro typography globally so every Text component inherits it.
+const SF_PRO_FONT_FAMILY =
+  Platform.select({
+    ios: 'SF Pro Display',
+    web: '"SF Pro Display", "SF Pro Text", "-apple-system", "BlinkMacSystemFont", "Segoe UI", system-ui, sans-serif',
+    default: 'SF Pro Display',
+  }) ?? 'System';
+
+const applySfProFont = () => {
+  const defaultTextProps = Text.defaultProps ?? {};
+  const fontStyle = { fontFamily: SF_PRO_FONT_FAMILY };
+  const existingStyle = defaultTextProps.style;
+  const combinedStyle = existingStyle
+    ? Array.isArray(existingStyle)
+      ? [fontStyle, ...existingStyle]
+      : [fontStyle, existingStyle]
+    : fontStyle;
+
+  Text.defaultProps = {
+    ...defaultTextProps,
+    style: combinedStyle,
+  };
+};
+
+applySfProFont();
 
 export const unstable_settings = {
   anchor: '(tabs)',

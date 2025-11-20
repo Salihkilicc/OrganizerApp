@@ -9,35 +9,37 @@ export default function TabLayout() {
   const { palette } = useTheme();
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: palette.accent,
-        tabBarInactiveTintColor: palette.text,
-        headerShown: false,
-        tabBarButton: HapticTab,
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: palette.accent,
+          tabBarInactiveTintColor: palette.text,
+          headerShown: false,
+          tabBarButton: HapticTab,
         tabBarStyle: {
           position: 'absolute',
-          marginHorizontal: 16,
+          left: 12,
+          right: 12,
           marginBottom: -6,
           bottom: -6,
-          borderRadius: 26,
-          height: 78,
-          paddingTop: 8,
+          borderRadius: 28,
+          height: 80,
+          paddingTop: 10,
           backgroundColor: palette.card,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.1,
-          shadowRadius: 16,
-          elevation: 8,
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.25,
+          shadowRadius: 20,
+          elevation: 12,
         },
-        tabBarItemStyle: {
-          paddingTop: 10,
-          paddingBottom: 10,
-        },
-        tabBarIconStyle: {
-          marginBottom: 2,
-        },
-      }}>
+          tabBarItemStyle: {
+            paddingTop: 10,
+            paddingBottom: 10,
+          },
+          tabBarIconStyle: {
+            marginBottom: -20,
+          },
+          tabBarShowLabel: false,
+        }}>
       <Tabs.Screen
         name="index"
         options={{
