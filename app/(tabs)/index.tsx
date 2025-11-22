@@ -99,6 +99,7 @@ export default function TodayScreen() {
   const goToPlan = () => {
     router.push('/plan');
   };
+  const loadPlans = usePlans((state) => state.load);
   const user = useAuth((state) => state.user);
   const points = usePoints((state) => state.total);
   const dailyPoints = usePoints((state) => state.daily);
@@ -207,6 +208,10 @@ export default function TodayScreen() {
   useEffect(() => {
     ensureTodayInitialized();
   }, [ensureTodayInitialized, today]);
+
+  useEffect(() => {
+    loadPlans().catch((error) => console.warn('[TodayScreen] Failed to load plans', error));
+  }, [loadPlans]);
   const weeklyPreview = weekly.slice(0, 7);
 
   const todayBlocks = useMemo(() => {

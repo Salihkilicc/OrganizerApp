@@ -31,6 +31,7 @@ export type PlanBlock = {
 
 export type PlansStore = {
   blocks: PlanBlock[];
+  hydrated: boolean;
   load: () => Promise<void>;
   add: (b: Omit<PlanBlock, 'id'>) => Promise<string>;
   addMany: (blocks: Omit<PlanBlock, 'id'>[]) => Promise<string[]>;
@@ -174,116 +175,139 @@ const loadBlocks = async (): Promise<PlanBlock[]> => {
 
 const nextId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-export const usePlans = create<PlansStore>((set, get) => ({
-  blocks: [],
+const mergeBlocks = (loaded: PlanBlock[], existing: PlanBlock[]): PlanBlock[] => {
+  if (!existing.length) return loaded;
+  const merged = new Map<string, PlanBlock>();
+  loaded.forEach((block) => merged.set(block.id, block));
+  existing.forEach((block) => merged.set(block.id, block));
+  return Array.from(merged.values());
+};
 
-  load: async () => {
-    const blocks = await loadBlocks();
-    set({ blocks });
-  },
+export const usePlans = create<PlansStore>((set, get) => {
+  const load = async () => {
+    if (get().hydrated) return;
+    try {
+      const blocks = await loadBlocks();
+      set((state) => ({
+        blocks: mergeBlocks(blocks, state.blocks),
+        hydrated: true,
+      }));
+    } catch (error) {
+      console.warn('[usePlans/load]', error);
+    }
+  };
 
-  add: async (block) => {
-    const next: PlanBlock = {
-      id: nextId(),
-      category: block.category ?? 'focus',
-      done: false,
-      rewarded: false,
-      createdAt: new Date().toISOString(),
-      ...block,
-    };
-    const updated = [...get().blocks, next];
-    set({ blocks: updated });
-    console.log('[usePlans/add]', next);
-    schedulePersist(updated);
-    return next.id;
-  },
+  void load();
 
-  addMany: async (blocks) => {
-    if (!blocks.length) return [];
-    const now = new Date().toISOString();
-    const nextBlocks: PlanBlock[] = blocks.map((block) => ({
-      id: nextId(),
-      category: block.category ?? 'focus',
-      done: false,
-      rewarded: false,
-      createdAt: now,
-      ...block,
-    }));
-    const updated = [...get().blocks, ...nextBlocks];
-    set({ blocks: updated });
-    console.log('[usePlans/addMany]', nextBlocks);
-    schedulePersist(updated);
-    return nextBlocks.map((block) => block.id);
-  },
+  return {
+    blocks: [],
+    hydrated: false,
 
-  update: async (id, patch) => {
-    console.log('[usePlans/update]', id, patch);
-    const existing = get().blocks.find((block) => block.id === id);
-    if (!existing) return;
-    const nextCategory = patch.category ?? existing.category ?? 'other';
-    const wasDone = existing.done ?? false;
-    const nextDone = patch.done ?? wasDone;
-    const nextStartMin = patch.startMin ?? existing.startMin;
-    const nextEndMin = patch.endMin ?? existing.endMin;
-    const durationMinutes = Math.max(0, nextEndMin - nextStartMin);
-    const now = new Date();
-    const today = todayDate();
-    const rewardable = isRewardable(existing, nextDone, now, durationMinutes, today);
-    let awardedPoints = 0;
-    if (rewardable) {
-      const pointsState = usePoints.getState();
-      pointsState.resetDailyIfNeeded(today);
-      const { planPoints } = pointsState.daily;
-      const streakDays = useStreak.getState().streakDays;
-      awardedPoints = calculatePlanPointsToAward({
-        durationMinutes,
-        category: nextCategory,
-        streakDays,
-        dailyPlanPoints: planPoints,
-      });
-      if (awardedPoints > 0) {
-        pointsState.addPlanPoints(awardedPoints);
-        // TODO: show +XX pts micro-feedback.
+    load,
+
+    add: async (block) => {
+      const next: PlanBlock = {
+        id: nextId(),
+        category: block.category ?? 'focus',
+        done: false,
+        rewarded: false,
+        createdAt: new Date().toISOString(),
+        ...block,
+      };
+      const updated = [...get().blocks, next];
+      set({ blocks: updated });
+      console.log('[usePlans/add]', next);
+      schedulePersist(updated);
+      return next.id;
+    },
+
+    addMany: async (blocks) => {
+      if (!blocks.length) return [];
+      const now = new Date().toISOString();
+      const nextBlocks: PlanBlock[] = blocks.map((block) => ({
+        id: nextId(),
+        category: block.category ?? 'focus',
+        done: false,
+        rewarded: false,
+        createdAt: now,
+        ...block,
+      }));
+      const updated = [...get().blocks, ...nextBlocks];
+      set({ blocks: updated });
+      console.log('[usePlans/addMany]', nextBlocks);
+      schedulePersist(updated);
+      return nextBlocks.map((block) => block.id);
+    },
+
+    update: async (id, patch) => {
+      console.log('[usePlans/update]', id, patch);
+      const existing = get().blocks.find((block) => block.id === id);
+      if (!existing) return;
+      const nextCategory = patch.category ?? existing.category ?? 'other';
+      const wasDone = existing.done ?? false;
+      const nextDone = patch.done ?? wasDone;
+      const nextStartMin = patch.startMin ?? existing.startMin;
+      const nextEndMin = patch.endMin ?? existing.endMin;
+      const durationMinutes = Math.max(0, nextEndMin - nextStartMin);
+      const now = new Date();
+      const today = todayDate();
+      const rewardable = isRewardable(existing, nextDone, now, durationMinutes, today);
+      let awardedPoints = 0;
+      if (rewardable) {
+        const pointsState = usePoints.getState();
+        pointsState.resetDailyIfNeeded(today);
+        const { planPoints } = pointsState.daily;
+        const streakDays = useStreak.getState().streakDays;
+        awardedPoints = calculatePlanPointsToAward({
+          durationMinutes,
+          category: nextCategory,
+          streakDays,
+          dailyPlanPoints: planPoints,
+        });
+        if (awardedPoints > 0) {
+          pointsState.addPlanPoints(awardedPoints);
+          // TODO: show +XX pts micro-feedback.
+        }
       }
-    }
-    if (!wasDone && nextDone) {
-      void useStreak.getState().bump(existing.date);
-      usePoints.getState().recordPlanCompletion();
-    }
-    const nextRewarded =
-      awardedPoints > 0
-        ? true
-        : patch.rewarded ?? existing.rewarded ?? false;
+      if (!wasDone && nextDone) {
+        void useStreak.getState().bump(existing.date);
+        usePoints.getState().recordPlanCompletion();
+      }
+      const nextRewarded =
+        awardedPoints > 0
+          ? true
+          : patch.rewarded ?? existing.rewarded ?? false;
 
-    const updated = get().blocks.map((block) =>
-      block.id === id
-        ? {
-            ...block,
-            ...patch,
-            category: nextCategory,
-            done: nextDone,
-            rewarded: nextRewarded,
-          }
-        : block,
-    );
-    set({ blocks: updated });
-    schedulePersist(updated);
-  },
+      const updated = get().blocks.map((block) =>
+        block.id === id
+          ? {
+              ...block,
+              ...patch,
+              category: nextCategory,
+              done: nextDone,
+              rewarded: nextRewarded,
+            }
+          : block,
+      );
+      set({ blocks: updated });
+      schedulePersist(updated);
+    },
 
-  remove: async (id) => {
-    console.log('[usePlans/remove]', id);
-    const updated = get().blocks.filter((block) => block.id !== id);
-    set({ blocks: updated });
-    schedulePersist(updated);
-  },
+    remove: async (id) => {
+      console.log('[usePlans/remove]', id);
+      const updated = get().blocks.filter((block) => block.id !== id);
+      set({ blocks: updated });
+      schedulePersist(updated);
+    },
 
-  clearByDate: (date) => {
-    const updated = get().blocks.filter((block) => block.date !== date);
-    set({ blocks: updated });
-    schedulePersist(updated);
-  },
+    clearByDate: (date) => {
+      const updated = get().blocks.filter((block) => block.date !== date);
+      set({ blocks: updated });
+      schedulePersist(updated);
+    },
 
-  byDate: (dateISO: string) => {
-    return get().blocks.filter((block) => block.date === dateISO);
-  },
-}));
+    byDate: (dateISO: string) => {
+      return get().blocks.filter((block) => block.date === dateISO);
+    },
+  };
+});

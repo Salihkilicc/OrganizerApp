@@ -87,7 +87,7 @@ export const useWater = create<WaterState>()(
           const nextRewards = [...normalizedRewards];
           if (!alreadyRewarded) {
             nextRewards[index] = true;
-            usePoints.getState().addPlanPoints(5);
+            usePoints.getState().addPlanPoints(10);
           }
 
           return {
