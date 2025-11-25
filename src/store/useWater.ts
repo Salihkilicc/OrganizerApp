@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 import { usePoints } from '@/store/usePoints';
 import { todayDate } from '@/store/usePlans';
@@ -126,7 +126,7 @@ export const useWater = create<WaterState>()(
     },
     {
       name: STORAGE_KEY,
-      getStorage: () => AsyncStorage,
+      storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.water = normalizeWaterState(state.water);

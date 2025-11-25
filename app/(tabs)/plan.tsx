@@ -249,7 +249,7 @@ export default function PlanScreen() {
 
   const handleAiPlanPress = useCallback(() => {
     if (!isPremium) {
-      router.push('/premium');
+      router.push('/paywall');
       return;
     }
     setAiDate(selectedDate);

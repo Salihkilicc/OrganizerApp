@@ -112,7 +112,7 @@ export default function SettingsScreen() {
 
         <View style={styles.premiumWrapper}>
           <Pressable
-            onPress={() => router.push('/premium')}
+            onPress={() => router.push('/paywall')}
             style={({ pressed }) => [
               styles.premiumPromo,
               styles.cardShadow,

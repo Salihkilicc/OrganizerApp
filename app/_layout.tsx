@@ -17,7 +17,7 @@ import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
 import { useTheme } from '@/store/useTheme';
 import { useLanguage } from '@/store/useLanguage';
 import { useProfileAppearance } from '@/store/useProfileAppearance';
-import { configureRevenueCat, addCustomerInfoListener } from '@/lib/revenuecat';
+import { configureRevenueCat } from '@/lib/revenuecat';
 import { ensureInitialized } from '@/lib/notifications';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
 
@@ -91,10 +91,6 @@ export default function RootLayout() {
   const themeKey = useTheme((state) => state.themeKey);
   const palette = useTheme((state) => state.palette);
   const focusTick = useFocusMode((state) => state.tick);
-  const refreshCustomerInfo = useRevenueCatStore((state) => state.refreshCustomerInfo);
-  const refreshOfferings = useRevenueCatStore((state) => state.refreshOfferings);
-  const setCustomerInfo = useRevenueCatStore((state) => state.setCustomerInfo);
-
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -121,24 +117,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     configureRevenueCat();
-    const bootstrap = async () => {
-      try {
-        await refreshCustomerInfo();
-        await refreshOfferings();
-      } catch (error) {
-        console.error('[RevenueCat] bootstrap failed', error);
-      }
-    };
-
-    bootstrap();
-    const unsubscribe = addCustomerInfoListener((info) => {
-      setCustomerInfo(info);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [refreshCustomerInfo, refreshOfferings, setCustomerInfo]);
+    void useRevenueCatStore.getState().refresh();
+  }, []);
 
   useEffect(() => {
     if (loading) {
@@ -211,6 +191,7 @@ export default function RootLayout() {
             <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="focus" options={{ headerShown: false }} />
             <Stack.Screen name="premium" options={{ headerShown: false }} />
+            <Stack.Screen name="paywall" options={{ headerShown: false }} />
             <Stack.Screen name="language" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
           </Stack>

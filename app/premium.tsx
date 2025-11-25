@@ -10,23 +10,19 @@ import {
   Text,
   View,
 } from 'react-native';
-import RevenueCatUI from 'react-native-purchases-ui';
+import type { PurchasesError, PurchasesPackage } from 'react-native-purchases';
+import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/store/useTheme';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
 import { useTranslation } from '@/i18n';
 import type { TranslationKey } from '@/i18n/translations';
 import {
-  getCurrentOffering,
-  getPaywallResultMessage,
-  getSupportedPackages,
-  isEntitlementActive,
-  isPurchasesError,
-  ORGANIZER_PRO_ENTITLEMENT,
-  presentCustomerCenter,
-  presentPaywallIfNeeded,
-  purchasePackage,
-  restorePurchases,
+  ENTITLEMENT_ID,
+  getMonthlyAndYearlyPackages,
+  isEntitledToPremium,
+  purchasePackageAndGetCustomerInfo,
+  restoreAndGetCustomerInfo,
 } from '@/lib/revenuecat';
 import { PURCHASES_ERROR_CODE } from '@revenuecat/purchases-typescript-internal';
 
@@ -59,6 +55,9 @@ const premiumFeatures: PremiumFeature[] = [
   },
 ];
 
+const isPurchasesError = (value: unknown): value is PurchasesError =>
+  typeof value === 'object' && value !== null && 'code' in value && 'message' in value;
+
 const formatFriendlyError = (error: unknown) => {
   if (isPurchasesError(error)) {
     if (error.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
@@ -70,6 +69,23 @@ const formatFriendlyError = (error: unknown) => {
     return error.message;
   }
   return 'Something went wrong. Try again later.';
+};
+
+const getPaywallResultMessage = (result: PAYWALL_RESULT | null | undefined) => {
+  switch (result) {
+    case PAYWALL_RESULT.PURCHASED:
+      return 'Purchase confirmed via RevenueCat paywall.';
+    case PAYWALL_RESULT.RESTORED:
+      return 'Restored entitlements via RevenueCat paywall.';
+    case PAYWALL_RESULT.CANCELLED:
+      return 'Paywall closed without action.';
+    case PAYWALL_RESULT.ERROR:
+      return 'Paywall encountered an error.';
+    case PAYWALL_RESULT.NOT_PRESENTED:
+      return 'Paywall was not presented because entitlement is already active.';
+    default:
+      return null;
+  }
 };
 
 const formatDateLabel = (value?: string | null) => {
@@ -87,32 +103,36 @@ export default function PremiumScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const customerInfo = useRevenueCatStore((state) => state.customerInfo);
-  const offerings = useRevenueCatStore((state) => state.offerings);
-  const loadingOfferings = useRevenueCatStore((state) => state.loadingOfferings);
-  const loadingCustomerInfo = useRevenueCatStore((state) => state.loadingCustomerInfo);
-  const storeError = useRevenueCatStore((state) => state.error);
-  const refreshCustomerInfo = useRevenueCatStore((state) => state.refreshCustomerInfo);
-  const refreshOfferings = useRevenueCatStore((state) => state.refreshOfferings);
-  const setCustomerInfo = useRevenueCatStore((state) => state.setCustomerInfo);
+  const currentOffering = useRevenueCatStore((state) => state.currentOffering);
+  const loading = useRevenueCatStore((state) => state.loading);
+  const refresh = useRevenueCatStore((state) => state.refresh);
+  const setFromCustomerInfo = useRevenueCatStore(
+    (state) => state.setFromCustomerInfo,
+  );
   const [purchasingPackageId, setPurchasingPackageId] = useState<string | null>(null);
-  const [showCustomerCenter, setShowCustomerCenter] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!offerings) {
-      void refreshOfferings();
+    if (!customerInfo || !currentOffering) {
+      void refresh();
     }
-  }, [offerings, refreshOfferings]);
+  }, [currentOffering, customerInfo, refresh]);
 
-  useEffect(() => {
-    if (!customerInfo) {
-      void refreshCustomerInfo();
+  const { monthly, yearly } = useMemo(
+    () => getMonthlyAndYearlyPackages(currentOffering),
+    [currentOffering],
+  );
+  const subscriptionPackages = useMemo(() => {
+    const list: PurchasesPackage[] = [];
+    if (monthly) {
+      list.push(monthly);
     }
-  }, [customerInfo, refreshCustomerInfo]);
-
-  const availablePackages = useMemo(() => getSupportedPackages(offerings), [offerings]);
-  const currentOffering = useMemo(() => getCurrentOffering(offerings), [offerings]);
-  const entitlement = customerInfo?.entitlements.active[ORGANIZER_PRO_ENTITLEMENT];
+    if (yearly) {
+      list.push(yearly);
+    }
+    return list;
+  }, [monthly, yearly]);
+  const entitlement = customerInfo?.entitlements.active[ENTITLEMENT_ID];
   const isPremiumActive = Boolean(entitlement?.isActive);
   const statusColor = isPremiumActive ? palette.accent : palette.text;
   const activeEntitlements = Object.keys(customerInfo?.entitlements.active ?? {});
@@ -121,20 +141,16 @@ export default function PremiumScreen() {
     ? customerInfo.activeSubscriptions.join(', ')
     : 'None';
   const recentProduct = customerInfo?.allPurchasedProductIdentifiers?.slice(-1).join(', ') ?? 'None';
-  const loadingAny = loadingOfferings || loadingCustomerInfo;
+  const loadingAny = Boolean(loading || purchasingPackageId);
 
   const handlePurchasePackage = useCallback(
-    async (pkgId: string) => {
-      const pkg = availablePackages.find((item) => item.identifier === pkgId);
-      if (!pkg) {
-        return;
-      }
+    async (pkg: PurchasesPackage) => {
       setLocalError(null);
-      setPurchasingPackageId(pkgId);
+      setPurchasingPackageId(pkg.identifier);
       try {
-        const info = await purchasePackage(pkg);
-        setCustomerInfo(info);
-        const successMessage = isEntitlementActive(info)
+        const info = await purchasePackageAndGetCustomerInfo(pkg);
+        setFromCustomerInfo(info);
+        const successMessage = isEntitledToPremium(info)
           ? 'Organizer Pro is unlocked.'
           : 'Purchase succeeded, RevenueCat is syncing your entitlement.';
         Alert.alert('Purchase complete', successMessage);
@@ -144,32 +160,32 @@ export default function PremiumScreen() {
         Alert.alert('Could not purchase', message);
       } finally {
         setPurchasingPackageId(null);
-        void refreshCustomerInfo();
       }
     },
-    [availablePackages, refreshCustomerInfo, setCustomerInfo],
+    [setFromCustomerInfo],
   );
 
   const handleRestore = useCallback(async () => {
     setLocalError(null);
     try {
-      const info = await restorePurchases();
-      setCustomerInfo(info);
-      Alert.alert('Restore complete', 'Restored purchases and refreshed entitlements.');
+      const info = await restoreAndGetCustomerInfo();
+      setFromCustomerInfo(info);
+      const message = isEntitledToPremium(info)
+        ? 'Restored purchases and refreshed entitlements.'
+        : 'No purchases were restored.';
+      Alert.alert('Restore complete', message);
     } catch (error) {
       const message = formatFriendlyError(error);
       setLocalError(message);
       Alert.alert('Restore failed', message);
-    } finally {
-      void refreshCustomerInfo();
     }
-  }, [refreshCustomerInfo, setCustomerInfo]);
+  }, [setFromCustomerInfo]);
 
   const handleShowPaywall = useCallback(async () => {
     setLocalError(null);
     try {
-      const result = await presentPaywallIfNeeded({
-        requiredEntitlementIdentifier: ORGANIZER_PRO_ENTITLEMENT,
+      const result = await RevenueCatUI.presentPaywallIfNeeded({
+        requiredEntitlementIdentifier: ENTITLEMENT_ID,
         offering: currentOffering ?? undefined,
         displayCloseButton: true,
       });
@@ -182,19 +198,10 @@ export default function PremiumScreen() {
       setLocalError(message);
       Alert.alert('Paywall failed', message);
     } finally {
-      void refreshCustomerInfo();
+      void refresh();
     }
-  }, [currentOffering, refreshCustomerInfo]);
+  }, [currentOffering, refresh]);
 
-  const handlePresentCustomerCenter = useCallback(async () => {
-    try {
-      await presentCustomerCenter();
-    } catch (error) {
-      const message = formatFriendlyError(error);
-      setLocalError(message);
-      Alert.alert('Customer center failed', message);
-    }
-  }, []);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
@@ -315,11 +322,11 @@ export default function PremiumScreen() {
               </Text>
             </View>
           </View>
-          {loadingCustomerInfo && (
+          {loading && (
             <View style={styles.loaderRow}>
               <ActivityIndicator color={palette.accent} />
               <Text style={[styles.loaderText, { color: palette.text }]}>
-                Fetching customer info...
+                Refreshing subscription info...
               </Text>
             </View>
           )}
@@ -330,19 +337,19 @@ export default function PremiumScreen() {
           <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.7 }]}>
             {t('premium.subtitle')}
           </Text>
-          {loadingOfferings ? (
+          {loading ? (
             <View style={styles.loaderRow}>
               <ActivityIndicator color={palette.accent} />
               <Text style={[styles.loaderText, { color: palette.text }]}>
                 Loading plans...
               </Text>
             </View>
-          ) : availablePackages.length ? (
+          ) : subscriptionPackages.length ? (
             <View style={styles.packageList}>
-              {availablePackages.map((pkg) => (
+              {subscriptionPackages.map((pkg) => (
                 <Pressable
                   key={pkg.identifier}
-                  onPress={() => handlePurchasePackage(pkg.identifier)}
+                  onPress={() => handlePurchasePackage(pkg)}
                   disabled={Boolean(purchasingPackageId)}
                   style={({ pressed }) => [
                     styles.packageCard,
@@ -381,7 +388,6 @@ export default function PremiumScreen() {
             </Text>
           )}
           {localError && <Text style={styles.errorText}>{localError}</Text>}
-          {storeError && <Text style={styles.errorText}>{storeError}</Text>}
         </View>
 
         <View style={[styles.section, { borderColor: palette.border }]}>
@@ -400,34 +406,6 @@ export default function PremiumScreen() {
             >
               <Text style={[styles.toolLabel, { color: palette.text }]}>
                 Open paywall (Organizer Pro)
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setShowCustomerCenter(true)}
-              style={({ pressed }) => [
-                styles.toolButton,
-                {
-                  backgroundColor: palette.card,
-                  borderColor: palette.border,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-            >
-              <Text style={[styles.toolLabel, { color: palette.text }]}>Customer Center (embedded)</Text>
-            </Pressable>
-            <Pressable
-              onPress={handlePresentCustomerCenter}
-              style={({ pressed }) => [
-                styles.toolButton,
-                {
-                  backgroundColor: palette.card,
-                  borderColor: palette.border,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-            >
-              <Text style={[styles.toolLabel, { color: palette.text }]}>
-                Customer Center (native)
               </Text>
             </Pressable>
           </View>
@@ -471,31 +449,7 @@ export default function PremiumScreen() {
         </Text>
       </View>
 
-      <Modal
-        visible={showCustomerCenter}
-        onRequestClose={() => setShowCustomerCenter(false)}
-        animationType="slide"
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }}>
-          <View style={[styles.modalHeader, { borderColor: palette.border }]}>
-            <Text style={[styles.modalTitle, { color: palette.text }]}>Customer Center</Text>
-            <Pressable onPress={() => setShowCustomerCenter(false)}>
-              <Text style={[styles.modalClose, { color: palette.accent }]}>Close</Text>
-            </Pressable>
-          </View>
-          <RevenueCatUI.CustomerCenterView
-            style={styles.customerCenterView}
-            shouldShowCloseButton={false}
-            onDismiss={() => setShowCustomerCenter(false)}
-            onRestoreCompleted={({ customerInfo: info }) => setCustomerInfo(info)}
-            onRestoreFailed={({ error }) => {
-              const message = formatFriendlyError(error);
-              setLocalError(message);
-              Alert.alert('Restore failed', message);
-            }}
-          />
-        </SafeAreaView>
-      </Modal>
+      {/* RevenueCat Customer Center removed because the installed UI package version lacks these APIs. */}
     </SafeAreaView>
   );
 }
