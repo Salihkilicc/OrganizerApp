@@ -47,7 +47,13 @@ export default function RegisterScreen() {
       setErrorText('Passwords do not match.');
       return;
     }
-    await signUp(email.trim(), password);
+    try {
+      await signUp(email.trim(), password);
+    } catch (error: unknown) {
+      setErrorText(
+        error instanceof Error ? error.message : 'An error occurred during registration.'
+      );
+    }
   };
 
   return (

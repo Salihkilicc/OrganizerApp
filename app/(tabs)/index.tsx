@@ -101,6 +101,7 @@ export default function TodayScreen() {
   };
   const loadPlans = usePlans((state) => state.load);
   const user = useAuth((state) => state.user);
+  const isGuest = useAuth((state) => state.isGuest);
   const points = usePoints((state) => state.total);
   const dailyPoints = usePoints((state) => state.daily);
   const todayPoints = dailyPoints.planPoints + dailyPoints.focusPoints;
@@ -151,7 +152,6 @@ export default function TodayScreen() {
     drinkBottle(index);
   };
 
-  const isGuest = Boolean(user && 'guest' in user && user.guest);
   const frameId = useProfileAppearance((state) => state.frameId);
   const frameDecoration = getFrameDecoration(frameId);
   const avatarFrameStyle = frameDecoration
@@ -169,7 +169,7 @@ export default function TodayScreen() {
         borderColor: palette.border,
       };
   const fallbackName = isGuest ? 'Guest User' : user?.email?.split('@')[0] ?? 'User';
-  const displayName = user?.user_metadata?.full_name ?? user?.name ?? fallbackName;
+  const displayName = user?.user_metadata?.full_name ?? fallbackName;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
   useEffect(() => {
     initializeStreak();

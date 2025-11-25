@@ -7,7 +7,6 @@ import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import * as WebBrowser from 'expo-web-browser';
 import 'react-native-reanimated';
 
 import { useAuth } from '@/store/useAuth';
@@ -20,8 +19,6 @@ import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { configureRevenueCat } from '@/lib/revenuecat';
 import { ensureInitialized } from '@/lib/notifications';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
-
-WebBrowser.maybeCompleteAuthSession();
 
 // Force SF Pro typography globally so every Text component inherits it.
 const SF_PRO_FONT_FAMILY =
@@ -86,14 +83,19 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren<unknown>, Er
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const { user, loading, initialize } = useAuth();
+  const initializeAuth = useAuth((state) => state.initializeAuth);
+  const initializing = useAuth((state) => state.initializing);
+  const user = useAuth((state) => state.user);
+  const isGuest = useAuth((state) => state.isGuest);
   const loadTheme = useTheme((state) => state.load);
   const themeKey = useTheme((state) => state.themeKey);
   const palette = useTheme((state) => state.palette);
   const focusTick = useFocusMode((state) => state.tick);
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    initializeAuth().catch((err) => {
+      console.log('[Auth] initializeAuth failed', err);
+    });
+  }, [initializeAuth]);
 
   useEffect(() => {
     ensureInitialized().catch(console.warn);
@@ -121,18 +123,19 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (loading) {
+    if (initializing) {
       return;
     }
 
     const inAuthGroup = segments?.[0] === '(auth)';
+    const isAuthenticated = Boolean(user) || isGuest;
 
-    if (!user && !inAuthGroup) {
+    if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
+    } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [loading, router, segments, user]);
+  }, [initializing, router, segments, user, isGuest]);
 
   useEffect(() => {
     if (__DEV__) {
@@ -165,9 +168,7 @@ export default function RootLayout() {
     };
   }, [themeKey, palette]);
 
-  const showSplash = loading;
-
-  if (showSplash) {
+  if (initializing) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ErrorBoundary>

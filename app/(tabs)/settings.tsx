@@ -42,16 +42,19 @@ export default function SettingsScreen() {
   const themeKey = useTheme((state) => state.themeKey);
   const setTheme = useTheme((state) => state.setTheme);
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const user = useAuth((state) => state.user);
+  const isGuest = useAuth((state) => state.isGuest);
+  const signOut = useAuth((state) => state.signOut);
+  const leaveGuestMode = useAuth((state) => state.leaveGuestMode);
   const { t } = useTranslation();
   const currentLanguage = useLanguage((state) => state.current);
   const setLanguage = useSettings((state) => state.setLanguage);
   const isPremium = usePremium((state) => state.isPremium);
 
   const displayName = user?.user_metadata?.full_name ?? user?.name ?? 'User';
-  const isGuest = Boolean(user && 'guest' in user && user.guest);
-  const userLabel = isGuest ? 'guest' : (user && (user as any).email) ?? 'guest';
+  const userLabel = isGuest ? 'guest' : user?.email ?? 'guest';
   const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const authButtonLabel = isGuest ? 'Log in' : t('settings.signOut');
 
   const handleSelectLanguage = (code: typeof LANGUAGE_OPTIONS[number]['code']) => {
     setLanguage(code);
@@ -79,6 +82,15 @@ export default function SettingsScreen() {
         },
       ],
     );
+  };
+
+  const handleAuthAction = async () => {
+    if (isGuest) {
+      await leaveGuestMode();
+      router.replace('/(auth)/login');
+      return;
+    }
+    await signOut();
   };
 
   return (
@@ -278,7 +290,7 @@ export default function SettingsScreen() {
           </Pressable>
           <View style={styles.signOutInline}>
             <View style={styles.footerButtonShadow}>
-              <Button title={t('settings.signOut')} onPress={() => void signOut()} type="secondary" />
+              <Button title={authButtonLabel} onPress={() => void handleAuthAction()} type="secondary" />
             </View>
           </View>
         </View>

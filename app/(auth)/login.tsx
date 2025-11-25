@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,7 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { signInWithGoogle, useAuth } from '@/store/useAuth';
+import { useAuth } from '@/store/useAuth';
 
 const palette = {
   text: '#111826',
@@ -23,12 +25,15 @@ const palette = {
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn, enterGuestMode, loading } = useAuth();
+  const signInWithGoogle = useAuth((state) => state.signInWithGoogle);
+  const signInWithEmail = useAuth((state) => state.signInWithEmail);
+  const continueAsGuest = useAuth((state) => state.continueAsGuest);
+  const loading = useAuth((state) => state.loading);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorText, setErrorText] = useState('');
-  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = async () => {
     setErrorText('');
@@ -36,24 +41,27 @@ export default function LoginScreen() {
       setErrorText('Please enter an email and password.');
       return;
     }
-    await signIn(email.trim(), password);
+    try {
+      await signInWithEmail(email.trim(), password);
+    } catch (error: unknown) {
+      setErrorText(error instanceof Error ? error.message : 'An error occurred during login.');
+    }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGooglePress = async () => {
     try {
-      setLoadingGoogle(true);
+      setSubmitting(true);
       await signInWithGoogle();
     } catch (error: unknown) {
-      setErrorText(
-        error instanceof Error ? error.message : 'An error occurred during Google sign-in.'
-      );
+      console.log('[Login] Google sign-in error', error);
+      Alert.alert('Google sign-in failed', 'Please try again.');
     } finally {
-      setLoadingGoogle(false);
+      setSubmitting(false);
     }
   };
 
   const handleGuestMode = () => {
-    enterGuestMode();
+    continueAsGuest();
     router.replace('/(tabs)');
   };
 
@@ -111,14 +119,21 @@ export default function LoginScreen() {
 
             <Pressable
               style={styles.googleButton}
-              onPress={handleGoogleSignIn}
-              disabled={loadingGoogle}>
+              onPress={handleGooglePress}
+              disabled={submitting}>
               <View style={styles.googleBadge}>
                 <Text style={styles.googleLetter}>G</Text>
               </View>
               <Text style={styles.googleText}>
-                {loadingGoogle ? 'Signing in with Google (loading…)' : 'Login with Google'}
+                {submitting ? 'Signing in with Google…' : 'Continue with Google'}
               </Text>
+              {submitting ? (
+                <ActivityIndicator
+                  style={{ marginLeft: 10 }}
+                  size="small"
+                  color={palette.text}
+                />
+              ) : null}
             </Pressable>
           </View>
 

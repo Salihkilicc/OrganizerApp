@@ -22,7 +22,8 @@ export default function ProfileScreen() {
   const palette = useTheme((state) => state.palette);
   const router = useRouter();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const user = useAuth((state) => state.user);
+  const isGuest = useAuth((state) => state.isGuest);
   const totalPoints = usePoints((state) => state.total);
   const blocks = usePlans((state) => state.blocks);
   const frameId = useProfileAppearance((state) => state.frameId);
@@ -42,7 +43,6 @@ export default function ProfileScreen() {
         borderColor: palette.border,
       };
 
-  const isGuest = Boolean(user && 'guest' in user && user.guest);
   const fallbackName = isGuest
     ? 'Guest User'
     : user?.email?.split('@')[0] ?? 'User';

@@ -1,104 +1,144 @@
-// src/store/useAuth.ts
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signInWithGoogleNative } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 
-// ---- Google Sign-In (manual browser) ----
-export async function signInWithGoogle(): Promise<void> {
-  const redirectTo = __DEV__
-    ? AuthSession.makeRedirectUri({}) // DEV: Expo Go
-    : AuthSession.makeRedirectUri({ scheme: 'organizer', path: 'auth' }); // PROD: deep link
+type AuthUser = User;
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo, skipBrowserRedirect: true },
-  });
-  if (error) throw error;
-
-  const authUrl = data?.url;
-  if (!authUrl) throw new Error('Google auth URL alınamadı.');
-
-  WebBrowser.maybeCompleteAuthSession();
-  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo);
-  if (result.type === 'cancel' || result.type === 'dismiss') {
-    throw new Error('Kullanıcı Google oturumunu iptal etti.');
-  }
-}
-
-// ---- Types ----
-type GuestUser = { id: 'guest'; guest: true };
-
-export type AuthStore = {
-  user: any | GuestUser | null;
+export type AuthState = {
+  user: AuthUser | null;
+  initializing: boolean;
+  isGuest: boolean;
   loading: boolean;
-  initialize: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  initializeAuth: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  enterGuestMode: () => void;
+  leaveGuestMode: () => Promise<void>;
+  continueAsGuest: () => void;
 };
 
-let hasInitialized = false;
+let hasInitializedAuth = false;
+let authStateSubscription: ReturnType<typeof supabase.auth.onAuthStateChange>['data']['subscription'] | null = null;
 
-// ---- Zustand store (NAMED EXPORT!) ----
-export const useAuth = create<AuthStore>((set, get) => ({
+const GUEST_FLAG_KEY = 'auth:isGuest';
+
+export const useAuth = create<AuthState>((set) => ({
   user: null,
-  loading: true,
+  initializing: true,
+  isGuest: false,
+  loading: false,
 
-  initialize: async () => {
-    if (hasInitialized) return;
-    hasInitialized = true;
-    set({ loading: true });
-
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.warn('Supabase getSession error:', error);
-      set({ user: null, loading: false });
-    } else {
-      set({ user: data.session?.user ?? null, loading: false });
-    }
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ user: session?.user ?? null, loading: false });
-    });
-  },
-
-  signIn: async (email, password) => {
-    set({ loading: true });
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert(error.message);
-      set({ loading: false });
+  initializeAuth: async () => {
+    if (hasInitializedAuth) {
+      set({ initializing: false });
       return;
     }
-    set({ user: data.user ?? null, loading: false });
+    hasInitializedAuth = true;
+    set({ initializing: true, isGuest: false });
+
+    try {
+      const storedGuest = await AsyncStorage.getItem(GUEST_FLAG_KEY);
+      const guestFlag = storedGuest === 'true';
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.warn('[Auth] getSession error', error);
+        set({ user: null, isGuest: guestFlag });
+      } else {
+        if (data.session?.user) {
+          void AsyncStorage.removeItem(GUEST_FLAG_KEY);
+        }
+        set({ user: data.session?.user ?? null, isGuest: data.session?.user ? false : guestFlag });
+      }
+    } finally {
+      if (!authStateSubscription) {
+        const { data } = supabase.auth.onAuthStateChange(
+          (event: AuthChangeEvent, session: Session | null) => {
+            if (event === 'SIGNED_OUT') {
+              void AsyncStorage.removeItem(GUEST_FLAG_KEY);
+              set({ user: null, isGuest: false });
+              return;
+            }
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              void AsyncStorage.removeItem(GUEST_FLAG_KEY);
+              set({ user: session?.user ?? null, isGuest: false });
+            }
+          },
+        );
+        authStateSubscription = data.subscription;
+      }
+      set({ initializing: false });
+    }
+  },
+
+  signInWithEmail: async (email, password) => {
+    set({ loading: true });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } finally {
+      set({ loading: false });
+    }
   },
 
   signUp: async (email, password) => {
     set({ loading: true });
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      alert(error.message);
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+    } finally {
       set({ loading: false });
-      return;
     }
-    set({ user: data.user ?? null, loading: false });
+  },
+
+  signInWithGoogle: async () => {
+    try {
+      if (Platform.OS === 'web') {
+        const redirectTo =
+          typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+        console.log('[Auth] signInWithGoogle web redirect', redirectTo);
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: redirectTo ? { redirectTo } : undefined,
+        });
+        if (error) {
+          throw error;
+        }
+        return;
+      }
+
+      await signInWithGoogleNative();
+    } catch (err) {
+      console.log('[Auth] signInWithGoogle failed', err);
+      throw err;
+    }
   },
 
   signOut: async () => {
-    const currentUser = get().user as any;
-    if (!currentUser || (currentUser as any)?.guest) {
-      set({ user: null, loading: false });
+    const { isGuest } = useAuth.getState();
+    if (isGuest) {
+      await AsyncStorage.removeItem(GUEST_FLAG_KEY);
+      set({ user: null, isGuest: false });
       return;
     }
-    set({ loading: true });
+
     const { error } = await supabase.auth.signOut();
-    if (error) alert(error.message);
-    set({ user: null, loading: false });
+    if (error) {
+      console.warn('[Auth] signOut error', error);
+    }
+    set({ user: null, isGuest: false });
   },
 
-  enterGuestMode: () => {
-    set({ user: { id: 'guest', guest: true }, loading: false });
+  leaveGuestMode: async () => {
+    await AsyncStorage.removeItem(GUEST_FLAG_KEY);
+    set({ isGuest: false });
+  },
+
+  continueAsGuest: () => {
+    void AsyncStorage.setItem(GUEST_FLAG_KEY, 'true');
+    set({ user: null, isGuest: true });
   },
 }));

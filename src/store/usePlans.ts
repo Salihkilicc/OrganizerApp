@@ -185,11 +185,12 @@ const mergeBlocks = (loaded: PlanBlock[], existing: PlanBlock[]): PlanBlock[] =>
 
 export const usePlans = create<PlansStore>((set, get) => {
   const load = async () => {
-    if (get().hydrated) return;
+    const state = get();
+    if (state?.hydrated) return;
     try {
       const blocks = await loadBlocks();
-      set((state) => ({
-        blocks: mergeBlocks(blocks, state.blocks),
+      set((prevState) => ({
+        blocks: mergeBlocks(blocks, prevState.blocks),
         hydrated: true,
       }));
     } catch (error) {
@@ -197,9 +198,7 @@ export const usePlans = create<PlansStore>((set, get) => {
     }
   };
 
-  void load();
-
-  return {
+  const store: PlansStore = {
     blocks: [],
     hydrated: false,
 
@@ -310,4 +309,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       return get().blocks.filter((block) => block.date === dateISO);
     },
   };
+
+  void Promise.resolve().then(() => store.load());
+  return store;
 });
