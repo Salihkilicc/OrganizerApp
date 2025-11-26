@@ -43,18 +43,18 @@ export default function SettingsScreen() {
   const setTheme = useTheme((state) => state.setTheme);
   const router = useRouter();
   const user = useAuth((state) => state.user);
-  const isGuest = useAuth((state) => state.isGuest);
+  const status = useAuth((state) => state.status);
   const signOut = useAuth((state) => state.signOut);
-  const leaveGuestMode = useAuth((state) => state.leaveGuestMode);
   const { t } = useTranslation();
   const currentLanguage = useLanguage((state) => state.current);
   const setLanguage = useSettings((state) => state.setLanguage);
   const isPremium = usePremium((state) => state.isPremium);
 
   const displayName = user?.user_metadata?.full_name ?? user?.name ?? 'User';
+  const isGuest = status === 'guest';
   const userLabel = isGuest ? 'guest' : user?.email ?? 'guest';
   const initials = useMemo(() => getInitials(displayName), [displayName]);
-  const authButtonLabel = isGuest ? 'Log in' : t('settings.signOut');
+  const authButtonLabel = status === 'authenticated' ? t('settings.signOut') : 'Log in';
 
   const handleSelectLanguage = (code: typeof LANGUAGE_OPTIONS[number]['code']) => {
     setLanguage(code);
@@ -85,11 +85,11 @@ export default function SettingsScreen() {
   };
 
   const handleAuthAction = async () => {
-    if (isGuest) {
-      await leaveGuestMode();
+    if (status !== 'authenticated') {
       router.replace('/(auth)/login');
       return;
     }
+
     await signOut();
   };
 

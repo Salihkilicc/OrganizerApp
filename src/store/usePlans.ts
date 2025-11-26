@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { fetchUserPlans, saveUserPlans } from '@/lib/account';
 import { usePoints } from '@/store/usePoints';
 import { useStreak } from '@/store/useStreak';
 
@@ -32,12 +33,15 @@ export type PlanBlock = {
 export type PlansStore = {
   blocks: PlanBlock[];
   hydrated: boolean;
+  userId?: string;
   load: () => Promise<void>;
   add: (b: Omit<PlanBlock, 'id'>) => Promise<string>;
   addMany: (blocks: Omit<PlanBlock, 'id'>[]) => Promise<string[]>;
   update: (id: string, patch: Partial<PlanBlock>) => Promise<void>;
   remove: (id: string) => Promise<void>;
   clearByDate: (date: string) => void;
+  loadFromServer: (userId: string) => Promise<void>;
+  resetToGuest: () => void;
   byDate: (dateISO: string) => PlanBlock[];
 };
 
@@ -198,9 +202,43 @@ export const usePlans = create<PlansStore>((set, get) => {
     }
   };
 
+  const persistRemote = async (blocks: PlanBlock[]) => {
+    const currentUserId = get().userId;
+    if (!currentUserId) return;
+    try {
+      await saveUserPlans(currentUserId, blocks);
+    } catch (error) {
+      console.warn('[usePlans/saveUserPlans]', error);
+    }
+  };
+
+  const loadFromServer = async (userId: string) => {
+    try {
+      const remoteBlocks = await fetchUserPlans(userId);
+      set({
+        blocks: remoteBlocks,
+        hydrated: true,
+        userId,
+      });
+      await persistImmediate(remoteBlocks);
+    } catch (error) {
+      console.warn('[usePlans/loadFromServer]', error);
+      set({
+        userId,
+      });
+    }
+  };
+
+  const resetToGuest = () => {
+    set({
+      userId: undefined,
+    });
+  };
+
   const store: PlansStore = {
     blocks: [],
     hydrated: false,
+    userId: undefined,
 
     load,
 
@@ -217,6 +255,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       set({ blocks: updated });
       console.log('[usePlans/add]', next);
       schedulePersist(updated);
+      void persistRemote(updated);
       return next.id;
     },
 
@@ -235,6 +274,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       set({ blocks: updated });
       console.log('[usePlans/addMany]', nextBlocks);
       schedulePersist(updated);
+      void persistRemote(updated);
       return nextBlocks.map((block) => block.id);
     },
 
@@ -290,6 +330,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       );
       set({ blocks: updated });
       schedulePersist(updated);
+      void persistRemote(updated);
     },
 
     remove: async (id) => {
@@ -297,13 +338,18 @@ export const usePlans = create<PlansStore>((set, get) => {
       const updated = get().blocks.filter((block) => block.id !== id);
       set({ blocks: updated });
       schedulePersist(updated);
+      void persistRemote(updated);
     },
 
     clearByDate: (date) => {
       const updated = get().blocks.filter((block) => block.date !== date);
       set({ blocks: updated });
       schedulePersist(updated);
+      void persistRemote(updated);
     },
+
+    loadFromServer,
+    resetToGuest,
 
     byDate: (dateISO: string) => {
       return get().blocks.filter((block) => block.date === dateISO);

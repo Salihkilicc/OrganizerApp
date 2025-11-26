@@ -4,6 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 import { usePoints } from '@/store/usePoints';
 import { todayDate } from '@/store/usePlans';
+import { fetchOrCreateTodayWater, updateTodayWater } from '@/lib/points';
 
 const STORAGE_KEY = 'organizer-water';
 export const WATER_BOTTLE_COUNT = 5;
@@ -18,36 +19,74 @@ const normalizeWaterState = (value?: boolean[]) =>
 const normalizeRewardState = (value?: boolean[]) =>
   Array.from({ length: WATER_BOTTLE_COUNT }, (_, index) => value?.[index] ?? false);
 
-const hasArrayMismatch = (normalized: boolean[], actual?: boolean[]) => {
-  if (!actual || actual.length !== normalized.length) return true;
-  for (let index = 0; index < normalized.length; index += 1) {
-    if (normalized[index] !== actual[index]) {
-      return true;
-    }
-  }
-  return false;
+const clampWaterDrank = (value: number) =>
+  Math.max(0, Math.min(WATER_BOTTLE_COUNT, Math.floor(value)));
+const buildWaterStateFromDrank = (drank: number) => {
+  const clamped = clampWaterDrank(drank);
+  return Array.from({ length: WATER_BOTTLE_COUNT }, (_, index) => index >= clamped);
 };
+const buildRewardStateFromDrank = (drank: number) => {
+  const clamped = clampWaterDrank(drank);
+  return Array.from({ length: WATER_BOTTLE_COUNT }, (_, index) => index < clamped);
+};
+const deriveDrankFromWaterState = (water: boolean[]) =>
+  normalizeWaterState(water).filter((full) => !full).length;
 
 type WaterState = {
   water: boolean[];
   rewardedToday: boolean[];
   lastResetDate: string | null;
+  userId?: string;
+  bottlesGoal: number;
   toggleWater: (index: number) => void;
   resetWater: () => void;
   ensureTodayInitialized: () => void;
   drinkBottle: (index: number) => void;
+  loadTodayFromServer: (userId: string) => Promise<void>;
+  init: (userId: string | null) => Promise<void>;
+  resetToGuest: () => void;
 };
 
 export const useWater = create<WaterState>()(
   persist(
-    (set) => {
-      const ensureTodayInitialized = () => {
-        set((state) => {
+    (set, get) => {
+      const resetToGuest = () => {
+        set({
+          userId: undefined,
+          water: createDefaultWaterState(),
+          rewardedToday: createDefaultRewardState(),
+          lastResetDate: todayDate(),
+          bottlesGoal: WATER_BOTTLE_COUNT,
+        });
+      };
+
+      const loadTodayFromServer = async (userId: string) => {
+        try {
           const today = todayDate();
+          const row = await fetchOrCreateTodayWater(userId, today);
+          const nextWater = buildWaterStateFromDrank(row.bottles_drunk);
+          set({
+            userId,
+            water: nextWater,
+            rewardedToday: buildRewardStateFromDrank(row.bottles_drunk),
+            lastResetDate: today,
+            bottlesGoal: row.bottles_goal,
+          });
+        } catch (error) {
+          console.warn('[useWater/loadTodayFromServer]', error);
+        }
+      };
+
+      const ensureTodayInitialized = () => {
+        const today = todayDate();
+        let didReset = false;
+
+        set((state) => {
           const normalizedWater = normalizeWaterState(state.water);
           const normalizedRewards = normalizeRewardState(state.rewardedToday);
 
           if (state.lastResetDate !== today) {
+            didReset = true;
             return {
               lastResetDate: today,
               water: createDefaultWaterState(),
@@ -56,84 +95,130 @@ export const useWater = create<WaterState>()(
           }
 
           const updates: Partial<WaterState> = {};
-          if (hasArrayMismatch(normalizedWater, state.water)) {
+          if (normalizedWater.some((value, index) => value !== state.water[index])) {
             updates.water = normalizedWater;
           }
-          if (hasArrayMismatch(normalizedRewards, state.rewardedToday)) {
+          if (normalizedRewards.some((value, index) => value !== state.rewardedToday[index])) {
             updates.rewardedToday = normalizedRewards;
           }
-          if (updates.water || updates.rewardedToday) {
+          if (Object.keys(updates).length) {
             return updates;
           }
           return {};
         });
+
+        if (didReset) {
+          set({
+            bottlesGoal: WATER_BOTTLE_COUNT,
+          });
+        }
       };
 
-      const drinkBottle = (index: number) => {
-        if (index < 0 || index >= WATER_BOTTLE_COUNT) return;
-        ensureTodayInitialized();
+      const toggleWater = (index: number) => {
         set((state) => {
-          const normalizedWater = normalizeWaterState(state.water);
-          const normalizedRewards = normalizeRewardState(state.rewardedToday);
-          const wasFull = normalizedWater[index];
-          if (!wasFull) {
-            return {};
+          const normalized = normalizeWaterState(state.water);
+          if (index < 0 || index >= normalized.length) {
+            return state;
           }
-          const alreadyRewarded = normalizedRewards[index];
-
-          const nextWater = [...normalizedWater];
-          nextWater[index] = false;
-
-          const nextRewards = [...normalizedRewards];
-          if (!alreadyRewarded) {
-            nextRewards[index] = true;
-            usePoints.getState().addPlanPoints(10);
-          }
-
-          return {
-            water: nextWater,
-            rewardedToday: nextRewards,
-            lastResetDate: todayDate(),
-          };
+          const next = [...normalized];
+          next[index] = !next[index];
+          return { water: next };
         });
       };
 
-      const resetWater = () =>
+      const resetWater = () => {
+        const today = todayDate();
         set({
           water: createDefaultWaterState(),
           rewardedToday: createDefaultRewardState(),
-          lastResetDate: todayDate(),
+          lastResetDate: today,
+          bottlesGoal: WATER_BOTTLE_COUNT,
         });
+      };
+
+      const drinkBottle = (index: number) => {
+        const today = todayDate();
+        let completedCount = 0;
+        let shouldAward = false;
+        let didChange = false;
+
+        set((state) => {
+          const normalizedWater = normalizeWaterState(state.water);
+          if (!normalizedWater[index]) {
+            return {};
+          }
+          const normalizedRewards = normalizeRewardState(state.rewardedToday);
+          const alreadyRewarded = normalizedRewards[index];
+          const nextWater = [...normalizedWater];
+          nextWater[index] = false;
+          const nextRewards = [...normalizedRewards];
+          if (!alreadyRewarded) {
+            nextRewards[index] = true;
+            shouldAward = true;
+          }
+          completedCount = deriveDrankFromWaterState(nextWater);
+          didChange = true;
+          return {
+            water: nextWater,
+            rewardedToday: nextRewards,
+            lastResetDate: today,
+          };
+        });
+
+        if (!didChange) {
+          return;
+        }
+
+        if (shouldAward) {
+          usePoints.getState().addPoints(5);
+        }
+
+        const userId = get().userId;
+        if (userId) {
+          void updateTodayWater(userId, completedCount).catch((error) => {
+            console.error('[useWater] updateTodayWater failed', error);
+          });
+        }
+      };
+
+      const init = async (userId: string | null) => {
+        if (!userId) {
+          resetToGuest();
+          return;
+        }
+        if (get().userId === userId) {
+          return;
+        }
+        await loadTodayFromServer(userId);
+      };
 
       return {
         water: createDefaultWaterState(),
         rewardedToday: createDefaultRewardState(),
         lastResetDate: null,
-        toggleWater: (index) =>
-          set((state) => {
-            const normalized = normalizeWaterState(state.water);
-            if (index < 0 || index >= normalized.length) {
-              return state;
-            }
-            const next = [...normalized];
-            next[index] = !next[index];
-            return { water: next };
-          }),
+        userId: undefined,
+        bottlesGoal: WATER_BOTTLE_COUNT,
+        toggleWater,
         resetWater,
         ensureTodayInitialized,
         drinkBottle,
+        loadTodayFromServer,
+        init,
+        resetToGuest,
       };
     },
-    {
-      name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.water = normalizeWaterState(state.water);
-          state.rewardedToday = normalizeRewardState(state.rewardedToday);
-          state.lastResetDate = state.lastResetDate ?? null;
-        }
+      {
+        name: STORAGE_KEY,
+        storage: createJSONStorage(() => AsyncStorage),
+        onRehydrateStorage: () => (state) => {
+          if (state) {
+            state.water = normalizeWaterState(state.water);
+            state.rewardedToday = normalizeRewardState(state.rewardedToday);
+            state.lastResetDate = state.lastResetDate ?? null;
+            state.bottlesGoal = state.bottlesGoal ?? WATER_BOTTLE_COUNT;
+            state.userId = undefined;
+          }
+        },
       },
-    },
   ),
 );

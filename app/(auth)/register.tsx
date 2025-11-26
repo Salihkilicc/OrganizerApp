@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/store/useAuth';
+import { supabase } from '@/lib/supabase';
 
 const palette = {
   text: '#111826',
@@ -32,6 +33,10 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'success' | 'error'>(
+    'idle',
+  );
 
   const handleRegister = async () => {
     setErrorText('');
@@ -48,10 +53,52 @@ export default function RegisterScreen() {
       return;
     }
     try {
+      setNeedsConfirmation(false);
+      setResendStatus('idle');
       await signUp(email.trim(), password);
+      router.replace('/(tabs)');
     } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'An error occurred during registration.';
+      const lower = message.toLowerCase();
+      if (lower.includes('email not confirmed')) {
+        setNeedsConfirmation(true);
+        setErrorText('Please confirm your email to complete registration.');
+        return;
+      }
+      if (lower.includes('already registered') || lower.includes('duplicate')) {
+        setNeedsConfirmation(false);
+        setErrorText('This email already has an account. Please log in.');
+        router.replace('/(auth)/login');
+        return;
+      }
+      setErrorText(message);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      setErrorText('Enter your email so we can resend the confirmation link.');
+      return;
+    }
+    try {
+      setResendStatus('sending');
+      setErrorText('');
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      if (error) {
+        throw error;
+      }
+      setResendStatus('success');
+      setErrorText('Confirmation email sent. Please check your inbox.');
+    } catch (resendError: unknown) {
+      setResendStatus('error');
       setErrorText(
-        error instanceof Error ? error.message : 'An error occurred during registration.'
+        resendError instanceof Error
+          ? resendError.message
+          : 'Unable to resend confirmation email. Try again later.',
       );
     }
   };
@@ -141,6 +188,19 @@ export default function RegisterScreen() {
           </View>
 
           {errorText ? <Text style={styles.error}>{errorText}</Text> : null}
+          {needsConfirmation && (
+            <Pressable
+              onPress={handleResendConfirmation}
+              disabled={resendStatus === 'sending'}
+              style={[
+                styles.resendButton,
+                resendStatus === 'sending' && styles.disabled,
+              ]}>
+              <Text style={styles.resendText}>
+                {resendStatus === 'sending' ? 'Resending…' : 'Resend confirmation email'}
+              </Text>
+            </Pressable>
+          )}
 
           <Pressable style={[styles.button, loading ? styles.disabled : null]} onPress={handleRegister} disabled={loading}>
             <Text style={styles.buttonText}>Create Account</Text>
@@ -262,6 +322,23 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.8,
+  },
+  resendButton: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: palette.accent,
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 42,
+    alignItems: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    backgroundColor: '#fff',
+  },
+  resendText: {
+    color: palette.accent,
+    fontSize: 14,
+    fontWeight: '600',
   },
   buttonText: {
     color: '#fff',

@@ -1,7 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-const STORAGE_KEY = 'points:v1';
+import { fetchOrCreateUserPoints, incrementUserPoints } from '@/lib/points';
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatLocalDate = (date: Date) =>
@@ -15,111 +14,11 @@ export type DailyPoints = {
   focusPoints: number;
 };
 
-type PointsPayload = {
-  total: number;
-  daily: DailyPoints;
-  maxTotal: number;
-  focusSessions: number;
-  completedPlans: number;
-};
-
 const buildDailyPoints = (date: string): DailyPoints => ({
   date,
   planPoints: 0,
   focusPoints: 0,
 });
-
-const persistPoints = async (payload: PointsPayload) => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch (error) {
-    console.warn('[usePoints/persist]', error);
-  }
-};
-
-const loadPoints = async (set: (state: Partial<PointsState>) => void) => {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const trimmed = raw.trim();
-    if (!trimmed) return;
-
-    const today = todayDate();
-    let payload: PointsPayload | null = null;
-    let shouldPersist = false;
-
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (
-        typeof parsed === 'object' &&
-        parsed !== null &&
-        typeof parsed.total === 'number' &&
-        typeof parsed.daily === 'object' &&
-        parsed.daily !== null &&
-        typeof parsed.daily.date === 'string' &&
-        typeof parsed.daily.planPoints === 'number' &&
-        typeof parsed.daily.focusPoints === 'number'
-      ) {
-        payload = {
-          total: parsed.total,
-          daily: parsed.daily,
-          maxTotal:
-            typeof parsed.maxTotal === 'number' && Number.isFinite(parsed.maxTotal)
-              ? parsed.maxTotal
-              : parsed.total,
-          focusSessions:
-            typeof parsed.focusSessions === 'number' && Number.isFinite(parsed.focusSessions)
-              ? parsed.focusSessions
-              : 0,
-          completedPlans:
-            typeof parsed.completedPlans === 'number' && Number.isFinite(parsed.completedPlans)
-              ? parsed.completedPlans
-              : 0,
-        };
-      }
-    } catch {
-      // fall through to number parsing
-    }
-
-    if (!payload) {
-      const parsedNumber = Number(trimmed);
-      if (Number.isFinite(parsedNumber)) {
-        payload = {
-          total: parsedNumber,
-          daily: buildDailyPoints(today),
-          maxTotal: parsedNumber,
-          focusSessions: 0,
-          completedPlans: 0,
-        };
-        shouldPersist = true;
-      }
-    }
-
-    if (!payload) return;
-
-    if (payload.daily.date !== today) {
-      payload = {
-        ...payload,
-        daily: buildDailyPoints(today),
-      };
-      shouldPersist = true;
-    }
-
-    set({
-      total: payload.total,
-      daily: payload.daily,
-      maxTotal: payload.maxTotal,
-      focusSessions: payload.focusSessions,
-      completedPlans: payload.completedPlans,
-    });
-
-    if (shouldPersist) {
-      void persistPoints(payload);
-    }
-  } catch (error) {
-    console.warn('[usePoints/load]', error);
-  }
-};
 
 export type PointsState = {
   total: number;
@@ -127,84 +26,115 @@ export type PointsState = {
   maxTotal: number;
   focusSessions: number;
   completedPlans: number;
+  userId?: string;
   resetDailyIfNeeded: (today: string) => void;
   addPlanPoints: (amount: number) => void;
   addFocusPoints: (amount: number) => void;
   reset: () => void;
+  resetToGuest: () => void;
   spendPoints: (amount: number) => boolean;
   recordPlanCompletion: () => void;
   recordFocusSession: () => void;
+  init: (userId: string | null) => Promise<void>;
+  loadFromServer: (userId: string) => Promise<void>;
+  addPoints: (amount: number) => void;
 };
 
 export const usePoints = create<PointsState>((set, get) => {
-  loadPoints(set);
+  const applyPoints = (delta: number) => {
+    if (!Number.isFinite(delta) || delta === 0) {
+      return 0;
+    }
 
-  const persistCurrent = () => {
-    const { total, daily, maxTotal, focusSessions, completedPlans } = get();
-    void persistPoints({
-      total,
-      daily,
-      maxTotal,
-      focusSessions,
-      completedPlans,
+    const current = get().total;
+    const next = Math.max(0, current + delta);
+    const appliedDelta = next - current;
+    if (appliedDelta === 0) {
+      return 0;
+    }
+
+    set((state) => ({
+      total: next,
+      maxTotal: Math.max(state.maxTotal, next),
+    }));
+
+    const { userId } = get();
+    if (userId) {
+      void incrementUserPoints(userId, appliedDelta).catch((error) => {
+        console.error('[usePoints] sync failed', error);
+      });
+    }
+
+    return appliedDelta;
+  };
+
+  const loadFromServer = async (userId: string) => {
+    try {
+      const row = await fetchOrCreateUserPoints(userId);
+      set({
+        userId,
+        total: row.total_points,
+        maxTotal: row.total_points,
+        daily: buildDailyPoints(todayDate()),
+      });
+    } catch (error) {
+      console.warn('[usePoints/loadFromServer]', error);
+    }
+  };
+
+  const resetToGuest = () => {
+    set({
+      userId: undefined,
+      total: 0,
+      maxTotal: 0,
+      daily: buildDailyPoints(todayDate()),
+      focusSessions: 0,
+      completedPlans: 0,
     });
   };
 
   const resetDailyIfNeeded = (today: string) => {
     if (!today) return;
-    const { daily, total } = get();
+    const { daily } = get();
     if (daily.date === today) return;
-    const nextDaily = buildDailyPoints(today);
-    set({ daily: nextDaily, total });
-    void persistPoints({
-      total,
-      daily: nextDaily,
-      maxTotal: get().maxTotal,
-      focusSessions: get().focusSessions,
-      completedPlans: get().completedPlans,
-    });
+    set({ daily: buildDailyPoints(today) });
+  };
+
+  const addPoints = (amount: number) => {
+    applyPoints(amount);
   };
 
   const addPlanPoints = (amount: number) => {
     if (!Number.isFinite(amount) || amount <= 0) return;
     const today = todayDate();
     resetDailyIfNeeded(today);
-    set((state) => {
-      const daily = {
+    set((state) => ({
+      daily: {
         ...state.daily,
         planPoints: state.daily.planPoints + amount,
-      };
-      const total = Math.max(0, state.total + amount);
-      const maxTotal = Math.max(state.maxTotal, total);
-      return { daily, total, maxTotal };
-    });
-    persistCurrent();
+      },
+    }));
+    addPoints(amount);
   };
 
   const addFocusPoints = (amount: number) => {
     if (!Number.isFinite(amount) || amount <= 0) return;
     const today = todayDate();
     resetDailyIfNeeded(today);
-    set((state) => {
-      const daily = {
+    set((state) => ({
+      daily: {
         ...state.daily,
         focusPoints: state.daily.focusPoints + amount,
-      };
-      const total = Math.max(0, state.total + amount);
-      const maxTotal = Math.max(state.maxTotal, total);
-      return { daily, total, maxTotal };
-    });
-    persistCurrent();
+      },
+    }));
+    addPoints(amount);
   };
 
   const spendPoints = (amount: number) => {
     if (!Number.isFinite(amount) || amount <= 0) return false;
     const { total } = get();
     if (amount > total) return false;
-    set((state) => ({
-      total: Math.max(0, state.total - amount),
-    }));
-    persistCurrent();
+    applyPoints(-amount);
     return true;
   };
 
@@ -212,33 +142,33 @@ export const usePoints = create<PointsState>((set, get) => {
     set((state) => ({
       completedPlans: state.completedPlans + 1,
     }));
-    persistCurrent();
   };
 
   const recordFocusSession = () => {
     set((state) => ({
       focusSessions: state.focusSessions + 1,
     }));
-    persistCurrent();
   };
 
   const reset = () => {
-    const today = todayDate();
-    const nextDaily = buildDailyPoints(today);
     set({
       total: 0,
-      daily: nextDaily,
+      daily: buildDailyPoints(todayDate()),
       maxTotal: 0,
       focusSessions: 0,
       completedPlans: 0,
     });
-    void persistPoints({
-      total: 0,
-      daily: nextDaily,
-      maxTotal: 0,
-      focusSessions: 0,
-      completedPlans: 0,
-    });
+  };
+
+  const init = async (userId: string | null) => {
+    if (!userId) {
+      resetToGuest();
+      return;
+    }
+    if (get().userId === userId) {
+      return;
+    }
+    await loadFromServer(userId);
   };
 
   return {
@@ -247,12 +177,17 @@ export const usePoints = create<PointsState>((set, get) => {
     maxTotal: 0,
     focusSessions: 0,
     completedPlans: 0,
+    userId: undefined,
     resetDailyIfNeeded,
     addPlanPoints,
     addFocusPoints,
     reset,
+    resetToGuest,
     spendPoints,
     recordPlanCompletion,
     recordFocusSession,
+    init,
+    loadFromServer,
+    addPoints,
   };
 });

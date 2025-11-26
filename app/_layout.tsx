@@ -11,6 +11,8 @@ import 'react-native-reanimated';
 
 import { useAuth } from '@/store/useAuth';
 import { useFocusMode } from '@/store/useFocusMode';
+import { usePoints } from '@/store/usePoints';
+import { useWater } from '@/store/useWater';
 import { usePremium } from '@/store/usePremium';
 import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
 import { useTheme } from '@/store/useTheme';
@@ -19,6 +21,7 @@ import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { configureRevenueCat } from '@/lib/revenuecat';
 import { ensureInitialized } from '@/lib/notifications';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
+import { initSupabaseAuthListener } from '@/lib/supabase';
 
 // Force SF Pro typography globally so every Text component inherits it.
 const SF_PRO_FONT_FAMILY =
@@ -83,19 +86,23 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren<unknown>, Er
 export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const initializeAuth = useAuth((state) => state.initializeAuth);
-  const initializing = useAuth((state) => state.initializing);
   const user = useAuth((state) => state.user);
+  const status = useAuth((state) => state.status);
   const isGuest = useAuth((state) => state.isGuest);
   const loadTheme = useTheme((state) => state.load);
   const themeKey = useTheme((state) => state.themeKey);
   const palette = useTheme((state) => state.palette);
   const focusTick = useFocusMode((state) => state.tick);
   useEffect(() => {
-    initializeAuth().catch((err) => {
-      console.log('[Auth] initializeAuth failed', err);
+    const authState = useAuth.getState();
+    authState.initAuth().catch((err) => {
+      console.log('[Auth] initAuth failed', err);
     });
-  }, [initializeAuth]);
+    const cleanup = initSupabaseAuthListener(authState.setFromSession);
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   useEffect(() => {
     ensureInitialized().catch(console.warn);
@@ -123,19 +130,36 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (initializing) {
+    if (status === 'checking') {
       return;
     }
 
     const inAuthGroup = segments?.[0] === '(auth)';
-    const isAuthenticated = Boolean(user) || isGuest;
+    const isAuthenticated = status === 'authenticated';
+    const isGuestMode = status === 'guest' && isGuest;
 
-    if (!isAuthenticated && !inAuthGroup) {
+    if (!isAuthenticated && !isGuestMode && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [initializing, router, segments, user, isGuest]);
+  }, [status, router, segments, isGuest]);
+
+  useEffect(() => {
+    if (status === 'checking') {
+      return;
+    }
+
+    const sessionUserId = user?.id ?? null;
+    if (sessionUserId) {
+      void usePoints.getState().init(sessionUserId);
+      void useWater.getState().init(sessionUserId);
+      return;
+    }
+
+    void usePoints.getState().init(null);
+    void useWater.getState().init(null);
+  }, [status, user?.id]);
 
   useEffect(() => {
     if (__DEV__) {
@@ -168,7 +192,7 @@ export default function RootLayout() {
     };
   }, [themeKey, palette]);
 
-  if (initializing) {
+  if (status === 'checking') {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ErrorBoundary>
