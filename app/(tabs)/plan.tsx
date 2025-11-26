@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { CopyDayModal } from '@/components/CopyDayModal';
 import { DayStrip } from '@/components/DayStrip';
 import { FocusModeOverlay } from '@/components/FocusModeOverlay';
 import { HourColumn } from '@/components/HourColumn';
@@ -100,6 +101,7 @@ export default function PlanScreen() {
   const addMany = usePlans((state) => state.addMany);
   const updatePlan = usePlans((state) => state.update);
   const removePlan = usePlans((state) => state.remove);
+  const copyDayToDates = usePlans((state) => state.copyDayToDates);
   const clearPlansByDate = usePlans((state) => state.clearByDate);
   const blocks = usePlans((state) => state.blocks);
   const pruneBeforeToday = usePlans((state) => state.pruneBeforeToday);
@@ -181,6 +183,7 @@ export default function PlanScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [focusVisible, setFocusVisible] = useState(false);
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
+  const [copyModalVisible, setCopyModalVisible] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -299,6 +302,32 @@ export default function PlanScreen() {
     setAiDate(selectedDate);
     setAiVisible(true);
   }, [isPremium, router, selectedDate, setAiDate, setAiVisible]);
+
+  const handleOpenCopyModal = useCallback(() => {
+    if (blockCount === 0) return;
+    setCopyModalVisible(true);
+  }, [blockCount]);
+
+  const handleCloseCopyModal = useCallback(() => setCopyModalVisible(false), []);
+
+  const handleConfirmCopyModal = useCallback(
+    (targetDates: string[]) => {
+      if (!targetDates.length) return;
+      const occupied = targetDates.some((targetDate) =>
+        blocks.some((block) => block.date === targetDate),
+      );
+      if (occupied) {
+        Alert.alert(
+          t('plan.copyConflictTitle') ?? 'Selected days must be empty',
+          t('plan.copyConflictMessage') ??
+            'Please choose target days with no existing plans before copying.',
+        );
+        return;
+      }
+      copyDayToDates(selectedDate, targetDates);
+    },
+    [blocks, copyDayToDates, selectedDate, t],
+  );
 
   const handleClearDayPlans = useCallback(() => {
     if (blockCount === 0) return;
@@ -481,20 +510,41 @@ export default function PlanScreen() {
             </View>
           </View>
         </Modal>
-        <View style={[styles.summaryRow, { borderColor: palette.border, backgroundColor: palette.card }]}>
+        <View
+          style={[
+            styles.summaryRow,
+            { borderColor: palette.border, backgroundColor: palette.card },
+          ]}
+        >
           <Text style={[styles.summaryText, { color: palette.text }]}>{summaryMessage}</Text>
-          <Pressable
-            onPress={handleClearDayPlans}
-            disabled={blockCount === 0}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.summaryIconWrapper,
-              {
-                opacity: blockCount === 0 ? 0.4 : pressed ? 0.6 : 1,
-              },
-            ]}>
-            <Ionicons name="trash-outline" size={18} color={palette.text} />
-          </Pressable>
+          <View style={styles.summaryActions}>
+            <Pressable
+              onPress={handleOpenCopyModal}
+              disabled={blockCount === 0}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.summaryIconWrapper,
+                {
+                  opacity: blockCount === 0 ? 0.4 : pressed ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Ionicons name="copy-outline" size={18} color={palette.accent} />
+            </Pressable>
+            <Pressable
+              onPress={handleClearDayPlans}
+              disabled={blockCount === 0}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.summaryIconWrapper,
+                {
+                  opacity: blockCount === 0 ? 0.4 : pressed ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Ionicons name="trash-outline" size={18} color={palette.text} />
+            </Pressable>
+          </View>
         </View>
         <View style={styles.gridRow}>
           <ScrollView
@@ -532,6 +582,12 @@ export default function PlanScreen() {
           onApply={handleAiApply}
           hasExistingBlocks={hasManualBlocks}
           previousBlocks={previousAiPlanBlocks}
+        />
+        <CopyDayModal
+          visible={copyModalVisible}
+          sourceDate={selectedDate}
+          onClose={handleCloseCopyModal}
+          onConfirm={handleConfirmCopyModal}
         />
       {!isPast && (
         <Pressable
@@ -726,6 +782,10 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     padding: 2,
     borderRadius: 6,
+  },
+  summaryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   fab: {
     position: 'absolute',

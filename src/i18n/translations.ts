@@ -22,6 +22,8 @@ export type TranslationKey =
   | 'plan.aiButton'
   | 'plan.focusButton'
   | 'plan.pastPlansAlert'
+  | 'plan.copyConflictTitle'
+  | 'plan.copyConflictMessage'
   | 'plan.deleteAllConfirmTitle'
   | 'plan.deleteAllConfirmMessage'
   | 'plan.deleteAllConfirmYes'
@@ -135,6 +137,8 @@ const english: TranslationTable = {
   'plan.aiButton': 'AI Generate',
   'plan.focusButton': 'Focus',
   'plan.pastPlansAlert': 'Past plans cannot be edited.',
+  'plan.copyConflictTitle': 'Target days must be empty',
+  'plan.copyConflictMessage': 'Choose days without plans before copying.',
   'plan.deleteAllConfirmTitle': 'Delete all plans?',
   'plan.deleteAllConfirmMessage': 'Are you sure you want to delete all plans for this day?',
   'plan.deleteAllConfirmYes': 'Delete',
@@ -254,6 +258,8 @@ const turkish: TranslationTable = {
   'plan.aiButton': '✨ AI Plan',
   'plan.focusButton': 'Fokus',
   'plan.pastPlansAlert': 'Geçmiş planlar düzenlenemez.',
+  'plan.copyConflictTitle': 'Hedef günler boş olmalı',
+  'plan.copyConflictMessage': 'Kopyalamadan önce plan içermeyen günler seç.',
   'plan.deleteAllConfirmTitle': 'Tüm planlar silinsin mi?',
   'plan.deleteAllConfirmMessage': 'Bugüne ait tüm planları silmek istediğine emin misin?',
   'plan.deleteAllConfirmYes': 'Sil',

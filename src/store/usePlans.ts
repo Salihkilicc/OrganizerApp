@@ -41,6 +41,7 @@ export type PlansStore = {
   update: (id: string, patch: Partial<PlanBlock>) => Promise<void>;
   remove: (id: string) => Promise<void>;
   clearByDate: (date: string) => void;
+  copyDayToDates: (sourceDate: string, targetDates: string[]) => void;
   loadFromServer: (userId: string) => Promise<void>;
   resetToGuest: () => void;
   byDate: (dateISO: string) => PlanBlock[];
@@ -345,6 +346,41 @@ export const usePlans = create<PlansStore>((set, get) => {
 
     clearByDate: (date) => {
       const updated = get().blocks.filter((block) => block.date !== date);
+      set({ blocks: updated });
+      schedulePersist(updated);
+      void persistRemote(updated);
+    },
+
+    copyDayToDates: (sourceDate, targetDates) => {
+      const existingBlocks = get().blocks;
+      const sourceBlocks = existingBlocks.filter((block) => block.date === sourceDate);
+      if (!sourceBlocks.length) return;
+      const uniqueTargets = Array.from(
+        new Set(targetDates.filter((date) => date && date !== sourceDate)),
+      );
+      if (!uniqueTargets.length) return;
+      const now = new Date().toISOString();
+      const clones: PlanBlock[] = [];
+      uniqueTargets.forEach((date) => {
+        sourceBlocks.forEach((block) => {
+          clones.push({
+            id: nextId(),
+            title: block.title,
+            note: block.note,
+            date,
+            startMin: block.startMin,
+            endMin: block.endMin,
+            category: block.category ?? 'focus',
+            color: block.color,
+            aiGenerated: block.aiGenerated,
+            createdAt: now,
+            done: false,
+            rewarded: false,
+          });
+        });
+      });
+      if (!clones.length) return;
+      const updated = [...existingBlocks, ...clones];
       set({ blocks: updated });
       schedulePersist(updated);
       void persistRemote(updated);
