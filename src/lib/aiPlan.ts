@@ -16,6 +16,7 @@ export type AiPlanRequest = {
   habits?: string | null;
   priorities?: string | null;
   feedback?: string | null;
+  previousBlocks?: AiPlanBlock[] | null;
 };
 
 export type AiPlanResponse = {

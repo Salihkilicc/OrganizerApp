@@ -18,6 +18,7 @@ import { HourColumn } from '@/components/HourColumn';
 import { PlanEditor } from '@/components/PlanEditor';
 import { PlanGrid } from '@/components/PlanGrid';
 import { AiPlanModal } from '@/components/AiPlanModal';
+import { AiPlanBlock } from '@/lib/aiPlan';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   usePlans,
@@ -44,6 +45,7 @@ const PX_PER_MIN = 1;
 const HOUR_COPIES = 3;
 const DAY_MINUTES = HOURS_PER_DAY * 60;
 const DAY_HEIGHT = DAY_MINUTES * PX_PER_MIN;
+const AI_PLAN_CATEGORIES: AiPlanBlock['category'][] = ['focus', 'study', 'work', 'gym', 'other'];
 
 const toISO = (date: Date) => {
   const pad = (value: number) => value.toString().padStart(2, '0');
@@ -99,6 +101,25 @@ export default function PlanScreen() {
     [blocks, selectedDate],
   );
 
+  const previousAiPlanBlocks = useMemo<AiPlanBlock[]>(() => {
+    return dailyBlocks
+      .filter((block) => block.aiGenerated)
+      .map((block) => {
+        const normalizedCategory = AI_PLAN_CATEGORIES.includes(
+          block.category as AiPlanBlock['category'],
+        )
+          ? (block.category as AiPlanBlock['category'])
+          : 'other';
+        return {
+          title: block.title,
+          note: block.note ?? undefined,
+          startMin: block.startMin,
+          endMin: block.endMin,
+          category: normalizedCategory,
+        };
+      });
+  }, [dailyBlocks]);
+
   const blocksForDay = dailyBlocks;
   const blockCount = blocksForDay.length;
   const totalMinutes = blocksForDay.reduce(
@@ -106,7 +127,6 @@ export default function PlanScreen() {
     0,
   );
   const totalHours = totalMinutes / 60;
-  const hasExistingBlocks = blockCount > 0;
   const summaryMessage =
     blockCount > 0
       ? t('plan.summary.withPlans', {
@@ -116,6 +136,7 @@ export default function PlanScreen() {
         })
       : t('plan.summary.noPlans');
 
+  const hasManualBlocks = dailyBlocks.some((block) => !block.aiGenerated);
   const selectedDateInstance = useMemo(() => parseISO(selectedDate), [selectedDate]);
   const selectedMonthIndex = selectedDateInstance.getMonth();
   const selectedYear = selectedDateInstance.getFullYear();
@@ -273,6 +294,7 @@ export default function PlanScreen() {
   const handleAiApply = useCallback(
     async (blocks: PlanBlock[]) => {
       try {
+        clearPlansByDate(aiDate);
         await addMany(blocks);
       } catch (error) {
         console.error('[PlanScreen] Failed to add AI plan blocks', error);
@@ -484,7 +506,8 @@ export default function PlanScreen() {
           date={aiDate}
           onClose={closeAiModal}
           onApply={handleAiApply}
-          hasExistingBlocks={hasExistingBlocks}
+          hasExistingBlocks={hasManualBlocks}
+          previousBlocks={previousAiPlanBlocks}
         />
       {!isPast && (
         <Pressable

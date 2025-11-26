@@ -20,6 +20,7 @@ type AiPlanModalProps = {
   onClose: () => void;
   onApply: (blocks: PlanBlock[]) => void;
   hasExistingBlocks?: boolean;
+  previousBlocks?: AiPlanBlock[];
 };
 
 const formatDateLabel = (value: string) => {
@@ -49,6 +50,7 @@ const buildPlanBlock = (date: string, block: AiPlanBlock): PlanBlock => ({
   note: block.note,
   date,
   createdAt: new Date().toISOString(),
+  aiGenerated: true,
   done: false,
   rewarded: false,
 });
@@ -59,6 +61,7 @@ export function AiPlanModal({
   onClose,
   onApply,
   hasExistingBlocks,
+  previousBlocks,
 }: AiPlanModalProps) {
   const { palette } = useTheme();
   const [wakeTime, setWakeTime] = useState('07:30');
@@ -105,6 +108,7 @@ export function AiPlanModal({
       priorities: priorities.trim() || null,
       habits: habits.trim() || null,
       feedback: normalizedFeedback || null,
+      previousBlocks: previousBlocks && previousBlocks.length > 0 ? previousBlocks : undefined,
     };
   }, [
     date,
@@ -116,6 +120,7 @@ export function AiPlanModal({
     sleepTime,
     workEnd,
     workStart,
+    previousBlocks,
   ]);
 
   const handleGenerate = useCallback(async () => {
@@ -297,6 +302,22 @@ export function AiPlanModal({
                     { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
                   ]}
                   placeholder="Morning habits, rituals, etc."
+                  placeholderTextColor={palette.text}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: palette.text }]}>Adjust notes (optional)</Text>
+                <TextInput
+                  value={feedback}
+                  onChangeText={setFeedback}
+                  style={[
+                    styles.input,
+                    styles.multiline,
+                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                  ]}
+                  placeholder="Let AI know what to tweak"
                   placeholderTextColor={palette.text}
                   multiline
                   numberOfLines={3}

@@ -8,6 +8,7 @@ const BREAK_WORDS = [
   'short break',
   'rest',
   'pause',
+  'nap',
   'free time',
   'downtime',
   'empty',
@@ -54,11 +55,47 @@ const parseRequest = async (req: Request) => {
     priorities,
     habits,
     feedback,
+    previousBlocks: rawPreviousBlocks,
   } = json as Record<string, unknown>;
 
   if (typeof date !== 'string' || !date) {
     throw new Error('`date` is required and must be a string');
   }
+
+  const normalizedPreviousBlocks = Array.isArray(rawPreviousBlocks)
+    ? rawPreviousBlocks
+        .map((value) => {
+          if (!value || typeof value !== 'object') return null;
+          const block = value as Record<string, unknown>;
+          const title =
+            typeof block.title === 'string' ? block.title.trim() : '';
+          const startMin =
+            typeof block.startMin === 'number'
+              ? Math.floor(block.startMin)
+              : undefined;
+          const endMin =
+            typeof block.endMin === 'number'
+              ? Math.floor(block.endMin)
+              : undefined;
+          const category =
+            typeof block.category === 'string'
+              ? block.category.trim()
+              : undefined;
+          const note =
+            typeof block.note === 'string' ? block.note.trim() : undefined;
+          if (!title || startMin === undefined || endMin === undefined) {
+            return null;
+          }
+          if (startMin < 0 || endMin < 0 || startMin > 1439 || endMin > 1439) {
+            return null;
+          }
+          if (endMin <= startMin) {
+            return null;
+          }
+          return { title, startMin, endMin, category, note };
+        })
+        .filter((value): value is NonNullable<typeof value> => Boolean(value))
+    : [];
 
   return {
     date,
@@ -73,13 +110,15 @@ const parseRequest = async (req: Request) => {
       typeof feedback === 'string' && feedback.trim()
         ? feedback.trim()
         : undefined,
+    previousBlocks: normalizedPreviousBlocks,
   };
 };
 
 const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
   const focusHoursLabel =
     typeof payload.focusHours === 'number' ? `${payload.focusHours} hours` : 'not provided';
-  const promptParts = [
+
+  const userContextPart = [
     'You create a daily schedule for the Organizer app.',
     'You MUST respect: date, wakeTime / sleepTime, workStart / workEnd, focusHours, habits, priorities, and feedback.',
     'Treat `habits`, `priorities`, and `feedback` as HARD CONSTRAINTS, not just suggestions.',
@@ -93,6 +132,22 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
     `User habits: ${payload.habits ?? 'None provided.'}`,
     `User priorities: ${payload.priorities ?? 'None provided.'}`,
     `User feedback from previous plan: ${payload.feedback ?? 'None provided.'}`,
+  ];
+
+  const previousPlanInstruction = payload.previousBlocks.length
+    ? 'If previousBlocks is non-empty, consider it the last AI plan for this date. Try to keep the good parts and adjust only where needed.'
+    : 'No previous AI plan data was provided for this date.';
+
+  const previousPlanSection = [
+    '',
+    'Previous plan context:',
+    previousPlanInstruction,
+    `The user feedback is: ${payload.feedback ?? 'None provided.'}`,
+    'Use this feedback to improve start/end times, categories, and titles, but do NOT add any explicit break, lunch, dinner, breakfast, snack, coffee, tea, downtime, rest, relax, chill, pause, nap, or similar blocks.',
+    'It is allowed to leave gaps (free time) with no blocks instead of filling them.',
+  ];
+
+  const strictRulesPart = [
     '',
     'You must fully respect the user\'s habits, priorities, and feedback when scheduling activities. Treat them as hard constraints, not suggestions.',
     '',
@@ -133,20 +188,34 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
     'No extra text, no explanations, only JSON.',
   ];
 
-  return promptParts.join('\n');
+  return [...userContextPart, ...previousPlanSection, ...strictRulesPart].join('\n');
 };
 
-const buildMessages = (prompt: string) => [
-  {
-    role: 'system',
-    content:
-      'You are a helpful assistant that designs realistic daily plans for productivity-focused users.',
-  },
-  {
-    role: 'user',
-    content: prompt,
-  },
-];
+const buildMessages = (
+  prompt: string,
+  payload: Awaited<ReturnType<typeof parseRequest>>,
+) => {
+  const previousBlocksJson = JSON.stringify(payload.previousBlocks ?? []);
+  const feedbackSummary =
+    payload.feedback && payload.feedback.length > 0
+      ? JSON.stringify(payload.feedback)
+      : 'None provided.';
+  return [
+    {
+      role: 'system',
+      content:
+        'You are a helpful assistant that designs realistic daily plans for productivity-focused users.',
+    },
+    {
+      role: 'user',
+      content: prompt,
+    },
+    {
+      role: 'user',
+      content: `Previous plan blocks (if any): ${previousBlocksJson}\nUser feedback: ${feedbackSummary}`,
+    },
+  ];
+};
 
 const validateBlocks = (
   blocks: Array<Record<string, unknown>>,
@@ -194,7 +263,7 @@ const callOpenAI = async (payload: Awaited<ReturnType<typeof parseRequest>>) => 
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.3,
-      messages: buildMessages(prompt),
+      messages: buildMessages(prompt, payload),
     }),
   });
 

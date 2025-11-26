@@ -28,6 +28,7 @@ export type PlanBlock = {
   createdAt?: string;
   done?: boolean;
   rewarded?: boolean;
+  aiGenerated?: boolean;
 };
 
 export type PlansStore = {
