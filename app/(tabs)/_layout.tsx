@@ -32,7 +32,7 @@ export default function TabLayout() {
           elevation: 12,
         },
           tabBarItemStyle: {
-            paddingTop: 10,
+            paddingTop: 4,
             paddingBottom: 10,
           },
           tabBarIconStyle: {

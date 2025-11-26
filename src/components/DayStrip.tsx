@@ -8,6 +8,8 @@ type Props = {
   year: number;
   month: number;
   onSelect: (dateISO: string) => void;
+  minDate?: string;
+  maxDate?: string;
 };
 
 const pad = (value: number) => value.toString().padStart(2, '0');
@@ -19,15 +21,38 @@ const getDaysInMonth = (year: number, month: number) => {
   return new Date(year, month + 1, 0).getDate();
 };
 
-export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect }: Props) {
+export const DayStrip = memo(function DayStrip({
+  selected,
+  year,
+  month,
+  onSelect,
+  minDate,
+  maxDate,
+}: Props) {
   const { palette } = useTheme();
   const todayISO = useMemo(() => toISO(new Date()), []);
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
-  const days = useMemo(
-    () =>
-      Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1)),
-    [daysInMonth, month, year],
-  );
+  const clampedSelected = useMemo(() => {
+    let next = selected;
+    if (minDate && next < minDate) {
+      next = minDate;
+    }
+    if (maxDate && next > maxDate) {
+      next = maxDate;
+    }
+    return next;
+  }, [selected, minDate, maxDate]);
+  const days = useMemo(() => {
+    const list: Date[] = [];
+    for (let index = 0; index < daysInMonth; index += 1) {
+      const day = new Date(year, month, index + 1);
+      const iso = toISO(day);
+      if (minDate && iso < minDate) continue;
+      if (maxDate && iso > maxDate) continue;
+      list.push(day);
+    }
+    return list;
+  }, [daysInMonth, month, year, minDate, maxDate]);
 
   return (
     <View style={[styles.container, { backgroundColor: palette.background }]}>
@@ -37,7 +62,7 @@ export const DayStrip = memo(function DayStrip({ selected, year, month, onSelect
         contentContainerStyle={styles.scrollContent}>
         {days.map((day) => {
           const iso = toISO(day);
-          const isSelected = iso === selected;
+          const isSelected = iso === clampedSelected;
           const isToday = iso === todayISO;
           const textColor = isSelected ? palette.background : palette.text;
           return (

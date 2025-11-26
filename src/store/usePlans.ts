@@ -44,6 +44,7 @@ export type PlansStore = {
   loadFromServer: (userId: string) => Promise<void>;
   resetToGuest: () => void;
   byDate: (dateISO: string) => PlanBlock[];
+  pruneBeforeToday?: () => void;
 };
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
@@ -354,6 +355,15 @@ export const usePlans = create<PlansStore>((set, get) => {
 
     byDate: (dateISO: string) => {
       return get().blocks.filter((block) => block.date === dateISO);
+    },
+    pruneBeforeToday: () => {
+      const today = todayDate();
+      const currentBlocks = get().blocks;
+      const filtered = currentBlocks.filter((block) => block.date >= today);
+      if (filtered.length === currentBlocks.length) return;
+      set({ blocks: filtered });
+      schedulePersist(filtered);
+      void persistRemote(filtered);
     },
   };
 

@@ -27,6 +27,7 @@ import {
   isAfterToday,
   isBeforeToday,
   isToday as isDateToday,
+  todayDate,
 } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { usePoints } from '@/store/usePoints';
@@ -80,7 +81,18 @@ export default function PlanScreen() {
   const router = useRouter();
   const { palette } = useTheme();
   const { t } = useTranslation();
-  const [selectedDate, setSelectedDate] = useState(() => toISO(new Date()));
+  const today = todayDate();
+  const [selectedDate, setSelectedDateState] = useState(() => {
+    const initial = toISO(new Date());
+    return initial < today ? today : initial;
+  });
+  const handleSelectDate = useCallback(
+    (value: string) => {
+      const next = value < today ? today : value;
+      setSelectedDateState(next);
+    },
+    [today],
+  );
   const [aiVisible, setAiVisible] = useState(false);
   const [aiDate, setAiDate] = useState(selectedDate);
   const loadPlans = usePlans((state) => state.load);
@@ -90,6 +102,7 @@ export default function PlanScreen() {
   const removePlan = usePlans((state) => state.remove);
   const clearPlansByDate = usePlans((state) => state.clearByDate);
   const blocks = usePlans((state) => state.blocks);
+  const pruneBeforeToday = usePlans((state) => state.pruneBeforeToday);
   const isPremium = usePremium((state) => state.isPremium);
   const isPast = isBeforeToday(selectedDate);
   const isToday = isDateToday(selectedDate);
@@ -160,7 +173,7 @@ export default function PlanScreen() {
         year: optionDate.getFullYear(),
         month: optionDate.getMonth(),
       };
-    });
+    }).filter((option) => !(option.year === 2025 && option.month === 9));
   }, []);
 
   const [editorVisible, setEditorVisible] = useState(false);
@@ -172,6 +185,16 @@ export default function PlanScreen() {
   useEffect(() => {
     loadPlans();
   }, [loadPlans]);
+
+  useEffect(() => {
+    pruneBeforeToday?.();
+  }, [pruneBeforeToday, today]);
+
+  useEffect(() => {
+    if (selectedDate < today) {
+      setSelectedDateState(today);
+    }
+  }, [selectedDate, today]);
 
   useEffect(() => {
     setEditorVisible(false);
@@ -224,10 +247,10 @@ export default function PlanScreen() {
       const maxDay = new Date(year, month + 1, 0).getDate();
       const day = Math.min(selectedDateInstance.getDate(), maxDay);
       const nextDate = new Date(year, month, day);
-      setSelectedDate(toISO(nextDate));
+      handleSelectDate(toISO(nextDate));
       setMonthPickerVisible(false);
     },
-    [selectedDateInstance],
+    [selectedDateInstance, handleSelectDate],
   );
 
   const openFocusMode = useCallback(() => setFocusVisible(true), []);
@@ -403,7 +426,8 @@ export default function PlanScreen() {
           selected={selectedDate}
           year={selectedYear}
           month={selectedMonthIndex}
-          onSelect={setSelectedDate}
+          onSelect={handleSelectDate}
+          minDate={today}
         />
         <Modal
           visible={monthPickerVisible}
@@ -624,7 +648,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'transparent',
   },
   monthModal: {
     borderTopLeftRadius: 20,
