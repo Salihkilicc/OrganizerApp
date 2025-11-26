@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 import { useRevenueCatStore } from '../src/store/useRevenueCat';
 import {
@@ -23,6 +24,7 @@ type SelectedPlan = 'monthly' | 'yearly';
 const PaywallScreen = () => {
   const insets = useSafeAreaInsets();
   const palette = useTheme((state) => state.palette);
+  const router = useRouter();
   const { currentOffering, loading, refresh } = useRevenueCatStore();
   const [selected, setSelected] = useState<SelectedPlan>('yearly');
   const [monthlyPackage, setMonthlyPackage] = useState<any | null>(null);
@@ -95,13 +97,12 @@ const PaywallScreen = () => {
   };
 
   const primary = (palette as any).primary ?? palette.accent;
-  const cardBackground = palette.card ?? '#FFFFFF';
-  const cardShadowColor = palette.text;
   const selectedPackage = selected === 'monthly' ? monthlyPackage : yearlyPackage;
   
   // canPurchase kontrolünü loglayalım
   const canPurchase = Boolean(selectedPackage);
 
+  const highlightColor = '#F7C948';
   const renderPlanCard = (
     plan: SelectedPlan,
     pkg: any | null,
@@ -110,46 +111,34 @@ const PaywallScreen = () => {
     helper?: string,
   ) => {
     const isSelected = selected === plan;
-    const price = pkg?.product?.priceString ?? '—'; // Opsiyonel zincirlemeyi güvenli hale getirdim
-    
+    const price = pkg?.product?.priceString ?? '—';
+
     return (
       <TouchableOpacity
         onPress={() => setSelected(plan)}
         style={[
           styles.planCard,
           {
-            borderColor: isSelected ? primary : '#E1E4F0',
+            borderColor: isSelected ? highlightColor : 'rgba(255,255,255,0.25)',
             borderWidth: isSelected ? 2 : 1,
-            backgroundColor: cardBackground,
-            shadowColor: cardShadowColor,
+            shadowColor: isSelected ? highlightColor : '#12051d',
           },
         ]}
         activeOpacity={0.9}
         disabled={processing}
       >
-        <View style={styles.planHeader}>
-          <View
-            style={[
-              styles.badge,
-              {
-                backgroundColor: `${primary}12`,
-                borderColor: isSelected ? primary : '#E5E7EB',
-              },
-            ]}
-          >
-            <Text style={[styles.badgeText, { color: primary }]}>{badge}</Text>
-          </View>
+        <View style={styles.planCardHeader}>
+          <Text style={[styles.planBadge, { color: isSelected ? highlightColor : '#E3E5F1' }]}>
+            {badge}
+          </Text>
           {isSelected ? (
-            <View style={[styles.selectedPill, { borderColor: primary }]}>
-              <Text style={[styles.selectedText, { color: primary }]}>Selected</Text>
-            </View>
+            <Text style={[styles.checkMark, { color: highlightColor }]}>✓</Text>
           ) : null}
         </View>
-        <Text style={[styles.planTitle, { color: palette.text }]}>{title}</Text>
-        <Text style={[styles.planPrice, { color: primary }]}>{price}</Text>
-        {helper ? (
-          <Text style={[styles.helperText, { color: palette.text }]}>{helper}</Text>
-        ) : null}
+
+        <Text style={styles.planTitle}>{title}</Text>
+        <Text style={styles.planPrice}>{price}</Text>
+        {helper ? <Text style={styles.planHelper}>{helper}</Text> : null}
       </TouchableOpacity>
     );
   };
@@ -163,67 +152,76 @@ const PaywallScreen = () => {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: 32 + insets.bottom, paddingTop: insets.top + 12 },
+          { paddingBottom: 32 + insets.bottom, paddingTop: insets.top + 16 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.heroCard, { backgroundColor: '#ffffff20' }]}>
-          <Text style={[styles.heroBadgeText, { color: primary, backgroundColor: '#ffffff50' }]}>
-            New Year 2025
+        <View style={styles.topRow}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+                return;
+              }
+              router.replace('/(tabs)');
+            }}
+          >
+            <Text style={styles.closeIcon}>×</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.heroSection}>
+          <Text style={styles.topBadge}>Planora</Text>
+          <Text style={styles.heroTitle}>See who swiped right on you and chat now</Text>
+          <Text style={styles.heroSubtitle}>
+            Brighter matches, instant replies, and premium boosts in one place.
           </Text>
-          <View style={[styles.iconCircle, { backgroundColor: '#ffffff30' }]}>
-            <Text style={[styles.icon, { color: primary }]}>🎆</Text>
+        </View>
+
+        <View style={styles.planRow}>
+          <View style={styles.planCardWrapper}>
+            {renderPlanCard(
+              'yearly',
+              yearlyPackage,
+              '1 YEAR',
+              'Popular',
+              'Save more vs monthly.',
+            )}
           </View>
-          <Text style={[styles.title, { color: palette.text }]}>Unlock Planora Pro ✨</Text>
-          <Text style={[styles.subtitle, { color: palette.text }]}>
-            AI planning, no ads, more focus.
-          </Text>
-          <Text style={[styles.tinyNote, { color: palette.text }]}>Holiday offer</Text>
+          <View style={styles.planCardWrapper}>
+            {renderPlanCard(
+              'monthly',
+              monthlyPackage,
+              '1 MONTH',
+              'Flexible',
+              'Try Pro month by month.',
+            )}
+          </View>
         </View>
 
-        <View style={[styles.benefitsCard, { backgroundColor: '#FFFFFF', shadowColor: primary }]}>
-          <Text style={[styles.benefitBullet, { color: palette.text }]}>
-            {`\u2022`} ✨ Unlimited AI-generated plans
-          </Text>
-          <Text style={[styles.benefitBullet, { color: palette.text }]}>
-            {`\u2022`} 🎯 Focus tools & streaks
-          </Text>
-          <Text style={[styles.benefitBullet, { color: palette.text }]}>
-            {`\u2022`} 🚫 No ads, just productivity
-          </Text>
-        </View>
-
-        <View style={styles.cards}>
-          {renderPlanCard(
-            'yearly',
-            yearlyPackage,
-            'Yearly – Best value 🎁',
-            'Best value',
-            'Save more vs monthly.',
-          )}
-          {renderPlanCard(
-            'monthly',
-            monthlyPackage,
-            'Monthly – Flexible 🎄',
-            'Flexible',
-            'Try Pro month by month.',
-          )}
+        <View style={styles.featuresCard}>
+          <Text style={styles.featuresTitle}>Included Planora Plus</Text>
+          {['See who added you', 'Free Boost every week', 'Unlimited swipes'].map((item) => (
+            <View key={item} style={styles.featureRow}>
+              <Text style={styles.featureBullet}>✓</Text>
+              <Text style={styles.featureText}>{item}</Text>
+            </View>
+          ))}
         </View>
 
         <TouchableOpacity
           onPress={handlePurchase}
           disabled={processing || !canPurchase}
           style={[
-            styles.primaryButton,
-            {
-              backgroundColor: primary,
-              opacity: processing || !canPurchase ? 0.7 : 1,
-            },
+            styles.purchaseButton,
+            { opacity: processing || !canPurchase ? 0.6 : 1 },
           ]}
           activeOpacity={0.9}
         >
-          <Text style={styles.primaryButtonText}>
-            {selected === 'yearly' ? 'Continue with yearly' : 'Continue with monthly'}
+          <Text style={styles.purchaseButtonText}>
+            {`Continue - ${selectedPackage?.product?.priceString ?? '—'} total`}
           </Text>
         </TouchableOpacity>
 
@@ -236,22 +234,16 @@ const PaywallScreen = () => {
           </View>
         ) : null}
 
-        <TouchableOpacity
-          onPress={handleRestore}
-          disabled={processing}
-          style={[
-            styles.linkButton,
-            { opacity: processing ? 0.6 : 1 },
-          ]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.linkText, { color: palette.text }]}>Restore purchases</Text>
-        </TouchableOpacity>
+        <Text style={styles.renewalNote}>Auto-renewable. Cancel anytime.</Text>
 
         <View style={styles.footerLinks}>
           <Text style={[styles.footerLink, { color: palette.text }]}>Terms of Use</Text>
           <Text style={[styles.footerSeparator, { color: palette.text }]}>•</Text>
           <Text style={[styles.footerLink, { color: palette.text }]}>Privacy Policy</Text>
+          <Text style={[styles.footerSeparator, { color: palette.text }]}>•</Text>
+          <TouchableOpacity onPress={handleRestore} disabled={processing}>
+            <Text style={[styles.footerLink, { color: palette.text }]}>Restore</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -263,6 +255,7 @@ export default PaywallScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#030013',
   },
   gradientLayer: {
     position: 'absolute',
@@ -271,144 +264,174 @@ const styles = StyleSheet.create({
   },
   gradientTop: {
     top: 0,
-    height: 260,
-    backgroundColor: '#0B1535',
+    height: 280,
+    backgroundColor: '#020011',
   },
   gradientMid: {
     top: 220,
-    height: 240,
-    backgroundColor: '#1B1F5C',
-    opacity: 0.7,
+    height: 280,
+    backgroundColor: '#2A0A5C',
+    opacity: 0.9,
   },
   gradientBottom: {
     top: 420,
     height: 500,
-    backgroundColor: '#F5F7FF',
+    backgroundColor: '#05020D',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-  },
-  heroCard: {
+    paddingHorizontal: 24,
     alignItems: 'center',
-    marginBottom: 24,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-    borderRadius: 20,
   },
-  iconCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  icon: {
-    fontSize: 40,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 15,
-    opacity: 0.8,
-    textAlign: 'center',
-  },
-  tinyNote: {
-    marginTop: 4,
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  heroBadgeText: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    fontSize: 12,
-    fontWeight: '700',
-    overflow: 'hidden',
+  topRow: {
+    width: '100%',
+    alignItems: 'flex-end',
     marginBottom: 10,
   },
-  benefitsCard: {
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+  closeButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  benefitBullet: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 6,
+  closeIcon: {
+    fontSize: 22,
+    color: '#fff',
+    lineHeight: 24,
   },
-  cards: {
-    marginBottom: 18,
+  heroSection: {
+    width: '100%',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  topBadge: {
+    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  heroTitle: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#fff',
+    lineHeight: 36,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  planRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  planCardWrapper: {
+    flex: 1,
+    marginHorizontal: 4,
   },
   planCard: {
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 18,
-    marginBottom: 12,
-    shadowOpacity: 0.12,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    shadowOpacity: 0.35,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 4,
+    elevation: 6,
   },
-  planHeader: {
+  planCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  selectedPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: '#ffffff40',
-  },
-  selectedText: {
+  planBadge: {
     fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  helperText: {
-    fontSize: 13,
-    fontWeight: '500',
-    opacity: 0.75,
+  checkMark: {
+    fontSize: 18,
+    fontWeight: '700',
   },
   planTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#fff',
     marginBottom: 6,
   },
   planPrice: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#fff',
+    marginBottom: 6,
+  },
+  planHelper: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+  },
+  featuresCard: {
+    width: '100%',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  featuresTitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    letterSpacing: 1,
     marginBottom: 12,
   },
-  primaryButton: {
-    borderRadius: 16,
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  featureBullet: {
+    fontSize: 18,
+    color: '#F7C948',
+    marginRight: 10,
+  },
+  featureText: {
+    color: '#F5F6FF',
+    fontSize: 15,
+  },
+  purchaseButton: {
+    width: '100%',
+    borderRadius: 30,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    backgroundColor: '#F7C948',
+    marginBottom: 12,
+    shadowColor: '#F7C948',
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+  purchaseButtonText: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#080a0d',
   },
   loader: {
     marginTop: 12,
@@ -417,34 +440,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
+    marginBottom: 4,
   },
   processingText: {
     marginLeft: 8,
     fontSize: 13,
-    opacity: 0.8,
   },
-  linkButton: {
-    alignItems: 'center',
-    marginTop: 18,
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: '600',
+  renewalNote: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   footerLinks: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 18,
+    flexWrap: 'wrap',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   footerLink: {
     fontSize: 12,
-    opacity: 0.8,
     textDecorationLine: 'underline',
+    color: '#F3F4FF',
+    marginHorizontal: 4,
   },
   footerSeparator: {
     fontSize: 12,
-    opacity: 0.5,
-    marginHorizontal: 8,
+    color: 'rgba(255,255,255,0.6)',
+    marginHorizontal: 2,
   },
 });
