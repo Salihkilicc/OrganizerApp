@@ -12,7 +12,6 @@ export type AiPlanRequest = {
   sleepTime: string;
   workStart?: string | null;
   workEnd?: string | null;
-  focusHours?: number | null;
   habits?: string | null;
   priorities?: string | null;
   feedback?: string | null;

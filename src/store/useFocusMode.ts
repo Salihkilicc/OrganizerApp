@@ -1,10 +1,15 @@
 import { create } from 'zustand';
 
-import { todayDate } from '@/store/usePlans';
+import { todayDate, usePlans } from '@/store/usePlans';
 import { usePoints } from '@/store/usePoints';
 
 const MINUTE_MS = 60 * 1000;
 const MAX_FOCUS_POINTS_PER_DAY = 90;
+
+type FocusStartOptions = {
+  blockId?: string;
+  markDoneOnCompletion?: boolean;
+};
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -16,8 +21,11 @@ export type FocusModeState = {
   lastTickAt?: number;
   startedAt?: number;
   sessionId?: string;
-  start: (initialMinutes: number) => void;
-  exit: () => void;
+  linkedBlockId?: string | null;
+  markDoneOnCompletion?: boolean;
+  start: (initialMinutes: number, options?: FocusStartOptions) => void;
+  startFocusForBlock: (blockId: string, durationMinutes: number) => void;
+  exit: (options?: { completed?: boolean }) => void;
   addMinutes: (extra: number) => void;
   tick: (now: number) => void;
 };
@@ -29,7 +37,9 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
   remainingMinutes: 0,
   totalMinutes: 0,
   accumulatedMinutes: 0,
-  start(initialMinutes) {
+  linkedBlockId: undefined,
+  markDoneOnCompletion: false,
+  start(initialMinutes, options?: FocusStartOptions) {
     if (!Number.isFinite(initialMinutes)) {
       return;
     }
@@ -53,9 +63,21 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       startedAt: now,
       lastTickAt: now,
       sessionId,
+      linkedBlockId: options?.blockId ?? undefined,
+      markDoneOnCompletion: options?.markDoneOnCompletion ?? false,
     });
   },
-  exit() {
+  startFocusForBlock(blockId, durationMinutes) {
+    if (!blockId) {
+      return;
+    }
+    const duration = sanitizeMinutes(durationMinutes);
+    if (duration <= 0) {
+      return;
+    }
+    get().start(duration, { blockId, markDoneOnCompletion: true });
+  },
+  exit(options?: { completed?: boolean }) {
     const state = get();
     if (!state.active) {
       return;
@@ -67,6 +89,12 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       pointsState.recordFocusSession();
     }
 
+    const shouldMarkDone =
+      Boolean(options?.completed) &&
+      state.markDoneOnCompletion &&
+      typeof state.linkedBlockId === 'string';
+    const blockIdToComplete = shouldMarkDone ? state.linkedBlockId : undefined;
+
     set({
       active: false,
       remainingMinutes: 0,
@@ -75,6 +103,8 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       startedAt: undefined,
       lastTickAt: undefined,
       sessionId: undefined,
+      linkedBlockId: undefined,
+      markDoneOnCompletion: false,
     });
 
     if (rewardMinutes > 0) {
@@ -88,6 +118,10 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       if (toAward > 0) {
         pointsState.addFocusPoints(toAward);
       }
+    }
+
+    if (blockIdToComplete) {
+      void usePlans.getState().update(blockIdToComplete, { done: true });
     }
   },
   addMinutes(extra) {
@@ -138,7 +172,7 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
     });
 
     if (nextRemaining <= 0) {
-      get().exit();
+      get().exit({ completed: true });
     }
   },
 }));

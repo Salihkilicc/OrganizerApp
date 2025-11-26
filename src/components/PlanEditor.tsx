@@ -219,12 +219,12 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
               styles.input,
               {
                 backgroundColor: palette.background,
-                color: '#000',
+                color: palette.text,
                 borderColor: palette.border,
               },
             ]}
             placeholder="Title"
-            placeholderTextColor="#000"
+            placeholderTextColor={palette.text}
             value={title}
             onChangeText={setTitle}
           />
@@ -341,21 +341,21 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
             </View>
           </View>
           <View style={styles.sectionGap}>
-            <TextInput
-              style={[
-                styles.input,
-                styles.noteInput,
-                {
-                  backgroundColor: palette.background,
-                  color: '#000',
-                  borderColor: palette.border,
-                },
-              ]}
-              placeholder="Note (optional)"
-              placeholderTextColor="#000"
-              multiline
-              textAlignVertical="top"
-              value={note}
+          <TextInput
+            style={[
+              styles.input,
+              styles.noteInput,
+              {
+                backgroundColor: palette.background,
+                color: palette.text,
+                borderColor: palette.border,
+              },
+            ]}
+            placeholder="Note (optional)"
+            placeholderTextColor={palette.text}
+            multiline
+            textAlignVertical="top"
+            value={note}
               onChangeText={setNote}
             />
           </View>

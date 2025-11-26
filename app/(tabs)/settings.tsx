@@ -123,29 +123,52 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.premiumWrapper}>
-          <Pressable
-            onPress={() => router.push('/paywall')}
-            style={({ pressed }) => [
-              styles.premiumPromo,
-              styles.cardShadow,
-              styles.premiumOutline,
-              {
-                opacity: pressed ? 0.9 : 1,
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-              },
-            ]}>
-            <View style={styles.premiumTextWrapper}>
-              <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
-              <View style={styles.premiumTextGroup}>
-                <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>Premium is calling</Text>
-                <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
-                  Tap to unlock powerful focus tools
-                </Text>
+          {isPremium ? (
+            <View
+              style={[
+                styles.premiumPromo,
+                styles.cardShadow,
+                styles.premiumOwned,
+                {
+                  backgroundColor: palette.card,
+                  borderColor: palette.border,
+                },
+              ]}>
+              <View style={styles.premiumTextWrapper}>
+                <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
+                <View style={styles.premiumTextGroup}>
+                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>Premium</Text>
+                  <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
+                    You already have access to premium features
+                  </Text>
+                </View>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={palette.text} />
-          </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => router.push('/paywall')}
+              style={({ pressed }) => [
+                styles.premiumPromo,
+                styles.cardShadow,
+                styles.premiumOutline,
+                {
+                  opacity: pressed ? 0.9 : 1,
+                  backgroundColor: palette.card,
+                  borderColor: palette.border,
+                },
+              ]}>
+              <View style={styles.premiumTextWrapper}>
+                <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
+                <View style={styles.premiumTextGroup}>
+                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>Unlock Premium</Text>
+                  <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
+                    Tap to unlock powerful focus tools
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={palette.text} />
+            </Pressable>
+          )}
         </View>
 
         <View
@@ -453,6 +476,9 @@ const styles = StyleSheet.create({
   },
   premiumIcon: {
     marginRight: 12,
+  },
+  premiumOwned: {
+    opacity: 0.85,
   },
   premiumTextWrapper: {
     flex: 1,

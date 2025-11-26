@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -41,6 +42,30 @@ const formatMinutes = (value: number) => {
   return `${pad(hours)}:${pad(minutes)}`;
 };
 
+const DEFAULT_WORK_START = '09:00';
+const DEFAULT_WORK_END = '17:00';
+
+const parseTimeString = (value: string) => {
+  const normalized = value.trim();
+  const parts = normalized.split(':');
+  if (parts.length !== 2) return undefined;
+  const [hoursPart, minutesPart] = parts;
+  if (hoursPart.trim() === '' || minutesPart.trim() === '') return undefined;
+  const hours = Number(hoursPart);
+  const minutes = Number(minutesPart);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return undefined;
+  }
+  return hours * 60 + minutes;
+};
+
 const buildPlanBlock = (date: string, block: AiPlanBlock): PlanBlock => ({
   id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   title: block.title,
@@ -66,9 +91,9 @@ export function AiPlanModal({
   const { palette } = useTheme();
   const [wakeTime, setWakeTime] = useState('07:30');
   const [sleepTime, setSleepTime] = useState('23:30');
-  const [workStart, setWorkStart] = useState('09:00');
-  const [workEnd, setWorkEnd] = useState('17:00');
-  const [focusHours, setFocusHours] = useState('3');
+  const [workStart, setWorkStart] = useState(DEFAULT_WORK_START);
+  const [workEnd, setWorkEnd] = useState(DEFAULT_WORK_END);
+  const [works, setWorks] = useState(() => Boolean(DEFAULT_WORK_START && DEFAULT_WORK_END));
   const [priorities, setPriorities] = useState('');
   const [habits, setHabits] = useState('');
   const [previewBlocks, setPreviewBlocks] = useState<AiPlanBlock[]>([]);
@@ -76,6 +101,18 @@ export function AiPlanModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
+
+  const workStartMinutes = works ? parseTimeString(workStart) : undefined;
+  const workEndMinutes = works ? parseTimeString(workEnd) : undefined;
+  let workValidationError: string | null = null;
+  if (works) {
+    if (workStartMinutes === undefined || workEndMinutes === undefined) {
+      workValidationError = 'Enter valid work start and end times (e.g. 09:00).';
+    } else if (workEndMinutes <= workStartMinutes) {
+      workValidationError = 'Work end must be after work start.';
+    }
+  }
+  const generateDisabled = loading || (works && Boolean(workValidationError));
 
   const dateLabel = useMemo(() => formatDateLabel(date), [date]);
   const previewList = previewBlocks ?? [];
@@ -96,34 +133,38 @@ export function AiPlanModal({
   }, [resetState, visible]);
 
   const buildRequestPayload = useCallback((): AiPlanRequest => {
-    const parsedFocus = Number(focusHours);
     const normalizedFeedback = feedback.trim();
+    const normalizedPriorities = priorities.trim();
+    const normalizedHabits = habits.trim();
+    const hasWorkWindow = works && workStart.trim() && workEnd.trim();
     return {
       date,
       wakeTime: wakeTime.trim(),
       sleepTime: sleepTime.trim(),
-      workStart: workStart.trim() || null,
-      workEnd: workEnd.trim() || null,
-      focusHours: Number.isFinite(parsedFocus) ? parsedFocus : null,
-      priorities: priorities.trim() || null,
-      habits: habits.trim() || null,
-      feedback: normalizedFeedback || null,
+      workStart: hasWorkWindow ? workStart.trim() : undefined,
+      workEnd: hasWorkWindow ? workEnd.trim() : undefined,
+      priorities: normalizedPriorities || undefined,
+      habits: normalizedHabits || undefined,
+      feedback: normalizedFeedback || undefined,
       previousBlocks: previousBlocks && previousBlocks.length > 0 ? previousBlocks : undefined,
     };
   }, [
     date,
-    focusHours,
-    habits,
     feedback,
+    habits,
     priorities,
     wakeTime,
     sleepTime,
     workEnd,
     workStart,
+    works,
     previousBlocks,
   ]);
 
   const handleGenerate = useCallback(async () => {
+    if (works && workValidationError) {
+      return;
+    }
     if (hasExistingBlocks) {
       setError('There should not be any plan for this day');
       return;
@@ -149,7 +190,7 @@ export function AiPlanModal({
     } finally {
       setLoading(false);
     }
-  }, [buildRequestPayload, hasExistingBlocks]);
+  }, [buildRequestPayload, hasExistingBlocks, workValidationError, works]);
 
   const handleRegenerate = useCallback(async () => {
     if (!date) return;
@@ -233,47 +274,53 @@ export function AiPlanModal({
                   placeholderTextColor={palette.text}
                 />
               </View>
-              <View style={styles.fieldRow}>
-                <View style={styles.fieldHalf}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>Work start</Text>
-                  <TextInput
-                    value={workStart}
-                    onChangeText={setWorkStart}
-                    style={[
-                      styles.input,
-                      { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
-                    ]}
-                    placeholder="09:00"
-                    placeholderTextColor={palette.text}
-                  />
-                </View>
-                <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>Work end</Text>
-                  <TextInput
-                    value={workEnd}
-                    onChangeText={setWorkEnd}
-                    style={[
-                      styles.input,
-                      { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
-                    ]}
-                    placeholder="17:00"
-                    placeholderTextColor={palette.text}
-                  />
-                </View>
-              </View>
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: palette.text }]}>Focus hours</Text>
-                <TextInput
-                  value={focusHours}
-                  onChangeText={setFocusHours}
-                  keyboardType="numeric"
-                  style={[
-                    styles.input,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
-                  ]}
-                  placeholder="3"
-                  placeholderTextColor={palette.text}
-                />
+                <View style={styles.workToggleRow}>
+                  <Text style={[styles.fieldLabel, { color: palette.text }]}>I work during the day</Text>
+                  <Switch
+                    value={works}
+                    onValueChange={setWorks}
+                    trackColor={{ true: palette.accent, false: palette.border }}
+                    thumbColor={palette.background}
+                  />
+                </View>
+                {works && (
+                  <>
+                    <View style={styles.fieldRow}>
+                      <View style={styles.fieldHalf}>
+                        <Text style={[styles.fieldLabel, { color: palette.text }]}>Work start</Text>
+                        <TextInput
+                          value={workStart}
+                          onChangeText={setWorkStart}
+                          style={[
+                            styles.input,
+                            { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                          ]}
+                          placeholder="09:00"
+                          placeholderTextColor={palette.text}
+                        />
+                      </View>
+                      <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
+                        <Text style={[styles.fieldLabel, { color: palette.text }]}>Work end</Text>
+                        <TextInput
+                          value={workEnd}
+                          onChangeText={setWorkEnd}
+                          style={[
+                            styles.input,
+                            { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                          ]}
+                          placeholder="17:00"
+                          placeholderTextColor={palette.text}
+                        />
+                      </View>
+                    </View>
+                    {workValidationError ? (
+                      <Text style={[styles.errorText, { color: palette.accent }]}>
+                        {workValidationError}
+                      </Text>
+                    ) : null}
+                  </>
+                )}
               </View>
               <View style={styles.field}>
                 <Text style={[styles.fieldLabel, { color: palette.text }]}>Priorities</Text>
@@ -341,12 +388,12 @@ export function AiPlanModal({
                 </Pressable>
                 <Pressable
                   onPress={handleGenerate}
-                  disabled={loading}
+                  disabled={generateDisabled}
                   style={({ pressed }) => [
                     styles.primaryButton,
                     {
                       backgroundColor: palette.accent,
-                      opacity: loading ? 0.6 : pressed ? 0.85 : 1,
+                      opacity: loading ? 0.6 : generateDisabled ? 0.5 : pressed ? 0.85 : 1,
                     },
                   ]}
                 >
@@ -481,6 +528,11 @@ const styles = StyleSheet.create({
   formContent: {},
   field: {
     marginBottom: 12,
+  },
+  workToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   fieldRow: {
     flexDirection: 'row',

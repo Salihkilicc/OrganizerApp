@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   GestureResponderEvent,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -21,6 +22,7 @@ import { useTheme } from '@/store/useTheme';
 import { useTranslation } from '@/i18n';
 import { useRouter } from 'expo-router';
 import { useWeather } from '@/store/useWeather';
+import { useFocusMode } from '@/store/useFocusMode';
 import * as Haptics from 'expo-haptics';
 import { useWater, WATER_BOTTLE_COUNT } from '@/store/useWater';
 import { getFrameDecoration } from '@/lib/frameStyles';
@@ -110,10 +112,11 @@ export default function TodayScreen() {
   const removePlan = usePlans((state) => state.remove);
   const streakDays = useStreak((state) => state.streakDays);
   const initializeStreak = useStreak((state) => state.initialize);
+  const startFocusForBlock = useFocusMode((state) => state.startFocusForBlock);
 
   const [selectedBlock, setSelectedBlock] = useState<PlanBlock | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
-  const [showWeeklyForecast, setShowWeeklyForecast] = useState(false);
+  const [weatherModalVisible, setWeatherModalVisible] = useState(false);
   const temperature = useWeather((state) => state.temperature);
   const icon = useWeather((state) => state.icon);
   const weekly = useWeather((state) => state.weekly);
@@ -183,7 +186,7 @@ export default function TodayScreen() {
         if (!active) return;
         if (status !== 'granted') {
           setError('Location off');
-          setShowWeeklyForecast(false);
+          setWeatherModalVisible(false);
           return;
         }
         const location = await Location.getCurrentPositionAsync({});
@@ -193,7 +196,7 @@ export default function TodayScreen() {
         console.error('[TodayScreen] Weather error', err);
         if (active) {
           setError('Weather unavailable');
-          setShowWeeklyForecast(false);
+          setWeatherModalVisible(false);
         }
       }
     };
@@ -220,6 +223,10 @@ export default function TodayScreen() {
       .sort((a, b) => a.startMin - b.startMin);
   }, [blocks, today]);
 
+  const pendingBlocks = useMemo(() => {
+    return todayBlocks.filter((block) => !(block.done ?? false));
+  }, [todayBlocks]);
+
   const totalPlans = todayBlocks.length;
   const totalHours =
     todayBlocks.reduce((sum, block) => sum + (block.endMin - block.startMin), 0) / 60;
@@ -236,14 +243,16 @@ export default function TodayScreen() {
           hours: planHoursDisplay,
         });
   const nextBlock = useMemo(() => {
-    if (!todayBlocks.length) return null;
+    if (!pendingBlocks.length) return null;
     const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-    const upcoming = todayBlocks.find((block) => block.startMin > currentMinutes);
-    return upcoming ?? todayBlocks[0];
-  }, [todayBlocks]);
+    const upcoming = pendingBlocks.find((block) => block.startMin > currentMinutes);
+    return upcoming ?? pendingBlocks[0];
+  }, [pendingBlocks]);
 
   const handleStartFocus = (block: PlanBlock | null) => {
     if (!block) return;
+    const durationMinutes = Math.max(1, block.endMin - block.startMin);
+    startFocusForBlock(block.id, durationMinutes);
     router.push({
       pathname: '/focus',
       params: {
@@ -296,14 +305,14 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        onTouchStart={() => {
-          if (showWeeklyForecast) {
-            setShowWeeklyForecast(false);
-          }
-        }}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          onTouchStart={() => {
+            if (weatherModalVisible) {
+              setWeatherModalVisible(false);
+            }
+          }}>
         <View style={styles.headerRow}>
           <View style={styles.avatarColumn}>
             <Pressable
@@ -342,7 +351,7 @@ export default function TodayScreen() {
               </View>
 
               <Pressable
-                onPress={() => setShowWeeklyForecast((prev) => !prev)}
+                onPress={() => setWeatherModalVisible(true)}
                 onTouchStart={(event) => event.stopPropagation()}
                 style={({ pressed }) => [
                   styles.weatherBubble,
@@ -395,41 +404,6 @@ export default function TodayScreen() {
             </View>
           </View>
         </View>
-
-        {showWeeklyForecast && (
-        <View
-          onStartShouldSetResponder={() => true}
-          onTouchStart={(event) => event.stopPropagation()}
-          style={[
-            styles.weeklyCard,
-            styles.buttonShadow,
-            {
-              backgroundColor: palette.card,
-              borderColor: palette.border,
-            },
-          ]}>
-            {weeklyPreview.length ? (
-              weeklyPreview.map((day, index) => (
-                <View
-                  key={`${day.day}-${index}`}
-                  style={[
-                    styles.weeklyRow,
-                    index === weeklyPreview.length - 1 && styles.weeklyRowLast,
-                  ]}>
-                  <Text style={[styles.weeklyDay, { color: palette.text }]}>{day.day}</Text>
-                  <Text style={[styles.weeklyIcon, { color: palette.accent }]}>{day.icon}</Text>
-                  <Text style={[styles.weeklyTemp, { color: palette.text }]}>
-                    {day.temp}°C
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text style={[styles.weeklyUnavailable, { color: palette.text }]}>
-                Weather unavailable
-              </Text>
-            )}
-          </View>
-        )}
 
         <View
           style={[
@@ -628,6 +602,58 @@ export default function TodayScreen() {
         onSave={handleEditorSave}
         onDelete={handleEditorDelete}
       />
+      <Modal
+        visible={weatherModalVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setWeatherModalVisible(false)}>
+        <View style={styles.weatherModalBackdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setWeatherModalVisible(false)}
+          />
+          <View
+            style={[
+              styles.weatherModalCard,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+              },
+            ]}>
+            <View style={styles.weatherModalHeader}>
+              <Text style={[styles.weatherModalTitle, { color: palette.text }]}>
+                This week’s weather
+              </Text>
+              <Pressable onPress={() => setWeatherModalVisible(false)}>
+                <Text style={[styles.weatherModalClose, { color: palette.accent }]}>Close</Text>
+              </Pressable>
+            </View>
+            <View style={styles.weatherModalList}>
+              {weeklyPreview.length ? (
+                weeklyPreview.map((day, index) => (
+                  <View
+                    key={`${day.day}-${index}`}
+                    style={[
+                      styles.weeklyRow,
+                      index === weeklyPreview.length - 1 && styles.weeklyRowLast,
+                    ]}>
+                    <Text style={[styles.weeklyDay, { color: palette.text }]}>{day.day}</Text>
+                    <Text style={[styles.weeklyIcon, { color: palette.accent }]}>{day.icon}</Text>
+                    <Text style={[styles.weeklyTemp, { color: palette.text }]}>
+                      {day.temp}°C
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.weeklyUnavailable, { color: palette.text }]}>
+                  Weather unavailable
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -761,6 +787,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  weatherModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  weatherModalCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    width: '100%',
+    maxWidth: 360,
+    padding: 18,
+  },
+  weatherModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  weatherModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  weatherModalClose: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  weatherModalList: {
+    width: '100%',
   },
   statLabel: {
     fontSize: 12,

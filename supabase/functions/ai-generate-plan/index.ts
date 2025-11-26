@@ -3,29 +3,31 @@ import { serve } from 'https://deno.land/std@0.201.0/http/server.ts';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4.1';
 const VALID_CATEGORIES = ['focus', 'study', 'work', 'gym', 'other'] as const;
-const BREAK_WORDS = [
+const BREAK_KEYWORDS = [
   'break',
+  'breaks',
   'short break',
   'rest',
-  'pause',
-  'nap',
-  'free time',
-  'downtime',
-  'empty',
-  'gap',
-  'idle',
+  'resting',
   'relax',
   'relaxing',
+  'downtime',
+  'wind down',
   'chill',
   'unwind',
-  'wind down',
+  'nap',
+  'pause',
+  'free time',
+  'gap',
+  'idle',
+  'empty',
   'coffee',
   'tea',
   'snack',
   'snacks',
   'lunch',
-  'breakfast',
   'dinner',
+  'breakfast',
   'meal',
   'meals',
   'eat',
@@ -34,11 +36,34 @@ const BREAK_WORDS = [
 ];
 
 function removeBreaklikeBlocks(blocks: any[]) {
-  return blocks.filter((b) => {
-    const text = `${(b.title ?? '')} ${(b.note ?? '')}`.toLowerCase();
-    return !BREAK_WORDS.some((w) => text.includes(w));
+  return blocks.filter((block) => {
+    const title = (block?.title ?? '').toLowerCase();
+    const note = (block?.note ?? '').toLowerCase();
+    return !BREAK_KEYWORDS.some((keyword) => title.includes(keyword) || note.includes(keyword));
   });
 }
+
+const parseTimeToMinutes = (value?: string) => {
+  if (!value) return undefined;
+  const normalized = value.trim();
+  const parts = normalized.split(':');
+  if (parts.length !== 2) return undefined;
+  const [hoursPart, minutesPart] = parts;
+  if (hoursPart.trim() === '' || minutesPart.trim() === '') return undefined;
+  const hours = Number(hoursPart);
+  const minutes = Number(minutesPart);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return undefined;
+  }
+  return hours * 60 + minutes;
+};
 
 const parseRequest = async (req: Request) => {
   const json = await req.json().catch(() => null);
@@ -51,7 +76,6 @@ const parseRequest = async (req: Request) => {
     sleepTime,
     workStart,
     workEnd,
-    focusHours,
     priorities,
     habits,
     feedback,
@@ -103,7 +127,6 @@ const parseRequest = async (req: Request) => {
     sleepTime: typeof sleepTime === 'string' ? sleepTime : undefined,
     workStart: typeof workStart === 'string' ? workStart : undefined,
     workEnd: typeof workEnd === 'string' ? workEnd : undefined,
-    focusHours: typeof focusHours === 'number' ? focusHours : undefined,
     priorities: typeof priorities === 'string' ? priorities : undefined,
     habits: typeof habits === 'string' ? habits : undefined,
     feedback:
@@ -115,27 +138,28 @@ const parseRequest = async (req: Request) => {
 };
 
 const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
-  const focusHoursLabel =
-    typeof payload.focusHours === 'number' ? `${payload.focusHours} hours` : 'not provided';
+  const workWindowSummary =
+    payload.workStart && payload.workEnd
+      ? `${payload.workStart} - ${payload.workEnd}`
+      : 'not provided (the user does not have fixed work hours)';
 
   const userContextPart = [
     'You create a daily schedule for the Organizer app.',
-    'You MUST respect: date, wakeTime / sleepTime, workStart / workEnd, focusHours, habits, priorities, and feedback.',
+    'You MUST respect: date, wakeTime / sleepTime, workStart / workEnd (when provided), habits, priorities, and feedback.',
     'Treat `habits`, `priorities`, and `feedback` as HARD CONSTRAINTS, not just suggestions.',
     '',
     'User context:',
     `Date: ${payload.date}`,
     `Wake time: ${payload.wakeTime ?? 'not provided'}`,
     `Sleep time: ${payload.sleepTime ?? 'not provided'}`,
-    `Work/School: ${payload.workStart ?? 'not provided'} - ${payload.workEnd ?? 'not provided'}`,
-    `Focus hours target: ${focusHoursLabel}`,
+    `Work hours: ${workWindowSummary}`,
     `User habits: ${payload.habits ?? 'None provided.'}`,
     `User priorities: ${payload.priorities ?? 'None provided.'}`,
     `User feedback from previous plan: ${payload.feedback ?? 'None provided.'}`,
   ];
 
   const previousPlanInstruction = payload.previousBlocks.length
-    ? 'If previousBlocks is non-empty, consider it the last AI plan for this date. Try to keep the good parts and adjust only where needed.'
+    ? 'If previousBlocks is non-empty, consider it the last AI plan for this date. Try to keep the strong parts and adjust only where needed.'
     : 'No previous AI plan data was provided for this date.';
 
   const previousPlanSection = [
@@ -143,35 +167,26 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
     'Previous plan context:',
     previousPlanInstruction,
     `The user feedback is: ${payload.feedback ?? 'None provided.'}`,
-    'Use this feedback to improve start/end times, categories, and titles, but do NOT add any explicit break, lunch, dinner, breakfast, snack, coffee, tea, downtime, rest, relax, chill, pause, nap, or similar blocks.',
-    'It is allowed to leave gaps (free time) with no blocks instead of filling them.',
+    'Use this feedback to adjust start/end times, categories, and titles, but do NOT add explicit break, lunch, dinner, breakfast, snack, coffee, tea, downtime, rest, relax, chill, pause, nap, or similar blocks.',
+    'Gaps (empty time ranges) are allowed instead of those break-like blocks.',
   ];
 
   const strictRulesPart = [
     '',
-    'You must fully respect the user\'s habits, priorities, and feedback when scheduling activities. Treat them as hard constraints, not suggestions.',
-    '',
     '⚠️ STRICT RULES (MUST FOLLOW EXACTLY):',
-    '1) DO NOT generate any break-like blocks.',
-    '   - No breakfast, lunch, dinner, snacks, coffee, tea, rest, relax, unwind, "short break", "break", "downtime", "free time", "gap", "empty slot" or any similar concept.',
-    '   - If you think a break is needed, DO NOT output a block for it. Just leave that time empty and output nothing for that period.',
-    '   - Only output focused, productive, or explicitly user-requested activities.',
-    '2) Respect user constraints as HARD constraints:',
-    '   - If the user says they run at night (e.g. "I run at night after 21:00"), you MUST schedule running only in that time window and NEVER in the morning.',
-    '   - If the user has school/work hours (e.g. "School is 09:00-15:00"), those hours are reserved and you MUST NOT place other activities in that window.',
-    '   - Use wakeTime and sleepTime as the bounds for the day. Do not schedule outside that range.',
-    '3) You must return ONLY valid activity blocks. No placeholder or "nothing" blocks. If there is nothing to do in a time range, just skip it.',
-    'You must obey these rules even if other instructions might suggest breaks or meals. These strict rules override everything else.',
-    '',
-    'Additional rules:',
-    '1. Respect wake/sleep boundaries; do not schedule anything before wakeTime or after sleepTime.',
-    '2. Treat workStart/workEnd as the dedicated work window and keep those hours reserved for school/work-focused blocks.',
-    '3. Fill focusHours with multiple focus blocks between 25 and 90 minutes each.',
-    '4. Output ONLY JSON with a top-level "blocks" array.',
-    `5. Each block must include title (English string), category (one of ${VALID_CATEGORIES
+    '1) DO NOT generate any break, meal, snack, or rest block. That includes titles or notes containing lunch, dinner, breakfast, snack, snacks, coffee, tea, break, breaks, short break, quick rest, relax, relaxing, downtime, wind down, chill, nap, pause, free time, gap, empty, idle, unwind, or recharge. Leave those periods empty instead.',
+    '2) Respect the user constraints as HARD constraints:',
+    '   - Use wakeTime and sleepTime as strict bounds for the day.',
+    '   - If workStart/workEnd are provided, treat that window as reserved for work and do NOT schedule other activities inside it.',
+    '   - If workStart/workEnd are not provided, the user does not have fixed work hours so schedule freely between wake and sleep.',
+    '   - Habits, priorities, and feedback must be honored.',
+    '3) Schedule only meaningful activity blocks (focus, study, work, gym, other). Let AI decide how much focus time to include, using multiple focus blocks between 25 and 90 minutes each.',
+    '4) Output ONLY JSON with a top-level "blocks" array.',
+    `5) Each block must include title (English string), category (one of ${VALID_CATEGORIES
       .map((c) => `"${c}"`)
       .join(', ')}), startMin, endMin, and an optional note.`,
-    '6. Do not add any text outside the JSON response.',
+    '6) Do not add any text outside the JSON response.',
+    '7) Do not output placeholder or "nothing" blocks. If there is no activity during a time range, just leave it empty.',
     '',
     'Output ONLY valid JSON with this shape:',
     '{',
@@ -188,7 +203,7 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
     'No extra text, no explanations, only JSON.',
   ];
 
-  return [...userContextPart, ...previousPlanSection, ...strictRulesPart].join('\n');
+  return [...userContextPart, ...previousPlanSection, ...strictRulesPart].join('\\n');
 };
 
 const buildMessages = (
@@ -312,7 +327,6 @@ serve(async (req) => {
       sleepTime: payload.sleepTime ?? null,
       workStart: payload.workStart ?? null,
       workEnd: payload.workEnd ?? null,
-      focusHours: payload.focusHours ?? null,
       priorities: payload.priorities ?? null,
       habits: payload.habits ?? null,
     });
@@ -337,8 +351,8 @@ serve(async (req) => {
   try {
     const blocksJson = await callOpenAI(payload);
     const initialBlocks = blocksJson ?? [];
-    const withoutBreaks = removeBreaklikeBlocks(initialBlocks);
-    const withoutMicroBreaks = withoutBreaks.filter((block: any) => {
+    const breakFilteredBlocks = removeBreaklikeBlocks(initialBlocks);
+    const noMicroBreakBlocks = breakFilteredBlocks.filter((block: any) => {
       const startMin =
         typeof block?.startMin === 'number' ? Math.floor(block.startMin) : undefined;
       const endMin = typeof block?.endMin === 'number' ? Math.floor(block.endMin) : undefined;
@@ -347,18 +361,49 @@ serve(async (req) => {
       }
       return endMin - startMin >= 10;
     });
-    const validatedBlocksWithoutBreaks = validateBlocks(withoutMicroBreaks);
+    const validatedBlocks = validateBlocks(noMicroBreakBlocks);
+    const sanitizedBlocks = validatedBlocks.filter((block) => {
+      const titleLower = block.title.toLowerCase();
+      return !(titleLower === 'work hours' && block.category === 'work');
+    });
+    const workStartMinutes = parseTimeToMinutes(payload.workStart);
+    const workEndMinutes = parseTimeToMinutes(payload.workEnd);
+    const hasWorkSchedule =
+      typeof workStartMinutes === 'number' &&
+      typeof workEndMinutes === 'number' &&
+      workEndMinutes > workStartMinutes;
+    const filteredForWork = hasWorkSchedule
+      ? sanitizedBlocks.filter(
+          (block) => block.endMin <= workStartMinutes || block.startMin >= workEndMinutes,
+        )
+      : sanitizedBlocks;
+    const workBlock = hasWorkSchedule
+      ? {
+          title: 'Work hours',
+          category: 'work' as (typeof VALID_CATEGORIES)[number],
+          startMin: workStartMinutes,
+          endMin: workEndMinutes,
+          note: 'Time reserved for work.',
+        }
+      : null;
+    const finalBlocks = [...filteredForWork];
+    if (workBlock) {
+      finalBlocks.push(workBlock);
+    }
+    finalBlocks.sort((a, b) => a.startMin - b.startMin);
     console.log(
       '[ai-generate-plan] Generated blocks',
-      validatedBlocksWithoutBreaks.length,
+      finalBlocks.length,
       'after filtering strict constraints',
       {
         total: initialBlocks.length,
-        breakLikeRemoved: initialBlocks.length - withoutBreaks.length,
-        microRemoved: withoutBreaks.length - withoutMicroBreaks.length,
+        breakLikeRemoved: initialBlocks.length - breakFilteredBlocks.length,
+        microRemoved: breakFilteredBlocks.length - noMicroBreakBlocks.length,
+        overlappingWithWorkFiltered: sanitizedBlocks.length - filteredForWork.length,
+        addedWorkBlock: Boolean(workBlock),
       },
     );
-    return Response.json({ blocks: validatedBlocksWithoutBreaks });
+    return Response.json({ blocks: finalBlocks });
   } catch (error) {
     console.error('[ai-generate-plan] Error', error);
     return Response.json(
