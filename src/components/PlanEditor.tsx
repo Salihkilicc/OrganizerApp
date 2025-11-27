@@ -50,7 +50,6 @@ type Props = {
     endMin: number;
     note?: string;
     category: PlanCategory;
-    done: boolean;
   }) => void;
   onDelete?: (id: string) => void;
 };
@@ -87,7 +86,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
   const [endHourText, setEndHourText] = useState(() => pad(Math.floor(defaultEnd / 60)));
   const [endMinuteText, setEndMinuteText] = useState(() => pad(defaultEnd % 60));
   const [category, setCategory] = useState<PlanCategory>(initial?.category ?? 'focus');
-  const [done, setDone] = useState(initial?.done ?? false);
   useEffect(() => {
     const nextStart = initial?.startMin ?? defaultStart;
     const nextEnd = initial?.endMin ?? defaultEnd;
@@ -105,7 +103,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
 
   useEffect(() => {
     setCategory(initial?.category ?? 'focus');
-    setDone(initial?.done ?? false);
   }, [initial, visible]);
 
   const applyStartTime = (minutes: number) => {
@@ -202,7 +199,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
         startMin: normalizedStart,
         endMin: normalizedEnd,
         category,
-        done,
       });
     } catch (err) {
       console.warn('[PlanEditor/error]', err);
@@ -388,26 +384,6 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
             />
           </View>
           <View style={styles.actions}>
-            {initial?.id && (
-              <Pressable
-                onPress={() => setDone((value) => !value)}
-                style={({ pressed }) => [
-                  styles.doneActionButton,
-                  {
-                    borderColor: palette.accent,
-                    backgroundColor: done ? palette.accent : 'transparent',
-                    opacity: pressed ? 0.75 : 1,
-                  },
-                ]}>
-                <Text
-                  style={[
-                    styles.doneActionText,
-                    { color: done ? palette.background : palette.accent },
-                  ]}>
-                  {done ? t((d) => d.plan.editor.completed) : t((d) => d.plan.editor.markCompleted)}
-                </Text>
-              </Pressable>
-            )}
             <Pressable
               onPress={onCancel}
               style={({ pressed }) => [
@@ -560,17 +536,6 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontWeight: '600',
-  },
-  doneActionButton: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginRight: 8,
-  },
-  doneActionText: {
-    fontWeight: '600',
-    fontSize: 12,
   },
   deleteRow: {
     marginTop: 16,

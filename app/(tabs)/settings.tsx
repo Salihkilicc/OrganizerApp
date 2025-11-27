@@ -32,6 +32,8 @@ const themeLabelMap: Record<ThemeId, (dict: TranslationKeys) => string> = {
   ninja: (d) => d.settings.themeNinja,
 };
 
+const SHOW_REFLECTION_NOTIFICATION_TOGGLE = false;
+
 const getInitials = (value: string) => {
   const parts = value.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return 'U';
@@ -48,6 +50,9 @@ export default function SettingsScreen() {
   const setTheme = useTheme((state) => state.setTheme);
   const router = useRouter();
   const user = useAuth((state) => state.user);
+  const profilePhoto =
+    (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
+    (user?.user_metadata as Record<string, string | undefined> | undefined)?.picture;
   const status = useAuth((state) => state.status);
   const signOut = useAuth((state) => state.signOut);
   const { t } = useI18n();
@@ -59,7 +64,11 @@ export default function SettingsScreen() {
   const waterReminderEnabled = useSettings((state) => state.waterReminderEnabled);
   const toggleWaterReminder = useSettings((state) => state.toggleWaterReminder);
   const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
-  const avatarSource = selectedAvatar ? AVATAR_IMAGES[selectedAvatar] : null;
+  const avatarSource = profilePhoto
+    ? { uri: profilePhoto }
+    : selectedAvatar
+      ? AVATAR_IMAGES[selectedAvatar]
+      : null;
 
   const displayName =
     user?.user_metadata?.full_name ?? user?.name ?? t((d) => d.common.user);
@@ -359,11 +368,12 @@ export default function SettingsScreen() {
             notificationTypes.enableWaterReminders && waterReminderEnabled,
             handleToggleWater,
           )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.reflection),
-            notificationTypes.enableReflection,
-            () => toggleNotificationType('enableReflection'),
-          )}
+          {SHOW_REFLECTION_NOTIFICATION_TOGGLE &&
+            renderNotificationToggle(
+              t((d) => d.settings.notificationType.reflection),
+              notificationTypes.enableReflection,
+              () => toggleNotificationType('enableReflection'),
+            )}
         </View>
 
         <View

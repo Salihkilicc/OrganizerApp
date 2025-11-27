@@ -24,6 +24,8 @@ import { AVATAR_IMAGES } from '@/constants/avatars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { Popup } from '@/components/Popup';
+import { useShop } from '@/store/useShop';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
   const palette = useTheme((state) => state.palette);
@@ -31,6 +33,9 @@ export default function ProfileScreen() {
   const { t } = useI18n();
   const headerHeight = useHeaderHeight();
   const user = useAuth((state) => state.user);
+  const profilePhoto =
+    (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
+    (user?.user_metadata as Record<string, string | undefined> | undefined)?.picture;
   const isGuest = useAuth((state) => state.isGuest);
   const totalPoints = usePoints((state) => state.total);
   const blocks = usePlans((state) => state.blocks);
@@ -51,7 +56,11 @@ export default function ProfileScreen() {
         borderWidth: 1,
         borderColor: palette.border,
       };
-  const avatarSource = selectedAvatar ? AVATAR_IMAGES[selectedAvatar] : null;
+  const avatarSource = profilePhoto
+    ? { uri: profilePhoto }
+    : selectedAvatar
+      ? AVATAR_IMAGES[selectedAvatar]
+      : null;
 
   const fallbackName = isGuest
     ? t((d) => d.common.guestUser)
@@ -101,14 +110,11 @@ export default function ProfileScreen() {
     return bestCategory;
   }, [blocks]);
 
-  const badgeDefinitions = useMemo(
-    () => [
-      { label: t((d) => d.profile.badgeStarter), icon: '✨', unlocked: true },
-      { label: t((d) => d.profile.badgeFocus60), icon: '🎯', unlocked: totalPoints >= 60 },
-      { label: t((d) => d.profile.badgePlanner), icon: '📝', unlocked: blocks.length >= 3 },
-      { label: t((d) => d.profile.badgeConsistency), icon: '💡', unlocked: streakDays >= 5 },
-    ],
-    [blocks.length, streakDays, t, totalPoints],
+  const hydrateShop = useShop((state) => state.hydrate);
+  const shopItems = useShop((state) => state.items);
+  const shopBadges = useMemo(
+    () => shopItems.filter((item) => item.category === 'badge'),
+    [shopItems],
   );
   const categoryLabels = useMemo(
     () => ({
@@ -149,6 +155,10 @@ export default function ProfileScreen() {
     // TODO: persist name to backend/profile store.
     Alert.alert(t((d) => d.profile.saveNameTitle), t((d) => d.profile.saveNameMessage));
   };
+
+  useEffect(() => {
+    void hydrateShop();
+  }, []);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
@@ -281,36 +291,6 @@ export default function ProfileScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            {t((d) => d.profile.badges)}
-          </Text>
-        </View>
-        <View style={styles.badgesRow}>
-          {badgeDefinitions.map((badge) => (
-            <View
-              key={badge.label}
-              style={[
-                styles.badge,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: badge.unlocked ? palette.card : palette.background,
-                },
-              ]}>
-              <Text style={[styles.badgeIcon, { color: palette.accent }]}>{badge.icon}</Text>
-              <Text
-                style={[
-                  styles.badgeLabel,
-                  {
-                    color: badge.unlocked ? palette.text : palette.border,
-                  },
-                ]}>
-                {badge.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
             {t((d) => d.profile.stats)}
           </Text>
         </View>
@@ -339,6 +319,78 @@ export default function ProfileScreen() {
               {t((d) => d.profile.totalFocusMinutesLabel, { minutes: totalFocusMinutes })}
             </Text>
           </View>
+        </View>
+
+        <View style={[styles.sectionHeader, styles.achievementHeader]}>
+          <Text style={[styles.achievementHeading, { color: palette.text }]}>
+            {t((d) => d.profile.achievements)}
+          </Text>
+          <Text style={[styles.achievementSubheading, { color: palette.text }]}>
+            {t((d) => d.profile.achievementsSubtitle)}
+          </Text>
+        </View>
+        <View style={styles.achievementGrid}>
+          {shopBadges.map((badge) => {
+            const locked = !badge.owned;
+            return (
+              <View
+                key={badge.id}
+                style={[
+                  styles.achievementCard,
+                  {
+                    borderColor: palette.border,
+                    backgroundColor: palette.card,
+                    opacity: locked ? 0.75 : 1,
+                  },
+                ]}>
+                <View
+                  style={[
+                    styles.achievementIcon,
+                    { borderColor: palette.border, backgroundColor: palette.background },
+                  ]}>
+                  <Ionicons
+                    name={locked ? 'lock-closed' : 'trophy'}
+                    size={16}
+                    color={locked ? palette.border : palette.accent}
+                  />
+                </View>
+                <View style={styles.achievementBody}>
+                  <Text
+                    style={[
+                      styles.achievementTitle,
+                      { color: locked ? palette.text : palette.text },
+                    ]}>
+                    {badge.title}
+                  </Text>
+                  {badge.requirementDescription ? (
+                    <Text
+                      style={[
+                        styles.achievementSubtitle,
+                        { color: locked ? palette.text + '99' : palette.text + 'CC' },
+                      ]}>
+                      {badge.requirementDescription}
+                    </Text>
+                  ) : null}
+                </View>
+                <View
+                  style={[
+                    styles.achievementStatus,
+                    {
+                      borderColor: locked ? palette.border : palette.accent,
+                      backgroundColor: locked ? palette.background : palette.accent,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.achievementStatusText,
+                      { color: locked ? palette.text : palette.background },
+                    ]}>
+                    {locked ? t((d) => d.profile.achievementLocked) : t((d) => d.profile.achievementUnlocked)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -516,6 +568,18 @@ const styles = StyleSheet.create({
     fontSize: scaleValue(15),
     fontWeight: '700',
   },
+  achievementHeader: {
+    marginTop: scaleValue(18),
+  },
+  achievementHeading: {
+    fontSize: scaleValue(24), // 60% larger than base section title
+    fontWeight: '800',
+  },
+  achievementSubheading: {
+    fontSize: scaleValue(14.5), // ~20% larger than previous subtitle
+    opacity: 0.85,
+    marginTop: scaleValue(6),
+  },
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -558,5 +622,49 @@ const styles = StyleSheet.create({
   statsValue: {
     fontSize: scaleValue(15),
     fontWeight: '700',
+  },
+  achievementGrid: {
+    marginTop: scaleValue(4),
+  },
+  achievementCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: scaleValue(14),
+    paddingVertical: scaleValue(10),
+    paddingHorizontal: scaleValue(12),
+    marginBottom: scaleValue(10),
+  },
+  achievementIcon: {
+    width: scaleValue(32),
+    height: scaleValue(32),
+    borderRadius: scaleValue(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    marginRight: scaleValue(10),
+  },
+  achievementBody: {
+    flex: 1,
+  },
+  achievementTitle: {
+    fontSize: scaleValue(14),
+    fontWeight: '700',
+  },
+  achievementSubtitle: {
+    fontSize: scaleValue(12),
+    marginTop: scaleValue(2),
+  },
+  achievementStatus: {
+    paddingHorizontal: scaleValue(10),
+    paddingVertical: scaleValue(4),
+    borderRadius: scaleValue(10),
+    borderWidth: 1,
+  },
+  achievementStatusText: {
+    fontSize: scaleValue(11),
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: scaleValue(0.4),
   },
 });

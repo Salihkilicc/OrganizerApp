@@ -7,23 +7,29 @@ import {
   Text,
   View,
 } from 'react-native';
+import React, { useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Ionicons } from '@expo/vector-icons';
 import { usePoints } from '@/store/usePoints';
-import { ShopItemCategory, useShop } from '@/store/useShop';
+import { useShop } from '@/store/useShop';
 import { useTheme } from '@/store/useTheme';
 import { useI18n } from '@/i18n/useI18n';
 import { useRouter } from 'expo-router';
 import type { TranslationKeys } from '@/i18n/translations';
 import { AVATAR_CATALOG, type AvatarName } from '@/constants/avatars';
 import { useAvatarStore } from '@/store/useAvatar';
+import { themes } from '@/styles/colors';
+import { FRAME_STYLES } from '@/lib/frameStyles';
 
-const sections: { title: (dict: TranslationKeys) => string; category: ShopItemCategory }[] = [
-  { title: (d) => d.points.themes, category: 'theme' },
-  { title: (d) => d.points.badges, category: 'badge' },
-  { title: (d) => d.points.frames, category: 'frame' },
-];
+const addAlpha = (hexColor: string, alpha: number) => {
+  const normalized = hexColor.replace('#', '');
+  if (normalized.length !== 6) return hexColor;
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 export default function PointsScreen() {
   const router = useRouter();
@@ -40,6 +46,52 @@ export default function PointsScreen() {
     purchaseAvatar,
     selectAvatar,
   } = useAvatarStore();
+  const scrollRef = useRef<ScrollView | null>(null);
+  const sectionOffsets = useRef<{ themes: number; frames: number; photos: number }>({
+    themes: 0,
+    frames: 0,
+    photos: 0,
+  });
+
+  const themeItems = items.filter((item) => item.category === 'theme');
+  const frameItems = items.filter((item) => item.category === 'frame');
+
+  const getItemVisuals = (item: typeof items[number]) => {
+    const base = {
+      cardBackground: palette.card,
+      cardBorder: palette.border,
+      accent: palette.accent,
+      text: palette.text,
+    };
+
+    if (item.category === 'theme') {
+      const themeKey = item.id.replace('theme-', '') as keyof typeof themes;
+      const themePalette = themes[themeKey];
+      if (themePalette) {
+        return {
+          cardBackground: themePalette.card,
+          cardBorder: themePalette.accent,
+          accent: themePalette.accent,
+          text: themePalette.text,
+        };
+      }
+    }
+
+    if (item.category === 'frame') {
+      const frameStyle = FRAME_STYLES[item.id];
+      if (frameStyle) {
+        const accent = frameStyle.borderColor;
+        return {
+          cardBackground: addAlpha(accent, 0.12),
+          cardBorder: accent,
+          accent,
+          text: palette.text,
+        };
+      }
+    }
+
+    return base;
+  };
 
   const renderAvatarCard = (entry: (typeof AVATAR_CATALOG)[number]) => {
     const name = entry.name as AvatarName;
@@ -111,7 +163,7 @@ export default function PointsScreen() {
           <Text
             style={[
               styles.avatarButtonText,
-              { color: owned ? palette.text : palette.background },
+              { color: owned ? palette.text : '#000000' },
             ]}>
             {owned ? (isSelected ? 'Selected' : 'Select') : t((d) => d.points.button.buy)}
           </Text>
@@ -120,26 +172,9 @@ export default function PointsScreen() {
     );
   };
 
-  const renderStatus = (itemStatus: string, equipped: boolean) => {
-    const pillStyle = [
-      styles.statusPill,
-      {
-        borderColor: palette.border,
-        backgroundColor: equipped ? palette.accent : palette.background,
-      },
-    ];
-    const textStyle = [
-      styles.statusText,
-      { color: equipped ? palette.background : palette.text },
-    ];
-    return (
-      <View style={pillStyle}>
-        <Text style={textStyle}>{itemStatus}</Text>
-      </View>
-    );
-  };
-
   const renderItem = (item: typeof items[number]) => {
+    const visuals = getItemVisuals(item);
+    const { cardBackground, cardBorder, accent, text } = visuals;
     const description = item.subtitle ?? item.requirementDescription ?? '';
     const statusLabel = statusLabelFor(item);
     const canBuy =
@@ -153,16 +188,31 @@ export default function PointsScreen() {
         key={item.id}
         style={[
           styles.card,
-          { backgroundColor: palette.card, borderColor: palette.border },
+          { backgroundColor: cardBackground, borderColor: cardBorder },
         ]}>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardTitle, { color: palette.text }]}>{item.title}</Text>
-          {renderStatus(statusLabel, Boolean(item.equipped))}
+          <Text style={[styles.cardTitle, { color: text }]}>{item.title}</Text>
+          <View
+            style={[
+              styles.statusPill,
+              {
+                borderColor: cardBorder,
+                backgroundColor: item.equipped ? accent : cardBackground,
+              },
+            ]}>
+            <Text
+              style={[
+                styles.statusText,
+                { color: item.equipped ? palette.background : text },
+              ]}>
+              {statusLabel}
+            </Text>
+          </View>
         </View>
         <Text
           style={[
             styles.cardSubtitle,
-            { color: palette.text, opacity: item.owned ? 0.8 : 0.6 },
+            { color: text, opacity: item.owned ? 0.85 : 0.65 },
           ]}>
           {description}
         </Text>
@@ -175,14 +225,14 @@ export default function PointsScreen() {
               style={({ pressed }) => [
                 styles.actionButton,
                 {
-                  backgroundColor: canBuy ? palette.accent : palette.border,
+                  backgroundColor: canBuy ? accent : palette.border,
                   opacity: pressed ? 0.8 : 1,
                 },
               ]}>
               <Text
                 style={[
                   styles.actionText,
-                  { color: canBuy ? palette.background : palette.text },
+                  { color: '#000000' },
                 ]}>
                 {t((d) => d.points.button.buy)}
               </Text>
@@ -195,14 +245,14 @@ export default function PointsScreen() {
               style={({ pressed }) => [
                 styles.actionButton,
                 {
-                  backgroundColor: item.equipped ? palette.border : palette.accent,
+                  backgroundColor: item.equipped ? palette.border : accent,
                   opacity: item.equipped ? 0.6 : pressed ? 0.8 : 1,
                 },
               ]}>
                 <Text
                   style={[
                     styles.actionText,
-                    { color: item.equipped ? palette.text : palette.background },
+                    { color: item.equipped ? text : palette.background },
                   ]}>
                   {item.equipped
                     ? t((d) => d.points.button.equipped)
@@ -228,9 +278,14 @@ export default function PointsScreen() {
     return t((d) => d.points.status.locked);
   };
 
+  const jumpTo = (key: keyof typeof sectionOffsets.current) => {
+    const target = sectionOffsets.current[key] ?? 0;
+    scrollRef.current?.scrollTo({ y: Math.max(target - 16, 0), animated: true });
+  };
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
         <View style={styles.topBar}>
           <Pressable
             onPress={() => router.back()}
@@ -265,7 +320,55 @@ export default function PointsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={styles.navDotsRow}>
+          {[1, 2, 3].map((num) => (
+            <Pressable
+              key={num}
+              onPress={() => jumpTo(num === 1 ? 'themes' : num === 2 ? 'frames' : 'photos')}
+              style={({ pressed }) => [
+                styles.navDot,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: pressed ? palette.accent : palette.card,
+                  opacity: pressed ? 0.9 : 1,
+                },
+              ]}>
+              <Text style={[styles.navDotText, { color: palette.text }]}>{num}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View
+          style={styles.section}
+          onLayout={(event) => {
+            sectionOffsets.current.themes = event.nativeEvent.layout.y;
+          }}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t((d) => d.points.themes)}
+          </Text>
+          <View style={styles.sectionGrid}>
+            {themeItems.map((item) => renderItem(item))}
+          </View>
+        </View>
+
+        <View
+          style={styles.section}
+          onLayout={(event) => {
+            sectionOffsets.current.frames = event.nativeEvent.layout.y;
+          }}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t((d) => d.points.frames)}
+          </Text>
+          <View style={styles.sectionGrid}>
+            {frameItems.map((item) => renderItem(item))}
+          </View>
+        </View>
+
+        <View
+          style={styles.section}
+          onLayout={(event) => {
+            sectionOffsets.current.photos = event.nativeEvent.layout.y;
+          }}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: palette.text }]}>Profile Photos</Text>
             {avatarsLoading && <ActivityIndicator size="small" color={palette.accent} />}
@@ -274,20 +377,6 @@ export default function PointsScreen() {
             {AVATAR_CATALOG.map((entry) => renderAvatarCard(entry))}
           </View>
         </View>
-
-        {sections.map((section) => {
-          const filtered = items.filter((item) => item.category === section.category);
-          return (
-            <View key={section.category} style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: palette.text }]}>
-                {t(section.title)}
-              </Text>
-              <View style={styles.sectionGrid}>
-                {filtered.map((item) => renderItem(item))}
-              </View>
-            </View>
-          );
-        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -352,6 +441,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
+  },
+  navDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  navDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navDotText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   sectionGrid: {
     flexDirection: 'row',

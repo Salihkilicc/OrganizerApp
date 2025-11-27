@@ -1,13 +1,5 @@
-import { BlurView } from 'expo-blur';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Animated,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/store/useTheme';
 
@@ -100,18 +92,18 @@ export function Popup({
   };
 
   return (
-    <Modal
-      visible={shouldRender}
-      transparent
-      statusBarTranslucent
-      onRequestClose={onClose}
-      animationType="none">
+    <View style={styles.absoluteFill} pointerEvents="box-none">
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.backdrop,
+          {
+            backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)',
+            opacity,
+          },
+        ]}
+      />
       <View style={styles.overlay}>
-        <BlurView
-          tint={isDark ? 'dark' : 'light'}
-          intensity={35}
-          style={StyleSheet.absoluteFill}
-        />
         <Animated.View
           style={[
             styles.card,
@@ -141,13 +133,22 @@ export function Popup({
           </Pressable>
         </Animated.View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  absoluteFill: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9998,
+  },
   overlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9999,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

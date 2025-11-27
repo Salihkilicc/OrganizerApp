@@ -3,7 +3,6 @@ import {
   Animated,
   GestureResponderEvent,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlanEditor } from '@/components/PlanEditor';
@@ -62,15 +60,6 @@ const getCategoryIcon = (category: PlanBlock['category']) => {
     default:
       return '⭐';
   }
-};
-const isDarkColor = (value: string) => {
-  const hex = value.replace('#', '');
-  if (hex.length !== 6) return false;
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance < 0.55;
 };
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -135,7 +124,6 @@ export default function TodayScreen() {
   const weatherError = useWeather((state) => state.error);
   const fetchWeather = useWeather((state) => state.fetchWeather);
   const setError = useWeather((state) => state.setError);
-  const isDarkBackground = useMemo(() => isDarkColor(palette.background), [palette.background]);
   const [friendsVisible, setFriendsVisible] = useState(false);
 
   const water = useWater((state) => state.water);
@@ -347,10 +335,9 @@ export default function TodayScreen() {
     endMin: number;
     note?: string;
     category: PlanBlock['category'];
-    done: boolean;
   }) => {
     if (!selectedBlock) return;
-    await updatePlan(selectedBlock.id, values);
+    await updatePlan(selectedBlock.id, { ...values, done: selectedBlock.done ?? false });
     closeEditor();
   };
 
@@ -689,66 +676,40 @@ export default function TodayScreen() {
         icon="🤝"
         onClose={() => setFriendsVisible(false)}
       />
-      <Modal
+      <Popup
         visible={weatherModalVisible}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setWeatherModalVisible(false)}>
-        <View style={styles.weatherModalBackdrop}>
-          <BlurView
-            tint={isDarkBackground ? 'dark' : 'light'}
-            intensity={28}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setWeatherModalVisible(false)}
-          />
-          <Animated.View
-            style={[
-              styles.weatherModalCard,
-              weatherModalStyle,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-              },
-            ]}>
-            <View style={styles.weatherModalHeader}>
-              <Text style={[styles.weatherModalTitle, { color: palette.text }]}>
-                {t((d) => d.today.weeklyWeatherTitle)}
+        title={t((d) => d.today.weeklyWeatherTitle)}
+        description={t((d) => d.today.weeklyWeatherSubtitle)}
+        icon="🌤️"
+        onClose={() => setWeatherModalVisible(false)}>
+        <Animated.View
+          style={[
+            styles.weatherPopupContent,
+            weatherModalStyle,
+            { borderColor: palette.border },
+          ]}>
+          <View style={styles.weatherModalList}>
+            {weeklyPreview.length ? (
+              weeklyPreview.map((day, index) => (
+                <View
+                  key={`${day.day}-${index}`}
+                  style={[
+                    styles.weeklyRow,
+                    index === weeklyPreview.length - 1 && styles.weeklyRowLast,
+                  ]}>
+                  <Text style={[styles.weeklyDay, { color: palette.text }]}>{day.day}</Text>
+                  <Text style={[styles.weeklyIcon, { color: palette.accent }]}>{day.icon}</Text>
+                  <Text style={[styles.weeklyTemp, { color: palette.text }]}>{day.temp}°C</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={[styles.weeklyUnavailable, { color: palette.text }]}>
+                {t((d) => d.today.weeklyUnavailable)}
               </Text>
-              <Pressable onPress={() => setWeatherModalVisible(false)}>
-                <Text style={[styles.weatherModalClose, { color: palette.accent }]}>
-                  {t((d) => d.today.close)}
-                </Text>
-              </Pressable>
-            </View>
-            <View style={styles.weatherModalList}>
-              {weeklyPreview.length ? (
-                weeklyPreview.map((day, index) => (
-                  <View
-                    key={`${day.day}-${index}`}
-                    style={[
-                      styles.weeklyRow,
-                      index === weeklyPreview.length - 1 && styles.weeklyRowLast,
-                    ]}>
-                    <Text style={[styles.weeklyDay, { color: palette.text }]}>{day.day}</Text>
-                    <Text style={[styles.weeklyIcon, { color: palette.accent }]}>{day.icon}</Text>
-                    <Text style={[styles.weeklyTemp, { color: palette.text }]}>
-                      {day.temp}°C
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={[styles.weeklyUnavailable, { color: palette.text }]}>
-                  {t((d) => d.today.weeklyUnavailable)}
-                </Text>
-              )}
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+            )}
+          </View>
+        </Animated.View>
+      </Popup>
     </SafeAreaView>
   );
 }
@@ -895,38 +856,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  weatherModalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  weatherModalCard: {
-    borderRadius: 20,
+  weatherPopupContent: {
     borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
     width: '100%',
-    maxWidth: 360,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 18,
-    elevation: 10,
-  },
-  weatherModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  weatherModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  weatherModalClose: {
-    fontSize: 14,
-    fontWeight: '600',
+    marginTop: 8,
   },
   weatherModalList: {
     width: '100%',

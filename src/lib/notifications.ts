@@ -44,6 +44,7 @@ const STREAK_RESCUE_MINUTE_OF_DAY = 12 * 60;
 const WATER_REMINDER_MINUTES = [15 * 60, 19 * 60];
 const WEEKLY_SUMMARY_WEEKDAY = 0; // Sunday
 const WEEKLY_SUMMARY_MINUTE_OF_DAY = 20 * 60; // 20:00
+const REFLECTION_FEATURE_ENABLED = false;
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatLocalDate = (date: Date) =>
@@ -78,6 +79,8 @@ export async function ensureInitialized(): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldPlaySound: true,
       shouldSetBadge: false,
     }),
@@ -110,7 +113,6 @@ export async function ensurePermissions(): Promise<boolean> {
         allowAlert: true,
         allowSound: true,
         allowBadge: false,
-        allowAnnouncements: false,
       },
     });
     return (
@@ -142,6 +144,7 @@ export async function scheduleNotification(opts: ScheduleOptions): Promise<strin
     trigger: isImmediate
       ? null
       : {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: triggerDate!,
           channelId: Platform.OS === 'android' ? ANDROID_CHANNEL_ID : undefined,
         },
@@ -316,6 +319,7 @@ const scheduleStreakRescue = async (ctx: DayScheduleContext, completedCount: num
 const scheduleReflection = async (ctx: DayScheduleContext) => {
   const id = buildId(NotificationKind.REFLECTION, ctx.date);
   await cancelReminder(id);
+  if (!REFLECTION_FEATURE_ENABLED) return;
   if (!ctx.settings.enableReflection) return;
   if (ctx.date !== todayDate()) return;
   const hasPlans = hasAnyPlanOnDate(ctx.blocks, ctx.date);
@@ -422,16 +426,17 @@ export const notifyFocusStarted = async () => {
   lastFocusSessionDate = today;
   const settings = useSettings.getState().notificationTypes;
   if (!settings.enableFocusNotifications) return;
-  await sendImmediate(NotificationKind.FOCUS_START, 'Focus started');
+  await sendImmediate(
+    NotificationKind.FOCUS_START,
+    'Focus started',
+    'We will stay quiet until you finish. Turn this off in Settings > Notifications.',
+  );
 };
 
-export const notifyFocusCompleted = async (pointsEarned: number) => {
+export const notifyFocusCompleted = async (_pointsEarned: number) => {
   const today = todayDate();
   lastFocusSessionDate = today;
-  const settings = useSettings.getState().notificationTypes;
-  if (!settings.enableFocusNotifications) return;
-  const suffix = pointsEarned > 0 ? ` +${pointsEarned} points earned` : '';
-  await sendImmediate(NotificationKind.FOCUS_END, `Focus complete${suffix}`);
+  // Focus completion notifications are intentionally disabled.
 };
 
 export const notifyBadgeUnlocked = async (title: string) => {

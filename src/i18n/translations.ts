@@ -118,6 +118,7 @@ export type TranslationKeys = {
     weatherUnavailable: string;
     locationOff: string;
     weeklyWeatherTitle: string;
+    weeklyWeatherSubtitle: string;
     weeklyUnavailable: string;
     close: string;
   };
@@ -303,6 +304,10 @@ export type TranslationKeys = {
     badgeFocus60: string;
     badgePlanner: string;
     badgeConsistency: string;
+    achievements: string;
+    achievementsSubtitle: string;
+    achievementLocked: string;
+    achievementUnlocked: string;
     changePhotoTitle: string;
     changePhotoMessage: string;
     changeEmailTitle: string;
@@ -539,6 +544,7 @@ const en: TranslationKeys = {
     weatherUnavailable: 'Weather unavailable',
     locationOff: 'Location off',
     weeklyWeatherTitle: 'This week’s weather',
+    weeklyWeatherSubtitle: 'A quick look at the next 7 days',
     weeklyUnavailable: 'Weather unavailable',
     close: 'Close',
   },
@@ -726,6 +732,10 @@ const en: TranslationKeys = {
     badgeFocus60: 'Focus 60m',
     badgePlanner: 'Planner',
     badgeConsistency: 'Consistency',
+    achievements: 'Achievements',
+    achievementsSubtitle: 'Badges from the Points Shop',
+    achievementLocked: 'Locked',
+    achievementUnlocked: 'Unlocked',
     changePhotoTitle: 'Change photo',
     changePhotoMessage: 'Not implemented yet.',
     changeEmailTitle: 'Change email',
@@ -800,26 +810,26 @@ const en: TranslationKeys = {
     supportEmailLabel: 'Contact us via email',
   },
   paywall: {
-    title: 'See who swiped right on you and chat now',
-    subtitle: 'Brighter matches, instant replies, and premium boosts in one place.',
+    title: 'Unlock Planora Premium',
+    subtitle: 'AI planning, focus mode, weekly summaries, and custom themes in one plan.',
     badge: 'Planora',
     planYearly: '1 YEAR',
     planMonthly: '1 MONTH',
     planYearlyBadge: 'Popular',
     planMonthlyBadge: 'Flexible',
-    saveMore: 'Save more vs monthly.',
-    tryPro: 'Try Pro month by month.',
-    featuresTitle: 'Included Planora Plus',
-    features: ['See who added you', 'Free Boost every week', 'Unlimited swipes'],
+    saveMore: 'Save more versus monthly.',
+    tryPro: 'Start monthly, cancel anytime.',
+    featuresTitle: 'What’s Inside',
+    features: ['AI-built daily plans', 'Unlimited Focus Mode + streak rescue', 'Weekly summaries and premium themes'],
     continueCta: 'Continue',
     processing: 'Processing your purchase...',
-    renewalNote: 'Auto-renewable. Cancel anytime.',
+    renewalNote: 'Auto-renews. Cancel anytime.',
     terms: 'Terms of Use',
     privacy: 'Privacy Policy',
-    restore: 'Restore',
+    restore: 'Restore purchases',
     errorNoPackage:
       'The selected package could not be loaded right now. Please check your internet connection.',
-    thanks: 'Thanks! Your Planora Pro subscription is active.',
+    thanks: 'Thanks! Your Planora Premium is active.',
     purchaseFailed: 'Purchase failed',
     restoreSuccess: 'Previous purchases restored.',
     restoreFailed: 'Restore failed. Please try again.',
@@ -945,6 +955,7 @@ const tr: TranslationKeys = {
     weatherUnavailable: 'Hava durumu kullanılamıyor',
     locationOff: 'Konum kapalı',
     weeklyWeatherTitle: 'Bu haftanın havası',
+    weeklyWeatherSubtitle: 'Önümüzdeki 7 güne hızlı bakış',
     weeklyUnavailable: 'Hava durumu kullanılamıyor',
     close: 'Kapat',
   },
@@ -1133,6 +1144,10 @@ const tr: TranslationKeys = {
     badgeFocus60: 'Fokus 60dk',
     badgePlanner: 'Planlayıcı',
     badgeConsistency: 'Tutarlılık',
+    achievements: 'Başarımlar',
+    achievementsSubtitle: 'Puan Dükkanı rozetleri',
+    achievementLocked: 'Kilitli',
+    achievementUnlocked: 'Açık',
     changePhotoTitle: 'Fotoğraf değiştir',
     changePhotoMessage: 'Henüz uygulanmadı.',
     changeEmailTitle: 'E-posta değiştir',
@@ -1201,17 +1216,17 @@ const tr: TranslationKeys = {
     supportEmailLabel: 'E-posta ile bize ulaşın',
   },
   paywall: {
-    title: 'Kimlerin sana eşleşme gönderdiğini gör ve sohbet et',
-    subtitle: 'Daha parlak eşleşmeler, anında yanıtlar ve premium destek bir arada.',
+    title: 'Planora Premium’u aç',
+    subtitle: 'AI planlama, odak modu, haftalık özetler ve özel temalar tek pakette.',
     badge: 'Planora',
     planYearly: '1 YIL',
     planMonthly: '1 AY',
     planYearlyBadge: 'Popüler',
     planMonthlyBadge: 'Esnek',
-    saveMore: 'Aylığa göre daha fazla avantaj.',
-    tryPro: 'Aylık olarak dene.',
-    featuresTitle: 'Planora Plus dahil',
-    features: ['Seni ekleyenleri gör', 'Her hafta ücretsiz Boost', 'Sınırsız kaydırma'],
+    saveMore: 'Aylığa göre daha çok tasarruf edin.',
+    tryPro: 'Aylık başlat, istediğin zaman iptal et.',
+    featuresTitle: 'Neler Dahil',
+    features: ['AI ile günlük planlar', 'Sınırsız odak modu + streak kurtarma', 'Haftalık özetler ve premium temalar'],
     continueCta: 'Devam et',
     processing: 'Satın alma işleniyor...',
     renewalNote: 'Otomatik yenilenir. İstediğin zaman iptal et.',
@@ -1220,7 +1235,7 @@ const tr: TranslationKeys = {
     restore: 'Geri yükle',
     errorNoPackage:
       'Seçilen paket şu an yüklenemedi. Lütfen internet bağlantını kontrol et.',
-    thanks: 'Teşekkürler! Planora Pro aboneliğin aktif.',
+    thanks: 'Teşekkürler! Planora Premium aktif.',
     purchaseFailed: 'Satın alma başarısız',
     restoreSuccess: 'Önceki satın alımlar geri yüklendi.',
     restoreFailed: 'Geri yükleme başarısız. Lütfen tekrar dene.',

@@ -102,11 +102,11 @@ const PaywallScreen = () => {
 
   const primary = (palette as any).primary ?? palette.accent;
   const selectedPackage = selected === 'monthly' ? monthlyPackage : yearlyPackage;
+  const selectedHighlight = selected === 'monthly' ? '#C0C0C0' : '#F7C948';
   
   // canPurchase kontrolünü loglayalım
   const canPurchase = Boolean(selectedPackage);
 
-  const highlightColor = '#F7C948';
   const renderPlanCard = (
     plan: SelectedPlan,
     pkg: any | null,
@@ -115,6 +115,7 @@ const PaywallScreen = () => {
     helper?: string,
   ) => {
     const isSelected = selected === plan;
+    const highlightColor = plan === 'monthly' ? '#C0C0C0' : '#F7C948';
     const price = pkg?.product?.priceString ?? '—';
 
     return (
@@ -218,7 +219,10 @@ const PaywallScreen = () => {
           disabled={processing || !canPurchase}
           style={[
             styles.purchaseButton,
-            { opacity: processing || !canPurchase ? 0.6 : 1 },
+            {
+              opacity: processing || !canPurchase ? 0.6 : 1,
+              backgroundColor: selectedHighlight,
+            },
           ]}
           activeOpacity={0.9}
         >

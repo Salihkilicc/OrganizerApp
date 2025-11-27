@@ -28,30 +28,30 @@ import { PURCHASES_ERROR_CODE } from '@revenuecat/purchases-typescript-internal'
 
 type PremiumFeature = {
   icon: string;
-  title: (dict: TranslationKeys) => string;
-  description: (dict: TranslationKeys) => string;
+  title: string;
+  description: string;
 };
 
 const premiumFeatures: PremiumFeature[] = [
   {
     icon: '🧠',
-    title: (d) => d.premium.feature.aiPlanning,
-    description: (d) => d.premium.feature.aiPlanningDesc,
+    title: 'AI Planlama',
+    description: 'Gününü saniyeler içinde dengeli ve dolu bir plana çevir.',
   },
   {
     icon: '⏱️',
-    title: (d) => d.premium.feature.focusMode,
-    description: (d) => d.premium.feature.focusModeDesc,
+    title: 'Odak + Streak',
+    description: 'Kesintisiz odak oturumları ve seri kırılmasın diye akıllı hatırlatmalar.',
   },
   {
     icon: '🔥',
-    title: (d) => d.premium.feature.streaks,
-    description: (d) => d.premium.feature.streaksDesc,
+    title: 'Haftalık Özetler',
+    description: 'Tamamladığın planlar, odak saatleri ve ilerleme trendi tek ekranda.',
   },
   {
     icon: '📊',
-    title: (d) => d.premium.feature.weeklySummary,
-    description: (d) => d.premium.feature.weeklySummaryDesc,
+    title: 'Tema ve Çerçeveler',
+    description: 'Kendine özel temalar, çerçeveler ve profil stilleriyle Planora’yı kişiselleştir.',
   },
 ];
 
@@ -235,9 +235,9 @@ export default function PremiumScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.premium.title)}</Text>
+        <Text style={[styles.title, { color: palette.text }]}>Planora Premium</Text>
         <Text style={[styles.subtitle, { color: palette.text, opacity: 0.85 }]}>
-          {t((d) => d.premium.subtitle)}
+          AI destekli planlama, güçlü odak modu ve haftalık özetlerle rutininizi hızlandırın.
         </Text>
 
         <View
@@ -253,10 +253,11 @@ export default function PremiumScreen() {
           <Text style={[styles.heroEmoji, { color: palette.accent }]}>✨</Text>
           <View style={styles.heroCopy}>
             <Text style={[styles.heroTitle, { color: palette.text }]}>
-              {t((d) => d.premium.heroTitle)}
+              Her gün daha düzenli bir sen
             </Text>
             <Text style={[styles.heroDescription, { color: palette.text, opacity: 0.75 }]}>
-              {t((d) => d.premium.heroDescription)}
+              Planora Premium; AI Plan, odak modu, özetler ve kişiselleştirme ile gününü
+              sorunsuzca akıtır.
             </Text>
           </View>
         </View>
@@ -264,7 +265,7 @@ export default function PremiumScreen() {
         <View style={styles.features}>
           {premiumFeatures.map((feature) => (
             <View
-              key={feature.titleKey}
+              key={feature.title}
               style={[
                 styles.featureRow,
                 { borderColor: palette.border, backgroundColor: palette.card },
@@ -283,7 +284,7 @@ export default function PremiumScreen() {
               </View>
               <View style={styles.featureCopy}>
                 <Text style={[styles.featureTitle, { color: palette.text }]}>
-                  {t(feature.title)}
+                  {feature.title}
                 </Text>
                 <Text
                   style={[
@@ -291,7 +292,7 @@ export default function PremiumScreen() {
                     { color: palette.text, opacity: 0.75 },
                   ]}
                 >
-                  {t(feature.description)}
+                  {feature.description}
                 </Text>
               </View>
             </View>
@@ -361,7 +362,7 @@ export default function PremiumScreen() {
             {t((d) => d.premium.subscriptionOptionsTitle)}
           </Text>
           <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.7 }]}>
-            {t((d) => d.premium.subtitle)}
+            Premium’u açarak tüm Planora özelliklerini sınırsız kullanın.
           </Text>
           {loading ? (
             <View style={styles.loaderRow}>
@@ -455,7 +456,8 @@ export default function PremiumScreen() {
         </View>
 
         <Text style={[styles.infoText, { color: palette.text, opacity: 0.7 }]}>
-          {t((d) => d.premium.info)}
+          Satın alımlar iTunes hesabınıza yansıtılır; yenilemeler otomatik yapılır. Ayarlardan
+          istediğiniz zaman iptal edebilirsiniz.
         </Text>
       </ScrollView>
 
@@ -471,11 +473,11 @@ export default function PremiumScreen() {
           {loadingAny ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.purchaseText}>{t((d) => d.premium.cta)}</Text>
+            <Text style={styles.purchaseText}>Premium’u Aç</Text>
           )}
         </Pressable>
         <Text style={[styles.purchaseSubtext, { color: palette.text }]}>
-          {t((d) => d.premium.footerNote)}
+          Planora’yı sevmezsen deneme süresinde iptal edebilirsin.
         </Text>
       </View>
 

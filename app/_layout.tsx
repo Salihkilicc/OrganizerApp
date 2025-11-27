@@ -292,6 +292,9 @@ export default function RootLayout() {
               <Stack.Screen name="paywall" options={{ headerShown: false }} />
               <Stack.Screen name="language" options={{ headerShown: false }} />
               <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
+              <Stack.Screen name="privacy" options={{ headerShown: false }} />
+              <Stack.Screen name="terms" options={{ headerShown: false }} />
+              <Stack.Screen name="support" options={{ headerShown: false }} />
             </Stack>
             <StatusBar style="auto" />
             <StartupOverlay
@@ -340,11 +343,12 @@ function StartupOverlay({
         style={[
           styles.splashCard,
           {
-            backgroundColor: cardColor ?? 'rgba(0,0,0,0.1)',
+            backgroundColor: '#ffffff',
+            borderColor: '#ffffff',
           },
         ]}>
         <Image source={require('../assets/images/icon.png')} style={styles.splashLogo} />
-        <Text style={[styles.splashTitle, { color: accentColor }]}>Planora</Text>
+        <Text style={[styles.splashTitle, { color: '#000000' }]}>Planora</Text>
         <ActivityIndicator color={accentColor} style={styles.splashSpinner} />
       </View>
     </Animated.View>
@@ -365,13 +369,7 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
     paddingHorizontal: 20,
     borderRadius: 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 16 },
-    shadowRadius: 20,
-    elevation: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 0,
   },
   splashLogo: {
     width: 120,

@@ -29,7 +29,7 @@ export const DEFAULT_NOTIFICATION_TYPES: NotificationTypes = {
   enableBadgeNotifications: true,
   enableWeeklySummary: true,
   enableWaterReminders: true,
-  enableReflection: true,
+  enableReflection: false,
 };
 
 export const normalizeNotificationTypes = (

@@ -75,7 +75,6 @@ type EditorValues = {
   endMin: number;
   note?: string;
   category: PlanCategory;
-  done: boolean;
 };
 
 export default function PlanScreen() {
@@ -261,14 +260,15 @@ export default function PlanScreen() {
 
   const handleSave = useCallback(
     async (values: EditorValues) => {
+      const existing = editingId ? blocks.find((b) => b.id === editingId) : null;
       if (editingId) {
-        await updatePlan(editingId, values);
+        await updatePlan(editingId, { ...values, done: existing?.done ?? false });
       } else {
-        await addPlan({ ...values, date: selectedDate });
+        await addPlan({ ...values, date: selectedDate, done: false });
       }
       closeEditor();
     },
-    [addPlan, closeEditor, editingId, selectedDate, updatePlan],
+    [addPlan, blocks, closeEditor, editingId, selectedDate, updatePlan],
   );
 
   const handleDelete = useCallback(
@@ -442,7 +442,6 @@ export default function PlanScreen() {
                 },
               ]}>
               <View style={styles.aiButtonContent}>
-                <Text style={[styles.aiButtonSpark, { color: palette.accent }]}>✨</Text>
                 <Text style={[styles.aiButtonText, { color: palette.text }]}>
                   {t((d) => d.plan.aiButton)}
                 </Text>
@@ -688,10 +687,6 @@ const styles = StyleSheet.create({
   aiButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  aiButtonSpark: {
-    fontSize: 14,
-    marginRight: 6,
   },
   aiButtonText: {
     fontSize: 12,
