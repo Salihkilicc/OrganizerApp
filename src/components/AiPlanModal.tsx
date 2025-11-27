@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlanBlock } from '@/store/usePlans';
 import { AiPlanBlock, AiPlanRequest, generatePlanFromAI } from '@/lib/aiPlan';
@@ -91,6 +94,7 @@ export function AiPlanModal({
 }: AiPlanModalProps) {
   const { palette } = useTheme();
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const [wakeTime, setWakeTime] = useState('07:30');
   const [sleepTime, setSleepTime] = useState('23:30');
   const [workStart, setWorkStart] = useState(DEFAULT_WORK_START);
@@ -238,16 +242,31 @@ export function AiPlanModal({
       statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={handleClose} />
-        <View style={[styles.sheet, { backgroundColor: palette.card, borderColor: palette.border }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={insets.top + 24}
+        style={styles.flex}>
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={handleClose} />
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                paddingBottom: 16 + insets.bottom,
+              },
+            ]}>
           <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.aiPlanner.title)}</Text>
           <Text style={[styles.subTitle, { color: palette.text }]}>{dateLabel}</Text>
 
           {stage === 'form' ? (
             <ScrollView
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.formContent}
+              contentContainerStyle={[
+                styles.formContent,
+                { paddingBottom: 18 + insets.bottom },
+              ]}
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.field}>
@@ -434,7 +453,10 @@ export function AiPlanModal({
                 </Text>
                 <ScrollView
                   style={styles.previewList}
-                  contentContainerStyle={styles.previewListContent}
+                  contentContainerStyle={[
+                    styles.previewListContent,
+                    { paddingBottom: 18 + insets.bottom },
+                  ]}
                   showsVerticalScrollIndicator={false}
               >
                 {previewList.length === 0 ? (
@@ -522,11 +544,15 @@ export function AiPlanModal({
           )}
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',

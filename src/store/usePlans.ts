@@ -2,8 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
 import { fetchUserPlans, saveUserPlans } from '@/lib/account';
+import { scheduleWeeklySummary, syncDayNotifications } from '@/lib/notifications';
 import { usePoints } from '@/store/usePoints';
 import { useStreak } from '@/store/useStreak';
+import { useSettings } from '@/store/useSettings';
 
 export type PlanCategory =
   | 'focus'
@@ -191,6 +193,22 @@ const mergeBlocks = (loaded: PlanBlock[], existing: PlanBlock[]): PlanBlock[] =>
 };
 
 export const usePlans = create<PlansStore>((set, get) => {
+  const refreshNotifications = (dates: string[]) => {
+    const { notificationTypes, waterReminderEnabled } = useSettings.getState();
+    const streakDays = useStreak.getState().streakDays;
+    const uniqueDates = Array.from(new Set(dates.filter(Boolean)));
+    uniqueDates.forEach((date) => {
+      void syncDayNotifications({
+        date,
+        blocks: get().blocks,
+        settings: notificationTypes,
+        streakDays,
+        waterReminderEnabled,
+      });
+    });
+    void scheduleWeeklySummary(get().blocks, notificationTypes, streakDays);
+  };
+
   const load = async () => {
     const state = get();
     if (state?.hydrated) return;
@@ -200,6 +218,7 @@ export const usePlans = create<PlansStore>((set, get) => {
         blocks: mergeBlocks(blocks, prevState.blocks),
         hydrated: true,
       }));
+      refreshNotifications([todayDate()]);
     } catch (error) {
       console.warn('[usePlans/load]', error);
     }
@@ -224,6 +243,7 @@ export const usePlans = create<PlansStore>((set, get) => {
         userId,
       });
       await persistImmediate(remoteBlocks);
+      refreshNotifications([todayDate()]);
     } catch (error) {
       console.warn('[usePlans/loadFromServer]', error);
       set({
@@ -259,6 +279,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       console.log('[usePlans/add]', next);
       schedulePersist(updated);
       void persistRemote(updated);
+      refreshNotifications([next.date]);
       return next.id;
     },
 
@@ -278,6 +299,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       console.log('[usePlans/addMany]', nextBlocks);
       schedulePersist(updated);
       void persistRemote(updated);
+      refreshNotifications(nextBlocks.map((block) => block.date));
       return nextBlocks.map((block) => block.id);
     },
 
@@ -334,14 +356,17 @@ export const usePlans = create<PlansStore>((set, get) => {
       set({ blocks: updated });
       schedulePersist(updated);
       void persistRemote(updated);
+      refreshNotifications([existing.date, patch.date ?? existing.date]);
     },
 
     remove: async (id) => {
       console.log('[usePlans/remove]', id);
+      const existing = get().blocks.find((block) => block.id === id);
       const updated = get().blocks.filter((block) => block.id !== id);
       set({ blocks: updated });
       schedulePersist(updated);
       void persistRemote(updated);
+      refreshNotifications([existing?.date ?? todayDate()]);
     },
 
     clearByDate: (date) => {
@@ -349,6 +374,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       set({ blocks: updated });
       schedulePersist(updated);
       void persistRemote(updated);
+      refreshNotifications([date]);
     },
 
     copyDayToDates: (sourceDate, targetDates) => {
@@ -384,6 +410,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       set({ blocks: updated });
       schedulePersist(updated);
       void persistRemote(updated);
+      refreshNotifications([sourceDate, ...uniqueTargets]);
     },
 
     loadFromServer,
@@ -400,6 +427,7 @@ export const usePlans = create<PlansStore>((set, get) => {
       set({ blocks: filtered });
       schedulePersist(filtered);
       void persistRemote(filtered);
+      refreshNotifications([today]);
     },
   };
 

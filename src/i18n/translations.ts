@@ -34,6 +34,9 @@ export type TranslationKeys = {
   tabs: {
     today: string;
     plan: string;
+    friends: string;
+    friendsComingSoon: string;
+    friendsDescription: string;
     settings: string;
   };
   auth: {
@@ -333,6 +336,15 @@ export type TranslationKeys = {
       focusMode: string;
       dailySummary: string;
       streakWarning: string;
+      nextUp: string;
+      focusNotifications: string;
+      missedPlans: string;
+      streakRescue: string;
+      middayMilestone: string;
+      badgeNotifications: string;
+      weeklySummary: string;
+      waterReminders: string;
+      reflection: string;
     };
     waterReminder: string;
     waterReminderDescription: string;
@@ -442,6 +454,9 @@ const en: TranslationKeys = {
   tabs: {
     today: 'Today',
     plan: 'Plan',
+    friends: 'Friends',
+    friendsComingSoon: 'Friends coming soon!',
+    friendsDescription: 'Friends feature is coming soon!',
     settings: 'Settings',
   },
   auth: {
@@ -745,6 +760,15 @@ const en: TranslationKeys = {
       focusMode: 'Focus mode',
       dailySummary: 'Daily summary',
       streakWarning: 'Streak warning',
+      nextUp: 'Next-up plans',
+      focusNotifications: 'Focus start/end',
+      missedPlans: 'Missed plan reminders',
+      streakRescue: 'Streak rescue',
+      middayMilestone: 'Midday milestone',
+      badgeNotifications: 'Badge unlocked',
+      weeklySummary: 'Weekly summary',
+      waterReminders: 'Water reminders',
+      reflection: 'Evening reflection',
     },
     waterReminder: 'Water reminder',
     waterReminderDescription: 'Gentle nudges to stay hydrated during the day.',
@@ -836,6 +860,9 @@ const tr: TranslationKeys = {
   tabs: {
     today: 'Bugün',
     plan: 'Plan',
+    friends: 'Arkadaşlar',
+    friendsComingSoon: 'Arkadaşlar yakında!',
+    friendsDescription: 'Arkadaşlar özelliği yakında geliyor!',
     settings: 'Ayarlar',
   },
   auth: {

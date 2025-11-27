@@ -9,23 +9,32 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/i18n/useI18n';
 import {
   Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useAvatarStore } from '@/store/useAvatar';
+import { AVATAR_IMAGES } from '@/constants/avatars';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { Popup } from '@/components/Popup';
 
 export default function ProfileScreen() {
   const palette = useTheme((state) => state.palette);
   const router = useRouter();
   const { t } = useI18n();
+  const headerHeight = useHeaderHeight();
   const user = useAuth((state) => state.user);
   const isGuest = useAuth((state) => state.isGuest);
   const totalPoints = usePoints((state) => state.total);
   const blocks = usePlans((state) => state.blocks);
+  const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
   const frameId = useProfileAppearance((state) => state.frameId);
   const frameDecoration = getFrameDecoration(frameId);
   const avatarFrameStyle = frameDecoration
@@ -42,12 +51,14 @@ export default function ProfileScreen() {
         borderWidth: 1,
         borderColor: palette.border,
       };
+  const avatarSource = selectedAvatar ? AVATAR_IMAGES[selectedAvatar] : null;
 
   const fallbackName = isGuest
     ? t((d) => d.common.guestUser)
     : user?.email?.split('@')[0] ?? t((d) => d.common.user);
   const initialName = user?.user_metadata?.full_name ?? user?.name ?? fallbackName;
   const [fullName, setFullName] = useState(initialName);
+  const [avatarModalVisible, setAvatarModalVisible] = useState(false);
 
   useEffect(() => {
     setFullName(initialName);
@@ -118,8 +129,7 @@ export default function ProfileScreen() {
     : null;
 
   const handleAvatarPress = () => {
-    // TODO: integrate ImagePicker/photo library when ready.
-    Alert.alert(t((d) => d.profile.changePhotoTitle), t((d) => d.profile.changePhotoMessage));
+    setAvatarModalVisible(true);
   };
 
   const handleEmailChange = () => {
@@ -142,19 +152,28 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight + 12}
+        style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
           <View style={styles.avatarColumn}>
             <Pressable
               onPress={handleAvatarPress}
               style={[
                 styles.avatar,
-                { backgroundColor: palette.accent },
+                { backgroundColor: avatarSource ? palette.background : palette.accent },
                 avatarFrameStyle,
               ]}>
-              <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
+              ) : (
+                <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+              )}
             </Pressable>
           </View>
           <View style={styles.headerRightColumn}>
@@ -321,7 +340,17 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <Popup
+        visible={avatarModalVisible}
+        title="Profile Photos"
+        description="You can unlock profile pictures from the Points Shop."
+        icon="🖼️"
+        actionLabel={t((d) => d.today.close)}
+        onClose={() => setAvatarModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -336,14 +365,17 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
+  flex: {
+    flex: 1,
+  },
   container: {
     padding: scaleValue(16),
     paddingBottom: scaleValue(32),
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: scaleValue(18),
   },
   avatarColumn: {
@@ -387,10 +419,15 @@ const styles = StyleSheet.create({
     borderRadius: AVATAR_RADIUS,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarInitials: {
     fontSize: scaleValue(32),
     fontWeight: '700',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   sectionStack: {
     borderWidth: 1,

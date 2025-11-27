@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  Switch,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/store/useAuth';
 import { type ThemeId, useTheme } from '@/store/useTheme';
@@ -21,6 +23,8 @@ import { CrownIcon } from '@/components/icons/CrownIcon';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { TranslationKeys } from '@/i18n/translations';
+import { useAvatarStore } from '@/store/useAvatar';
+import { AVATAR_IMAGES } from '@/constants/avatars';
 
 const themeLabelMap: Record<ThemeId, (dict: TranslationKeys) => string> = {
   light: (d) => d.settings.themeLight,
@@ -50,6 +54,12 @@ export default function SettingsScreen() {
   const currentLanguage = useLanguage((state) => state.language);
   const setLanguage = useSettings((state) => state.setLanguage);
   const isPremium = usePremium((state) => state.isPremium);
+  const notificationTypes = useSettings((state) => state.notificationTypes);
+  const toggleNotificationType = useSettings((state) => state.toggleNotificationType);
+  const waterReminderEnabled = useSettings((state) => state.waterReminderEnabled);
+  const toggleWaterReminder = useSettings((state) => state.toggleWaterReminder);
+  const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
+  const avatarSource = selectedAvatar ? AVATAR_IMAGES[selectedAvatar] : null;
 
   const displayName =
     user?.user_metadata?.full_name ?? user?.name ?? t((d) => d.common.user);
@@ -99,6 +109,40 @@ export default function SettingsScreen() {
     await signOut();
   };
 
+  const handleToggleWater = () => {
+    const nextValue = !notificationTypes.enableWaterReminders;
+    toggleNotificationType('enableWaterReminders');
+    if (waterReminderEnabled !== nextValue) {
+      toggleWaterReminder();
+    }
+  };
+
+  const renderNotificationToggle = (
+    label: string,
+    value: boolean,
+    onToggle: () => void,
+  ) => (
+    <View
+      style={[
+        styles.sectionRow,
+        styles.sectionShadow,
+        {
+          backgroundColor: palette.card,
+          borderColor: palette.border,
+        },
+      ]}>
+      <View style={styles.sectionText}>
+        <Text style={[styles.sectionLabel, { color: palette.text }]}>{label}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        thumbColor={palette.background}
+        trackColor={{ false: palette.border, true: palette.accent }}
+      />
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -108,8 +152,12 @@ export default function SettingsScreen() {
 
         <View
           style={[styles.profileCard, styles.cardShadow, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <View style={[styles.avatar, { backgroundColor: palette.accent }]}>
-            <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+          <View style={[styles.avatar, { backgroundColor: avatarSource ? palette.background : palette.accent }]}>
+            {avatarSource ? (
+              <Image source={avatarSource} style={styles.avatarImage} />
+            ) : (
+              <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+            )}
           </View>
           <View style={styles.profileBody}>
             <Text style={[styles.profileName, { color: palette.text }]}>{displayName}</Text>
@@ -260,6 +308,62 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
           </Pressable>
+        </View>
+
+        <View
+          style={[
+            styles.sectionCard,
+            styles.cardShadow,
+            { backgroundColor: palette.card, borderColor: palette.border },
+          ]}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t((d) => d.settings.notifications)}
+          </Text>
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.nextUp),
+            notificationTypes.enableNextUp,
+            () => toggleNotificationType('enableNextUp'),
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.focusNotifications),
+            notificationTypes.enableFocusNotifications,
+            () => toggleNotificationType('enableFocusNotifications'),
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.missedPlans),
+            notificationTypes.enableMissedPlans,
+            () => toggleNotificationType('enableMissedPlans'),
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.streakRescue),
+            notificationTypes.enableStreakRescue,
+            () => toggleNotificationType('enableStreakRescue'),
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.middayMilestone),
+            notificationTypes.enableMiddayMilestone,
+            () => toggleNotificationType('enableMiddayMilestone'),
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.weeklySummary),
+            notificationTypes.enableWeeklySummary,
+            () => toggleNotificationType('enableWeeklySummary'),
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.badgeNotifications),
+            notificationTypes.enableBadgeNotifications,
+            () => toggleNotificationType('enableBadgeNotifications'),
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.waterReminders),
+            notificationTypes.enableWaterReminders && waterReminderEnabled,
+            handleToggleWater,
+          )}
+          {renderNotificationToggle(
+            t((d) => d.settings.notificationType.reflection),
+            notificationTypes.enableReflection,
+            () => toggleNotificationType('enableReflection'),
+          )}
         </View>
 
         <View
@@ -451,10 +555,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
   avatarInitials: {
     fontSize: 20,
     fontWeight: '600',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   profileBody: {
     flex: 1,

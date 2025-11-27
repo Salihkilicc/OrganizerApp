@@ -7,6 +7,7 @@ import {
   saveUserSettings,
   NotificationTypes,
   DEFAULT_NOTIFICATION_TYPES,
+  normalizeNotificationTypes,
 } from '@/lib/account';
 import { SupportedLanguage, useLanguage } from '@/store/useLanguage';
 
@@ -31,20 +32,20 @@ const STORAGE_KEY = 'organizer-settings';
 export const useSettings = create<SettingsState>()(
   persist(
     (set, get) => {
-      const persistToServer = async () => {
-        const currentUserId = get().userId;
-        if (!currentUserId) return;
-        try {
-          await saveUserSettings(currentUserId, {
-            language: get().language,
-            waterReminderEnabled: get().waterReminderEnabled,
-            vibrationEnabled: get().vibrationEnabled,
-            notificationTypes: get().notificationTypes,
-          });
-        } catch (error) {
-          console.warn('[useSettings] persist failed', error);
-        }
-      };
+        const persistToServer = async () => {
+          const currentUserId = get().userId;
+          if (!currentUserId) return;
+          try {
+            await saveUserSettings(currentUserId, {
+              language: get().language,
+              waterReminderEnabled: get().waterReminderEnabled,
+              vibrationEnabled: get().vibrationEnabled,
+              notificationTypes: normalizeNotificationTypes(get().notificationTypes),
+            });
+          } catch (error) {
+            console.warn('[useSettings] persist failed', error);
+          }
+        };
 
       const loadFromServer = async (userId: string) => {
         try {
@@ -55,7 +56,7 @@ export const useSettings = create<SettingsState>()(
               language: payload.language,
               waterReminderEnabled: payload.waterReminderEnabled,
               vibrationEnabled: payload.vibrationEnabled,
-              notificationTypes: payload.notificationTypes,
+              notificationTypes: normalizeNotificationTypes(payload.notificationTypes),
               userId,
             });
             return;
@@ -71,7 +72,7 @@ export const useSettings = create<SettingsState>()(
         set({
           userId: undefined,
           language: useLanguage.getState().language,
-          waterReminderEnabled: false,
+          waterReminderEnabled: true,
           vibrationEnabled: true,
           notificationTypes: DEFAULT_NOTIFICATION_TYPES,
         });
@@ -79,7 +80,7 @@ export const useSettings = create<SettingsState>()(
 
       return {
         language: useLanguage.getState().language,
-        waterReminderEnabled: false,
+        waterReminderEnabled: true,
         vibrationEnabled: true,
         notificationTypes: DEFAULT_NOTIFICATION_TYPES,
         userId: undefined,
@@ -101,7 +102,7 @@ export const useSettings = create<SettingsState>()(
         toggleNotificationType: (key) => {
           set((state) => ({
             notificationTypes: {
-              ...state.notificationTypes,
+              ...normalizeNotificationTypes(state.notificationTypes),
               [key]: !state.notificationTypes[key],
             },
           }));
@@ -115,6 +116,12 @@ export const useSettings = create<SettingsState>()(
       onRehydrateStorage: () => (state) => {
         if (state?.language) {
           useLanguage.getState().setLanguage(state.language);
+        }
+        if (state?.notificationTypes) {
+          state.notificationTypes = normalizeNotificationTypes(state.notificationTypes);
+        }
+        if (state) {
+          state.waterReminderEnabled = state.waterReminderEnabled ?? true;
         }
       },
     },

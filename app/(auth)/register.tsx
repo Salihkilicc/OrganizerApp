@@ -3,13 +3,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 import { useAuth } from '@/store/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -26,6 +28,7 @@ const palette = {
 export default function RegisterScreen() {
   const router = useRouter();
   const { signUp, loading } = useAuth();
+  const headerHeight = useHeaderHeight();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -108,9 +111,13 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight + 12}
         style={styles.flex}>
-        <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <Pressable style={styles.backCircle} onPress={() => router.back()}>
             <Text style={styles.backSymbol}>{'←'}</Text>
           </Pressable>
@@ -126,6 +133,7 @@ export default function RegisterScreen() {
                 placeholder={t((d) => d.auth.firstNamePlaceholder)}
                 placeholderTextColor={palette.muted}
                 style={styles.input}
+                returnKeyType="next"
               />
             </View>
             <View style={[styles.rowItem, styles.lastColumn]}>
@@ -136,6 +144,7 @@ export default function RegisterScreen() {
                 placeholder={t((d) => d.auth.lastNamePlaceholder)}
                 placeholderTextColor={palette.muted}
                 style={styles.input}
+                returnKeyType="next"
               />
             </View>
           </View>
@@ -151,6 +160,7 @@ export default function RegisterScreen() {
               keyboardType="email-address"
               placeholderTextColor={palette.muted}
               style={styles.input}
+              returnKeyType="next"
             />
           </View>
 
@@ -164,6 +174,7 @@ export default function RegisterScreen() {
                 placeholderTextColor={palette.muted}
                 secureTextEntry={!showPassword}
                 style={styles.passwordInput}
+                returnKeyType="next"
               />
               <Pressable onPress={() => setShowPassword((prev) => !prev)}>
                 <Text style={styles.toggle}>
@@ -184,6 +195,7 @@ export default function RegisterScreen() {
                 placeholderTextColor={palette.muted}
                 secureTextEntry={!showConfirm}
                 style={styles.passwordInput}
+                returnKeyType="done"
               />
               <Pressable onPress={() => setShowConfirm((prev) => !prev)}>
                 <Text style={styles.toggle}>
@@ -223,7 +235,7 @@ export default function RegisterScreen() {
             {t((d) => d.auth.termsConnector)}{' '}
             <Text style={styles.linkText}>{t((d) => d.auth.privacyPolicy)}</Text>.
           </Text>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -238,7 +250,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#fff',
     paddingHorizontal: 24,
     paddingTop: 40,

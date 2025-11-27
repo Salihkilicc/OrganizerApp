@@ -5,6 +5,7 @@ import { usePoints } from '@/store/usePoints';
 import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { useStreak } from '@/store/useStreak';
 import { useTheme, type ThemeId } from '@/store/useTheme';
+import { notifyBadgeUnlocked } from '@/lib/notifications';
 
 export type ShopItemCategory = 'theme' | 'badge' | 'frame';
 export type ShopUnlockType = 'points' | 'achievement';
@@ -27,6 +28,7 @@ export type ShopItem = ShopItemDefinition & {
 type ShopStoragePayload = {
   ownedIds: string[];
   equipped: Record<ShopItemCategory, string | null>;
+  notifiedAchievements: string[];
 };
 
 type AchievementContext = {
@@ -40,6 +42,7 @@ type ShopState = {
   items: ShopItem[];
   ownedIds: string[];
   equipped: Record<ShopItemCategory, string | null>;
+  notifiedAchievements: string[];
   buyWithPoints: (id: string) => void;
   equipItem: (id: string) => void;
   hydrate: () => Promise<void>;
@@ -54,6 +57,8 @@ const DEFAULT_EQUIPPED: Record<ShopItemCategory, string | null> = {
   frame: null,
   theme: 'theme-ninja',
 };
+
+const DEFAULT_NOTIFIED_ACHIEVEMENTS: string[] = [];
 
 const THEME_ITEM_TO_KEY: Record<string, ThemeId> = {
   'theme-classic': 'classic',
@@ -352,10 +357,11 @@ const buildItemsList = (
 
 const persistShopState = async (getState: () => ShopState) => {
   try {
-    const { ownedIds, equipped } = getState();
+    const { ownedIds, equipped, notifiedAchievements } = getState();
     const payload: ShopStoragePayload = {
       ownedIds,
       equipped,
+      notifiedAchievements,
     };
     await AsyncStorage.setItem(SHOP_STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
@@ -365,8 +371,27 @@ const persistShopState = async (getState: () => ShopState) => {
 
 export const useShop = create<ShopState>((set, get) => {
   const rebuildItems = () => {
-    const { ownedIds, equipped } = get();
+    const { ownedIds, equipped, notifiedAchievements } = get();
     const nextItems = buildItemsList(ownedIds, equipped, buildAchievementContext());
+
+    const newlyUnlocked = nextItems.filter(
+      (item) =>
+        item.unlockType === 'achievement' &&
+        item.owned &&
+        !notifiedAchievements.includes(item.id),
+    );
+    if (newlyUnlocked.length) {
+      set({
+        notifiedAchievements: [
+          ...new Set([...notifiedAchievements, ...newlyUnlocked.map((item) => item.id)]),
+        ],
+      });
+      newlyUnlocked.forEach((item) => {
+        void notifyBadgeUnlocked(item.title);
+      });
+      void persistShopState(get);
+    }
+
     set({ items: nextItems });
   };
 
@@ -384,9 +409,15 @@ export const useShop = create<ShopState>((set, get) => {
         ...DEFAULT_EQUIPPED,
         ...((parsed.equipped ?? {}) as Record<ShopItemCategory, string | null>),
       };
+      const storedNotified =
+        Array.isArray((parsed as ShopStoragePayload).notifiedAchievements) &&
+        (parsed as ShopStoragePayload).notifiedAchievements.every((id) => typeof id === 'string')
+          ? (parsed as ShopStoragePayload).notifiedAchievements
+          : DEFAULT_NOTIFIED_ACHIEVEMENTS;
       set({
         ownedIds: storedOwned,
         equipped: storedEquipped,
+        notifiedAchievements: storedNotified,
         items: buildItemsList(storedOwned, storedEquipped, buildAchievementContext()),
       });
     } catch (error) {
@@ -462,6 +493,7 @@ export const useShop = create<ShopState>((set, get) => {
     items: buildItemsList(DEFAULT_OWNED_IDS, DEFAULT_EQUIPPED, buildAchievementContext()),
     ownedIds: DEFAULT_OWNED_IDS,
     equipped: DEFAULT_EQUIPPED,
+    notifiedAchievements: DEFAULT_NOTIFIED_ACHIEVEMENTS,
     buyWithPoints,
     equipItem,
     hydrate,

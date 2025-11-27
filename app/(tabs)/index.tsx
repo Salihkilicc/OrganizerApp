@@ -2,15 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   GestureResponderEvent,
+  Image,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlanEditor } from '@/components/PlanEditor';
 import { useAuth } from '@/store/useAuth';
@@ -26,7 +28,10 @@ import { useFocusMode } from '@/store/useFocusMode';
 import * as Haptics from 'expo-haptics';
 import { useWater, WATER_BOTTLE_COUNT } from '@/store/useWater';
 import { getFrameDecoration } from '@/lib/frameStyles';
+import { useAvatarStore } from '@/store/useAvatar';
+import { AVATAR_IMAGES } from '@/constants/avatars';
 import * as Location from 'expo-location';
+import { Popup } from '@/components/Popup';
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (totalMinutes: number) => {
@@ -57,6 +62,15 @@ const getCategoryIcon = (category: PlanBlock['category']) => {
     default:
       return '⭐';
   }
+};
+const isDarkColor = (value: string) => {
+  const hex = value.replace('#', '');
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.55;
 };
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
@@ -113,6 +127,7 @@ export default function TodayScreen() {
   const [selectedBlock, setSelectedBlock] = useState<PlanBlock | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [weatherModalVisible, setWeatherModalVisible] = useState(false);
+  const weatherAnimation = useRef(new Animated.Value(0)).current;
   const temperature = useWeather((state) => state.temperature);
   const icon = useWeather((state) => state.icon);
   const weekly = useWeather((state) => state.weekly);
@@ -120,6 +135,8 @@ export default function TodayScreen() {
   const weatherError = useWeather((state) => state.error);
   const fetchWeather = useWeather((state) => state.fetchWeather);
   const setError = useWeather((state) => state.setError);
+  const isDarkBackground = useMemo(() => isDarkColor(palette.background), [palette.background]);
+  const [friendsVisible, setFriendsVisible] = useState(false);
 
   const water = useWater((state) => state.water);
   const ensureTodayInitialized = useWater((state) => state.ensureTodayInitialized);
@@ -153,6 +170,7 @@ export default function TodayScreen() {
 
   const frameId = useProfileAppearance((state) => state.frameId);
   const frameDecoration = getFrameDecoration(frameId);
+  const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
   const avatarFrameStyle = frameDecoration
     ? {
         borderWidth: frameDecoration.borderWidth,
@@ -167,6 +185,7 @@ export default function TodayScreen() {
         borderWidth: 1,
         borderColor: palette.border,
       };
+  const avatarSource = selectedAvatar ? AVATAR_IMAGES[selectedAvatar] : null;
   const fallbackName = isGuest
     ? t((d) => d.common.guestUser)
     : user?.email?.split('@')[0] ?? t((d) => d.common.user);
@@ -227,6 +246,14 @@ export default function TodayScreen() {
   }, [ensureTodayInitialized, today]);
 
   useEffect(() => {
+    Animated.timing(weatherAnimation, {
+      toValue: weatherModalVisible ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [weatherAnimation, weatherModalVisible]);
+
+  useEffect(() => {
     loadPlans().catch((error) => console.warn('[TodayScreen] Failed to load plans', error));
   }, [loadPlans]);
   const weeklyPreview = weekly.slice(0, 7);
@@ -262,6 +289,21 @@ export default function TodayScreen() {
     const upcoming = pendingBlocks.find((block) => block.startMin > currentMinutes);
     return upcoming ?? pendingBlocks[0];
   }, [pendingBlocks]);
+
+  const weatherModalStyle = useMemo(
+    () => ({
+      opacity: weatherAnimation,
+      transform: [
+        {
+          scale: weatherAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.92, 1],
+          }),
+        },
+      ],
+    }),
+    [weatherAnimation],
+  );
 
   const handleStartFocus = (block: PlanBlock | null) => {
     if (!block) return;
@@ -321,6 +363,7 @@ export default function TodayScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
         <ScrollView
           contentContainerStyle={styles.container}
+          contentInsetAdjustmentBehavior="always"
           showsVerticalScrollIndicator={false}
           onTouchStart={() => {
             if (weatherModalVisible) {
@@ -334,20 +377,35 @@ export default function TodayScreen() {
               style={({ pressed }) => [
                 styles.avatar,
                 {
-                  backgroundColor: palette.accent,
+                  backgroundColor: avatarSource ? palette.background : palette.card,
                   opacity: pressed ? 0.8 : 1,
                 },
                 avatarFrameStyle,
             ]}>
-              <Text style={[styles.avatarInitials, { color: palette.background }]}>
-                {initials}
-              </Text>
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
+              ) : (
+                <Text style={[styles.avatarInitials, { color: palette.text }]}>
+                  {initials}
+                </Text>
+              )}
             </Pressable>
 
             <View style={styles.friendsStrip}>
-              <Text style={[styles.friendsLabel, { color: palette.text }]}>
-                {t((d) => d.today.friends)}
-              </Text>
+              <Pressable
+                onPress={() => setFriendsVisible(true)}
+                style={({ pressed }) => [
+                  styles.friendsButton,
+                  {
+                    borderColor: palette.border,
+                    backgroundColor: palette.card,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}>
+                <Text style={[styles.friendsLabel, { color: palette.text }]}>
+                  {t((d) => d.today.friends)}
+                </Text>
+              </Pressable>
             </View>
           </View>
 
@@ -624,6 +682,13 @@ export default function TodayScreen() {
         onSave={handleEditorSave}
         onDelete={handleEditorDelete}
       />
+      <Popup
+        visible={friendsVisible}
+        title={t((d) => d.tabs.friendsComingSoon)}
+        description={t((d) => d.tabs.friendsDescription)}
+        icon="🤝"
+        onClose={() => setFriendsVisible(false)}
+      />
       <Modal
         visible={weatherModalVisible}
         transparent
@@ -631,13 +696,19 @@ export default function TodayScreen() {
         statusBarTranslucent
         onRequestClose={() => setWeatherModalVisible(false)}>
         <View style={styles.weatherModalBackdrop}>
+          <BlurView
+            tint={isDarkBackground ? 'dark' : 'light'}
+            intensity={28}
+            style={StyleSheet.absoluteFillObject}
+          />
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={() => setWeatherModalVisible(false)}
           />
-          <View
+          <Animated.View
             style={[
               styles.weatherModalCard,
+              weatherModalStyle,
               {
                 backgroundColor: palette.card,
                 borderColor: palette.border,
@@ -675,7 +746,7 @@ export default function TodayScreen() {
                 </Text>
               )}
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -692,8 +763,9 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 24,
   },
   avatar: {
@@ -702,10 +774,15 @@ const styles = StyleSheet.create({
     borderRadius: 22.5,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   avatarInitials: {
     fontSize: 22,
     fontWeight: '700',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarColumn: {
     flexDirection: 'column',
@@ -716,11 +793,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginLeft: 4,
   },
+  friendsButton: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
   friendsLabel: {
-    fontSize: 10,
+    fontSize: 9,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 6,
+    letterSpacing: 0.35,
+    fontWeight: '700',
   },
   headerStats: {
     flexDirection: 'row',
@@ -728,7 +811,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     marginLeft: 'auto',
     justifyContent: 'flex-end',
-    marginTop: 12,
+    marginTop: 4,
   },
   statsInline: {
     flexDirection: 'row',
@@ -814,7 +897,7 @@ const styles = StyleSheet.create({
   },
   weatherModalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -825,6 +908,11 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     padding: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 10,
   },
   weatherModalHeader: {
     flexDirection: 'row',
@@ -943,8 +1031,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 20,
     marginBottom: 8,
-    width: '90%',
-    maxWidth: 420,
+    width: '100%',
+    maxWidth: 520,
     alignSelf: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.08,

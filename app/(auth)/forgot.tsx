@@ -3,13 +3,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 import { supabase } from '@/lib/supabase';
 import { getRedirect } from '@/lib/oauth';
@@ -25,6 +27,7 @@ const palette = {
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const headerHeight = useHeaderHeight();
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -60,9 +63,13 @@ export default function ForgotPasswordScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight + 12}
         style={styles.flex}>
-        <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <Pressable style={styles.backCircle} onPress={() => router.back()}>
             <Text style={styles.backSymbol}>{'←'}</Text>
           </Pressable>
@@ -80,6 +87,7 @@ export default function ForgotPasswordScreen() {
               keyboardType="email-address"
               placeholderTextColor={palette.muted}
               style={styles.input}
+              returnKeyType="send"
             />
           </View>
 
@@ -94,7 +102,7 @@ export default function ForgotPasswordScreen() {
               {submitting ? t((d) => d.auth.forgotSubmitting) : t((d) => d.auth.forgotButton)}
             </Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -109,7 +117,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#fff',
     paddingHorizontal: 24,
     paddingTop: 36,

@@ -2,12 +2,21 @@
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 /* eslint-enable import/no-duplicates */
-import React, { useEffect, useMemo } from 'react';
-import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/store/useAuth';
 import { useFocusMode } from '@/store/useFocusMode';
@@ -18,10 +27,14 @@ import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
 import { useTheme } from '@/store/useTheme';
 import { useLanguage } from '@/store/useLanguage';
 import { useProfileAppearance } from '@/store/useProfileAppearance';
+import { useAvatarStore } from '@/store/useAvatar';
 import { configureRevenueCat } from '@/lib/revenuecat';
-import { ensureInitialized } from '@/lib/notifications';
+import { ensureInitialized, scheduleWeeklySummary, syncDayNotifications } from '@/lib/notifications';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
 import { initSupabaseAuthListener } from '@/lib/supabase';
+import { usePlans, todayDate } from '@/store/usePlans';
+import { useSettings } from '@/store/useSettings';
+import { useStreak } from '@/store/useStreak';
 
 // Force SF Pro typography globally so every Text component inherits it.
 const SF_PRO_FONT_FAMILY =
@@ -93,6 +106,30 @@ export default function RootLayout() {
   const themeKey = useTheme((state) => state.themeKey);
   const palette = useTheme((state) => state.palette);
   const focusTick = useFocusMode((state) => state.tick);
+  const pointsHydrated = usePoints((state) => state.hydrated);
+  const premiumHydrated = usePremium((state) => state.hydrated);
+  const avatarHydrated = useAvatarStore((state) => state.hydrated);
+  const [showStartupScreen, setShowStartupScreen] = useState(true);
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+  const isHydrating =
+    status === 'checking' || !pointsHydrated || !premiumHydrated || !avatarHydrated;
+
+  useEffect(() => {
+    if (isHydrating) {
+      setShowStartupScreen(true);
+      splashOpacity.setValue(1);
+      return;
+    }
+    Animated.timing(splashOpacity, {
+      toValue: 0,
+      duration: 320,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setShowStartupScreen(false);
+      }
+    });
+  }, [isHydrating, splashOpacity]);
   useEffect(() => {
     const authState = useAuth.getState();
     authState.initAuth().catch((err) => {
@@ -154,11 +191,12 @@ export default function RootLayout() {
     if (sessionUserId) {
       void usePoints.getState().init(sessionUserId);
       void useWater.getState().init(sessionUserId);
-      return;
+    } else {
+      void usePoints.getState().init(null);
+      void useWater.getState().init(null);
     }
 
-    void usePoints.getState().init(null);
-    void useWater.getState().init(null);
+    void useAvatarStore.getState().loadFromSupabase();
   }, [status, user?.id]);
 
   useEffect(() => {
@@ -178,6 +216,53 @@ export default function RootLayout() {
     };
   }, [focusTick]);
 
+  useEffect(() => {
+    let lastDate = todayDate();
+    const syncNotifications = () => {
+      const settingsState = useSettings.getState();
+      const blocks = usePlans.getState().blocks;
+      const streakDays = useStreak.getState().streakDays;
+      const date = todayDate();
+      void syncDayNotifications({
+        date,
+        blocks,
+        settings: settingsState.notificationTypes,
+        streakDays,
+        waterReminderEnabled: settingsState.waterReminderEnabled,
+      });
+      void scheduleWeeklySummary(blocks, settingsState.notificationTypes, streakDays);
+    };
+
+    const unsubPlans = usePlans.subscribe(
+      (state) => state.blocks,
+      () => syncNotifications(),
+    );
+    const unsubSettings = useSettings.subscribe(
+      (state) => state.notificationTypes,
+      () => syncNotifications(),
+    );
+    const unsubWater = useSettings.subscribe(
+      (state) => state.waterReminderEnabled,
+      () => syncNotifications(),
+    );
+    syncNotifications();
+
+    const intervalId = setInterval(() => {
+      const current = todayDate();
+      if (current !== lastDate) {
+        lastDate = current;
+        syncNotifications();
+      }
+    }, 60 * 1000);
+
+    return () => {
+      unsubPlans();
+      unsubSettings();
+      unsubWater();
+      clearInterval(intervalId);
+    };
+  }, []);
+
   const navigatorTheme: Theme = useMemo(() => {
     const baseTheme = themeKey === 'light' ? DefaultTheme : DarkTheme;
     return {
@@ -192,55 +277,114 @@ export default function RootLayout() {
     };
   }, [themeKey, palette]);
 
-  if (status === 'checking') {
-    return (
+  return (
+    <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ErrorBoundary>
           <ThemeProvider value={navigatorTheme}>
-            <Splash backgroundColor={palette.background} />
+            <Stack>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="points" options={{ headerShown: false }} />
+              <Stack.Screen name="profile" options={{ headerShown: false }} />
+              <Stack.Screen name="focus" options={{ headerShown: false }} />
+              <Stack.Screen name="premium" options={{ headerShown: false }} />
+              <Stack.Screen name="paywall" options={{ headerShown: false }} />
+              <Stack.Screen name="language" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
+            </Stack>
             <StatusBar style="auto" />
+            <StartupOverlay
+              visible={showStartupScreen}
+              opacity={splashOpacity}
+              blocking={isHydrating}
+              backgroundColor="#ffffff"
+              accentColor={palette.accent}
+              cardColor="#ffffff"
+            />
           </ThemeProvider>
         </ErrorBoundary>
       </GestureHandlerRootView>
-    );
-  }
-
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ErrorBoundary>
-        <ThemeProvider value={navigatorTheme}>
-          <Stack>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="points" options={{ headerShown: false }} />
-            <Stack.Screen name="profile" options={{ headerShown: false }} />
-            <Stack.Screen name="focus" options={{ headerShown: false }} />
-            <Stack.Screen name="premium" options={{ headerShown: false }} />
-            <Stack.Screen name="paywall" options={{ headerShown: false }} />
-            <Stack.Screen name="language" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </ErrorBoundary>
-    </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 
-type SplashProps = {
+type StartupOverlayProps = {
+  visible: boolean;
+  opacity: Animated.Value;
+  blocking: boolean;
   backgroundColor: string;
+  accentColor: string;
+  cardColor?: string;
 };
 
-function Splash({ backgroundColor }: SplashProps) {
+function StartupOverlay({
+  visible,
+  opacity,
+  blocking,
+  backgroundColor,
+  accentColor,
+  cardColor,
+}: StartupOverlayProps) {
+  if (!visible) return null;
+
   return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor,
-      }}>
-      <ActivityIndicator size="large" />
-    </View>
+    <Animated.View
+      pointerEvents={blocking ? 'auto' : 'none'}
+      style={[
+        StyleSheet.absoluteFillObject,
+        styles.splashOverlay,
+        { backgroundColor, opacity },
+      ]}>
+      <View
+        style={[
+          styles.splashCard,
+          {
+            backgroundColor: cardColor ?? 'rgba(0,0,0,0.1)',
+          },
+        ]}>
+        <Image source={require('../assets/images/icon.png')} style={styles.splashLogo} />
+        <Text style={[styles.splashTitle, { color: accentColor }]}>Planora</Text>
+        <ActivityIndicator color={accentColor} style={styles.splashSpinner} />
+      </View>
+    </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  splashOverlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  splashCard: {
+    width: 260,
+    maxWidth: '90%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    borderRadius: 32,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 16 },
+    shadowRadius: 20,
+    elevation: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  splashLogo: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+  },
+  splashTitle: {
+    marginTop: 14,
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  splashSpinner: {
+    marginTop: 12,
+  },
+});

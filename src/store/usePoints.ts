@@ -27,6 +27,7 @@ export type PointsState = {
   focusSessions: number;
   completedPlans: number;
   userId?: string;
+  hydrated: boolean;
   resetDailyIfNeeded: (today: string) => void;
   addPlanPoints: (amount: number) => void;
   addFocusPoints: (amount: number) => void;
@@ -76,9 +77,14 @@ export const usePoints = create<PointsState>((set, get) => {
         total: row.total_points,
         maxTotal: row.total_points,
         daily: buildDailyPoints(todayDate()),
+        hydrated: true,
       });
     } catch (error) {
       console.warn('[usePoints/loadFromServer]', error);
+      set({
+        userId,
+        hydrated: true,
+      });
     }
   };
 
@@ -90,6 +96,7 @@ export const usePoints = create<PointsState>((set, get) => {
       daily: buildDailyPoints(todayDate()),
       focusSessions: 0,
       completedPlans: 0,
+      hydrated: true,
     });
   };
 
@@ -157,18 +164,23 @@ export const usePoints = create<PointsState>((set, get) => {
       maxTotal: 0,
       focusSessions: 0,
       completedPlans: 0,
+      hydrated: true,
     });
   };
 
   const init = async (userId: string | null) => {
+    set({ hydrated: false });
     if (!userId) {
       resetToGuest();
       return;
     }
-    if (get().userId === userId) {
+    const current = get();
+    if (current.userId === userId && current.hydrated) {
+      set({ hydrated: true });
       return;
     }
     await loadFromServer(userId);
+    set({ hydrated: true });
   };
 
   return {
@@ -178,6 +190,7 @@ export const usePoints = create<PointsState>((set, get) => {
     focusSessions: 0,
     completedPlans: 0,
     userId: undefined,
+    hydrated: false,
     resetDailyIfNeeded,
     addPlanPoints,
     addFocusPoints,

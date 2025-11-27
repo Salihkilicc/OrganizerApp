@@ -5,12 +5,12 @@ import {
   Alert,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CopyDayModal } from '@/components/CopyDayModal';
 import { DayStrip } from '@/components/DayStrip';

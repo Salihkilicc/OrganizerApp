@@ -1,18 +1,58 @@
 import { supabase } from '@/lib/supabase';
 import type { PlanBlock } from '@/store/usePlans';
 
+type LegacyNotificationTypes = {
+  planReminders?: boolean;
+  focusMode?: boolean;
+  dailySummary?: boolean;
+  streakWarning?: boolean;
+};
+
 export type NotificationTypes = {
-  planReminders: boolean;
-  focusMode: boolean;
-  dailySummary: boolean;
-  streakWarning: boolean;
+  enableNextUp: boolean;
+  enableFocusNotifications: boolean;
+  enableMissedPlans: boolean;
+  enableStreakRescue: boolean;
+  enableMiddayMilestone: boolean;
+  enableBadgeNotifications: boolean;
+  enableWeeklySummary: boolean;
+  enableWaterReminders: boolean;
+  enableReflection: boolean;
 };
 
 export const DEFAULT_NOTIFICATION_TYPES: NotificationTypes = {
-  planReminders: true,
-  focusMode: true,
-  dailySummary: false,
-  streakWarning: true,
+  enableNextUp: true,
+  enableFocusNotifications: true,
+  enableMissedPlans: false,
+  enableStreakRescue: true,
+  enableMiddayMilestone: true,
+  enableBadgeNotifications: true,
+  enableWeeklySummary: true,
+  enableWaterReminders: true,
+  enableReflection: true,
+};
+
+export const normalizeNotificationTypes = (
+  incoming?: Partial<NotificationTypes> & LegacyNotificationTypes,
+): NotificationTypes => {
+  const value = incoming ?? {};
+  return {
+    enableNextUp: value.enableNextUp ?? value.planReminders ?? DEFAULT_NOTIFICATION_TYPES.enableNextUp,
+    enableFocusNotifications:
+      value.enableFocusNotifications ?? value.focusMode ?? DEFAULT_NOTIFICATION_TYPES.enableFocusNotifications,
+    enableMissedPlans: value.enableMissedPlans ?? DEFAULT_NOTIFICATION_TYPES.enableMissedPlans,
+    enableStreakRescue:
+      value.enableStreakRescue ?? value.streakWarning ?? DEFAULT_NOTIFICATION_TYPES.enableStreakRescue,
+    enableMiddayMilestone:
+      value.enableMiddayMilestone ?? DEFAULT_NOTIFICATION_TYPES.enableMiddayMilestone,
+    enableBadgeNotifications:
+      value.enableBadgeNotifications ?? DEFAULT_NOTIFICATION_TYPES.enableBadgeNotifications,
+    enableWeeklySummary:
+      value.enableWeeklySummary ?? value.dailySummary ?? DEFAULT_NOTIFICATION_TYPES.enableWeeklySummary,
+    enableWaterReminders:
+      value.enableWaterReminders ?? DEFAULT_NOTIFICATION_TYPES.enableWaterReminders,
+    enableReflection: value.enableReflection ?? DEFAULT_NOTIFICATION_TYPES.enableReflection,
+  };
 };
 
 export type UserSettingsPayload = {
@@ -36,9 +76,9 @@ export const fetchUserSettings = async (userId: string): Promise<UserSettingsPay
   }
   return {
     language: data.language ?? 'en',
-    waterReminderEnabled: data.water_reminder_enabled ?? false,
+    waterReminderEnabled: data.water_reminder_enabled ?? true,
     vibrationEnabled: data.vibration_enabled ?? true,
-    notificationTypes: data.notification_types ?? DEFAULT_NOTIFICATION_TYPES,
+    notificationTypes: normalizeNotificationTypes(data.notification_types ?? DEFAULT_NOTIFICATION_TYPES),
   };
 };
 
@@ -70,7 +110,7 @@ export const saveUserSettings = async (
     language: data.language ?? payload.language,
     waterReminderEnabled: data.water_reminder_enabled ?? payload.waterReminderEnabled,
     vibrationEnabled: data.vibration_enabled ?? payload.vibrationEnabled,
-    notificationTypes: data.notification_types ?? payload.notificationTypes,
+    notificationTypes: normalizeNotificationTypes(data.notification_types ?? payload.notificationTypes),
   };
 };
 

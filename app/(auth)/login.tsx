@@ -5,13 +5,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 import { useAuth } from '@/store/useAuth';
 import { useI18n } from '@/i18n/useI18n';
@@ -30,6 +32,7 @@ export default function LoginScreen() {
   const signInWithEmail = useAuth((state) => state.signInWithEmail);
   const continueAsGuest = useAuth((state) => state.continueAsGuest);
   const loading = useAuth((state) => state.loading);
+  const headerHeight = useHeaderHeight();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -70,9 +73,13 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight + 12}
         style={styles.flex}>
-        <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>{t((d) => d.auth.loginTitle)}</Text>
           <Text style={styles.subtitle}>{t((d) => d.auth.loginSubtitle)}</Text>
 
@@ -87,6 +94,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               placeholderTextColor={palette.muted}
               style={styles.input}
+              returnKeyType="next"
             />
           </View>
 
@@ -100,6 +108,7 @@ export default function LoginScreen() {
                 placeholderTextColor={palette.muted}
                 secureTextEntry={!showPassword}
                 style={styles.passwordInput}
+                returnKeyType="done"
               />
               <Pressable onPress={() => setShowPassword((prev) => !prev)}>
                 <Text style={styles.toggle}>
@@ -153,7 +162,7 @@ export default function LoginScreen() {
               <Text style={styles.guestText}>{t((d) => d.auth.continueAsGuest)}</Text>
             </Pressable>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -168,7 +177,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#fff',
     paddingHorizontal: 24,
     paddingTop: 40,

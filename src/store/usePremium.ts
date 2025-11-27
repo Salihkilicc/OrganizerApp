@@ -9,6 +9,7 @@ type PremiumState = {
   isPremium: boolean;
   loading: boolean;
   userId?: string;
+  hydrated: boolean;
   hydrate: () => Promise<void>;
   loadFromServer: (userId: string) => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
@@ -19,18 +20,21 @@ export const usePremium = create<PremiumState>((set, get) => ({
   isPremium: false,
   loading: true,
   userId: undefined,
+  hydrated: false,
   hydrate: async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       set({
         isPremium: stored === 'true',
         loading: false,
+        hydrated: true,
       });
     } catch (error) {
       console.warn('[usePremium] hydrate failed', error);
       set({
         isPremium: false,
         loading: false,
+        hydrated: true,
       });
     }
   },
@@ -41,12 +45,14 @@ export const usePremium = create<PremiumState>((set, get) => ({
         isPremium,
         userId,
         loading: false,
+        hydrated: true,
       });
     } catch (error) {
       console.warn('[usePremium] load failed', error);
       set({
         userId,
         loading: false,
+        hydrated: true,
       });
     }
   },
@@ -70,6 +76,7 @@ export const usePremium = create<PremiumState>((set, get) => ({
   resetToGuest: () => {
     set({
       userId: undefined,
+      hydrated: true,
     });
   },
 }));

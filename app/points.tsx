@@ -1,11 +1,23 @@
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Ionicons } from '@expo/vector-icons';
 import { usePoints } from '@/store/usePoints';
 import { ShopItemCategory, useShop } from '@/store/useShop';
 import { useTheme } from '@/store/useTheme';
 import { useI18n } from '@/i18n/useI18n';
 import { useRouter } from 'expo-router';
 import type { TranslationKeys } from '@/i18n/translations';
+import { AVATAR_CATALOG, type AvatarName } from '@/constants/avatars';
+import { useAvatarStore } from '@/store/useAvatar';
 
 const sections: { title: (dict: TranslationKeys) => string; category: ShopItemCategory }[] = [
   { title: (d) => d.points.themes, category: 'theme' },
@@ -21,6 +33,92 @@ export default function PointsScreen() {
   const buyWithPoints = useShop((state) => state.buyWithPoints);
   const equipItem = useShop((state) => state.equipItem);
   const { t } = useI18n();
+  const {
+    purchasedAvatars,
+    selectedAvatar,
+    loading: avatarsLoading,
+    purchaseAvatar,
+    selectAvatar,
+  } = useAvatarStore();
+
+  const renderAvatarCard = (entry: (typeof AVATAR_CATALOG)[number]) => {
+    const name = entry.name as AvatarName;
+    const owned = purchasedAvatars.includes(name);
+    const isSelected = selectedAvatar === name;
+    const canAfford = entry.price === 0 || totalPoints >= entry.price;
+    const buttonDisabled = avatarsLoading || (owned ? isSelected : !canAfford);
+    const statusLabel = owned
+      ? isSelected
+        ? 'Selected'
+        : 'Unlocked'
+      : entry.price === 0
+        ? 'Free'
+        : `${entry.price} pts`;
+
+    return (
+      <View
+        key={entry.name}
+        style={[
+          styles.avatarCard,
+          { backgroundColor: palette.card, borderColor: palette.border },
+        ]}>
+        <View
+          style={[
+            styles.avatarImageShell,
+            {
+              borderColor: isSelected ? palette.accent : palette.border,
+              shadowColor: palette.text,
+            },
+          ]}>
+          <Image source={entry.source} style={styles.avatarImage} />
+          {!owned && (
+            <View
+              style={[
+                styles.avatarLockOverlay,
+                { backgroundColor: 'rgba(0,0,0,0.08)' },
+              ]}>
+              <Ionicons name="lock-closed" size={18} color={palette.text} />
+            </View>
+          )}
+        </View>
+        <Text style={[styles.avatarLabel, { color: palette.text }]} numberOfLines={1}>
+          {entry.label}
+        </Text>
+        <Text
+          style={[
+            styles.avatarStatus,
+            { color: isSelected ? palette.accent : palette.text },
+          ]}>
+          {statusLabel}
+        </Text>
+        <Pressable
+          onPress={() => {
+            if (owned) {
+              void selectAvatar(name);
+            } else {
+              void purchaseAvatar(name);
+            }
+          }}
+          disabled={buttonDisabled}
+          style={({ pressed }) => [
+            styles.avatarButton,
+            {
+              backgroundColor: owned ? palette.background : palette.accent,
+              borderColor: owned ? palette.border : palette.accent,
+              opacity: pressed ? 0.85 : buttonDisabled ? 0.6 : 1,
+            },
+          ]}>
+          <Text
+            style={[
+              styles.avatarButtonText,
+              { color: owned ? palette.text : palette.background },
+            ]}>
+            {owned ? (isSelected ? 'Selected' : 'Select') : t((d) => d.points.button.buy)}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
 
   const renderStatus = (itemStatus: string, equipped: boolean) => {
     const pillStyle = [
@@ -167,6 +265,16 @@ export default function PointsScreen() {
           </View>
         </View>
 
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>Profile Photos</Text>
+            {avatarsLoading && <ActivityIndicator size="small" color={palette.accent} />}
+          </View>
+          <View style={styles.avatarGrid}>
+            {AVATAR_CATALOG.map((entry) => renderAvatarCard(entry))}
+          </View>
+        </View>
+
         {sections.map((section) => {
           const filtered = items.filter((item) => item.category === section.category);
           return (
@@ -298,5 +406,72 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  avatarCard: {
+    width: '48%',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  avatarImageShell: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    overflow: 'hidden',
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarLockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  avatarStatus: {
+    fontSize: 12,
+    opacity: 0.8,
+    marginBottom: 8,
+  },
+  avatarButton: {
+    width: '100%',
+    borderRadius: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  avatarButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

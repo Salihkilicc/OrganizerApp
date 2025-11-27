@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { todayDate, usePlans } from '@/store/usePlans';
 import { usePoints } from '@/store/usePoints';
+import { notifyFocusCompleted, notifyFocusStarted } from '@/lib/notifications';
 
 const MINUTE_MS = 60 * 1000;
 const MAX_FOCUS_POINTS_PER_DAY = 90;
@@ -66,6 +67,7 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       linkedBlockId: options?.blockId ?? undefined,
       markDoneOnCompletion: options?.markDoneOnCompletion ?? false,
     });
+    void notifyFocusStarted();
   },
   startFocusForBlock(blockId, durationMinutes) {
     if (!blockId) {
@@ -85,6 +87,7 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
 
     const rewardMinutes = state.accumulatedMinutes;
     const pointsState = usePoints.getState();
+    let awardedPoints = 0;
     if (rewardMinutes > 0) {
       pointsState.recordFocusSession();
     }
@@ -115,6 +118,7 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
         MAX_FOCUS_POINTS_PER_DAY - pointsState.daily.focusPoints,
       );
       const toAward = clamp(rewardMinutes, 0, remaining);
+      awardedPoints = toAward;
       if (toAward > 0) {
         pointsState.addFocusPoints(toAward);
       }
@@ -122,6 +126,10 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
 
     if (blockIdToComplete) {
       void usePlans.getState().update(blockIdToComplete, { done: true });
+    }
+
+    if (options?.completed) {
+      void notifyFocusCompleted(awardedPoints);
     }
   },
   addMinutes(extra) {

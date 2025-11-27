@@ -11,58 +11,58 @@ export default function TabLayout() {
   const { t } = useI18n();
 
   return (
-      <Tabs
-        screenOptions={{
-          tabBarActiveTintColor: palette.accent,
-          tabBarInactiveTintColor: palette.text,
-          headerShown: false,
-          tabBarButton: HapticTab,
-        tabBarStyle: {
-          position: 'absolute',
-          left: 12,
-          right: 12,
-          marginBottom: -6,
-          bottom: -6,
-          borderRadius: 28,
-          height: 80,
-          paddingTop: 10,
-          backgroundColor: palette.card,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.25,
-          shadowRadius: 20,
-          elevation: 12,
-        },
-          tabBarItemStyle: {
-            paddingTop: 4,
-            paddingBottom: 10,
+        <Tabs
+          screenOptions={{
+            tabBarActiveTintColor: palette.accent,
+            tabBarInactiveTintColor: palette.text,
+            headerShown: false,
+            tabBarButton: HapticTab,
+          tabBarStyle: {
+            position: 'absolute',
+            left: 12,
+            right: 12,
+            marginBottom: -6,
+            bottom: -6,
+            borderRadius: 28,
+            height: 80,
+            paddingTop: 10,
+            backgroundColor: palette.card,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.25,
+            shadowRadius: 20,
+            elevation: 12,
           },
-          tabBarIconStyle: {
-            marginBottom: -20,
-          },
-          tabBarShowLabel: false,
-        }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t((d) => d.tabs.today),
-          tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="plan"
-        options={{
-          title: t((d) => d.tabs.plan),
-          tabBarIcon: ({ color }) => <Ionicons name="calendar" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: t((d) => d.tabs.settings),
-          tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
-        }}
-      />
-    </Tabs>
+            tabBarItemStyle: {
+              paddingTop: 4,
+              paddingBottom: 10,
+            },
+            tabBarIconStyle: {
+              marginBottom: -20,
+            },
+            tabBarShowLabel: false,
+          }}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: t((d) => d.tabs.today),
+            tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="plan"
+          options={{
+            title: t((d) => d.tabs.plan),
+            tabBarIcon: ({ color }) => <Ionicons name="calendar" size={24} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: t((d) => d.tabs.settings),
+            tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
+          }}
+        />
+      </Tabs>
   );
 }

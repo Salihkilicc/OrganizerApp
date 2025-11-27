@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { useTheme } from '@/store/useTheme';
@@ -67,6 +71,7 @@ const CATEGORY_OPTIONS: { value: PlanCategory }[] = [
 export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete }: Props) => {
   const { palette } = useTheme();
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const defaultStart = useMemo(() => initial?.startMin ?? 8 * 60, [initial]);
   const defaultEnd = useMemo(
     () => initial?.endMin ?? defaultStart + 60,
@@ -217,8 +222,21 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}>
+        <View style={styles.overlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
+          <ScrollView
+            style={styles.cardWrapper}
+            contentContainerStyle={[
+              styles.cardScroll,
+              { paddingBottom: 20 + insets.bottom },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <View
+              style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <TextInput
             style={[
               styles.input,
@@ -423,19 +441,34 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
             </View>
           )}
         </View>
-      </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     padding: 24,
   },
+  cardWrapper: {
+    flexGrow: 0,
+  },
+  cardScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   card: {
+    width: '100%',
+    maxWidth: 560,
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
