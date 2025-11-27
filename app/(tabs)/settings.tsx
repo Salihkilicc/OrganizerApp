@@ -26,7 +26,12 @@ import type { TranslationKeys } from '@/i18n/translations';
 import { useAvatarStore } from '@/store/useAvatar';
 import { AVATAR_IMAGES } from '@/constants/avatars';
 
-const themeLabelMap: Record<ThemeId, (dict: TranslationKeys) => string> = {
+const formatThemeLabel = (key: ThemeId) =>
+  key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^\w/, (char) => char.toUpperCase());
+
+const themeLabelMap: Partial<Record<ThemeId, (dict: TranslationKeys) => string>> = {
   light: (d) => d.settings.themeLight,
   dark: (d) => d.settings.themeDark,
   ninja: (d) => d.settings.themeNinja,
@@ -48,6 +53,7 @@ export default function SettingsScreen() {
   const palette = useTheme((state) => state.palette);
   const themeKey = useTheme((state) => state.themeKey);
   const setTheme = useTheme((state) => state.setTheme);
+  const themeLabelSelector = themeLabelMap[themeKey] ?? (() => formatThemeLabel(themeKey));
   const router = useRouter();
   const user = useAuth((state) => state.user);
   const profilePhoto =
@@ -312,7 +318,7 @@ export default function SettingsScreen() {
                 {t((d) => d.settings.appearance)}
               </Text>
               <Text style={[styles.sectionHint, { color: palette.text }]}>
-                {t(themeLabelMap[themeKey])}
+                {t(themeLabelSelector)}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />

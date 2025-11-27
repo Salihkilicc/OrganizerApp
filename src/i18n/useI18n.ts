@@ -20,9 +20,13 @@ export function useI18n() {
   const dict = useMemo(() => getDictionary(lang), [lang]);
 
   const t = (
-    selector: (dict: TranslationKeys) => string,
+    selector: ((dict: TranslationKeys) => string) | undefined,
     params?: Record<string, string | number>,
   ): string => {
+    if (typeof selector !== 'function') {
+      console.error('[i18n] Missing translation selector', selector);
+      return '';
+    }
     const template = selector(dict) ?? selector(translations.en);
     return interpolate(template ?? '', params);
   };
@@ -31,10 +35,14 @@ export function useI18n() {
 }
 
 export const translate = (
-  selector: (dict: TranslationKeys) => string,
+  selector: ((dict: TranslationKeys) => string) | undefined,
   params?: Record<string, string | number>,
   langOverride?: SupportedLanguage,
 ) => {
+  if (typeof selector !== 'function') {
+    console.error('[i18n] Missing translation selector', selector);
+    return '';
+  }
   const lang = langOverride ?? getCurrentLanguage();
   const dict = getDictionary(lang);
   const template = selector(dict) ?? selector(translations.en);
