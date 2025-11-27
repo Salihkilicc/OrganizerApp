@@ -2,17 +2,17 @@ import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'rea
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/store/useTheme';
-import { useLanguage, LANGUAGE_OPTIONS, LANGUAGE_LABELS } from '@/store/useLanguage';
-import { useTranslation } from '@/i18n';
+import { useLanguage } from '@/store/useLanguage';
+import { availableLanguages, getLanguageName, useI18n } from '@/i18n/useI18n';
 
 export default function LanguageScreen() {
   const router = useRouter();
   const palette = useTheme((state) => state.palette);
-  const currentLanguage = useLanguage((state) => state.current);
+  const currentLanguage = useLanguage((state) => state.language);
   const setLanguage = useLanguage((state) => state.setLanguage);
-  const { t } = useTranslation();
+  const { t } = useI18n();
 
-  const handleSelect = (code: typeof LANGUAGE_OPTIONS[number]['code']) => {
+  const handleSelect = (code: (typeof availableLanguages)[number]['code']) => {
     setLanguage(code);
   };
 
@@ -32,13 +32,15 @@ export default function LanguageScreen() {
             ]}>
             <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
           </Pressable>
-          <Text style={[styles.headerTitle, { color: palette.text }]}>{t('language.title')}</Text>
+          <Text style={[styles.headerTitle, { color: palette.text }]}>
+            {t((d) => d.settings.languageTitle)}
+          </Text>
         </View>
         <Text style={[styles.subtitle, { color: palette.text, marginBottom: 12 }]}>
-          {t('language.current')}: {LANGUAGE_LABELS[currentLanguage]}
+          {t((d) => d.settings.languageTitle)}: {getLanguageName(currentLanguage)}
         </Text>
 
-        {LANGUAGE_OPTIONS.map((option) => {
+        {availableLanguages.map((option) => {
           const isActive = option.code === currentLanguage;
           return (
             <Pressable
@@ -54,10 +56,10 @@ export default function LanguageScreen() {
               ]}>
               <Text
                 style={[
-                  styles.languageLabel,
-                  { color: isActive ? palette.accent : palette.text },
-                ]}>
-                {option.label}
+                      styles.languageLabel,
+                      { color: isActive ? palette.accent : palette.text },
+                    ]}>
+                {option.name}
               </Text>
               {isActive && (
                 <Text style={[styles.checkmark, { color: palette.accent }]}>✓</Text>

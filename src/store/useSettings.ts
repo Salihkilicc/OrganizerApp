@@ -70,7 +70,7 @@ export const useSettings = create<SettingsState>()(
       const resetToGuest = () => {
         set({
           userId: undefined,
-          language: useLanguage.getState().current,
+          language: useLanguage.getState().language,
           waterReminderEnabled: false,
           vibrationEnabled: true,
           notificationTypes: DEFAULT_NOTIFICATION_TYPES,
@@ -78,7 +78,7 @@ export const useSettings = create<SettingsState>()(
       };
 
       return {
-        language: useLanguage.getState().current,
+        language: useLanguage.getState().language,
         waterReminderEnabled: false,
         vibrationEnabled: true,
         notificationTypes: DEFAULT_NOTIFICATION_TYPES,

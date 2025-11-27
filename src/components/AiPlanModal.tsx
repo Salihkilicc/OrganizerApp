@@ -14,6 +14,7 @@ import {
 import { PlanBlock } from '@/store/usePlans';
 import { AiPlanBlock, AiPlanRequest, generatePlanFromAI } from '@/lib/aiPlan';
 import { useTheme } from '@/store/useTheme';
+import { useI18n } from '@/i18n/useI18n';
 
 type AiPlanModalProps = {
   visible: boolean;
@@ -89,6 +90,7 @@ export function AiPlanModal({
   previousBlocks,
 }: AiPlanModalProps) {
   const { palette } = useTheme();
+  const { t } = useI18n();
   const [wakeTime, setWakeTime] = useState('07:30');
   const [sleepTime, setSleepTime] = useState('23:30');
   const [workStart, setWorkStart] = useState(DEFAULT_WORK_START);
@@ -107,9 +109,9 @@ export function AiPlanModal({
   let workValidationError: string | null = null;
   if (works) {
     if (workStartMinutes === undefined || workEndMinutes === undefined) {
-      workValidationError = 'Enter valid work start and end times (e.g. 09:00).';
+      workValidationError = t((d) => d.aiPlanner.workInvalid);
     } else if (workEndMinutes <= workStartMinutes) {
-      workValidationError = 'Work end must be after work start.';
+      workValidationError = t((d) => d.aiPlanner.workEndBeforeStart);
     }
   }
   const generateDisabled = loading || (works && Boolean(workValidationError));
@@ -166,7 +168,7 @@ export function AiPlanModal({
       return;
     }
     if (hasExistingBlocks) {
-      setError('There should not be any plan for this day');
+      setError(t((d) => d.aiPlanner.existingBlocksError));
       return;
     }
     setLoading(true);
@@ -178,7 +180,7 @@ export function AiPlanModal({
       const blocksArray = Array.isArray(blocks) ? blocks : [];
       setPreviewBlocks(blocksArray);
       if (blocksArray.length === 0) {
-        setError('No blocks returned from AI.');
+        setError(t((d) => d.aiPlanner.noBlocks));
       } else {
         setError(null);
       }
@@ -201,7 +203,7 @@ export function AiPlanModal({
       const { blocks } = await generatePlanFromAI(payload);
       console.log('[AiPlanModal] Received blocks (regenerate)', blocks);
       if (!Array.isArray(blocks) || blocks.length === 0) {
-        setError('AI could not create a better plan with this feedback.');
+        setError(t((d) => d.aiPlanner.noBetterPlan));
         setPreviewBlocks([]);
         return;
       }
@@ -239,7 +241,7 @@ export function AiPlanModal({
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={handleClose} />
         <View style={[styles.sheet, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.title, { color: palette.text }]}>AI Plan</Text>
+          <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.aiPlanner.title)}</Text>
           <Text style={[styles.subTitle, { color: palette.text }]}>{dateLabel}</Text>
 
           {stage === 'form' ? (
@@ -249,7 +251,9 @@ export function AiPlanModal({
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: palette.text }]}>Wake time</Text>
+                <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                  {t((d) => d.aiPlanner.wakeTime)}
+                </Text>
                 <TextInput
                   value={wakeTime}
                   onChangeText={setWakeTime}
@@ -262,7 +266,9 @@ export function AiPlanModal({
                 />
               </View>
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: palette.text }]}>Sleep time</Text>
+                <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                  {t((d) => d.aiPlanner.sleepTime)}
+                </Text>
                 <TextInput
                   value={sleepTime}
                   onChangeText={setSleepTime}
@@ -276,7 +282,9 @@ export function AiPlanModal({
               </View>
               <View style={styles.field}>
                 <View style={styles.workToggleRow}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>I work during the day</Text>
+                  <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                    {t((d) => d.aiPlanner.workToggle)}
+                  </Text>
                   <Switch
                     value={works}
                     onValueChange={setWorks}
@@ -288,7 +296,9 @@ export function AiPlanModal({
                   <>
                     <View style={styles.fieldRow}>
                       <View style={styles.fieldHalf}>
-                        <Text style={[styles.fieldLabel, { color: palette.text }]}>Work start</Text>
+                        <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                          {t((d) => d.aiPlanner.workStart)}
+                        </Text>
                         <TextInput
                           value={workStart}
                           onChangeText={setWorkStart}
@@ -301,7 +311,9 @@ export function AiPlanModal({
                         />
                       </View>
                       <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
-                        <Text style={[styles.fieldLabel, { color: palette.text }]}>Work end</Text>
+                        <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                          {t((d) => d.aiPlanner.workEnd)}
+                        </Text>
                         <TextInput
                           value={workEnd}
                           onChangeText={setWorkEnd}
@@ -323,7 +335,9 @@ export function AiPlanModal({
                 )}
               </View>
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: palette.text }]}>Priorities</Text>
+                <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                  {t((d) => d.aiPlanner.priorities)}
+                </Text>
                 <TextInput
                   value={priorities}
                   onChangeText={setPriorities}
@@ -332,14 +346,16 @@ export function AiPlanModal({
                     styles.multiline,
                     { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
                   ]}
-                  placeholder="What matters today?"
+                  placeholder={t((d) => d.aiPlanner.prioritiesPlaceholder)}
                   placeholderTextColor={palette.text}
                   multiline
                   numberOfLines={3}
                 />
               </View>
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: palette.text }]}>Habits</Text>
+                <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                  {t((d) => d.aiPlanner.habits)}
+                </Text>
                 <TextInput
                   value={habits}
                   onChangeText={setHabits}
@@ -348,14 +364,16 @@ export function AiPlanModal({
                     styles.multiline,
                     { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
                   ]}
-                  placeholder="Morning habits, rituals, etc."
+                  placeholder={t((d) => d.aiPlanner.habitsPlaceholder)}
                   placeholderTextColor={palette.text}
                   multiline
                   numberOfLines={3}
                 />
               </View>
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: palette.text }]}>Adjust notes (optional)</Text>
+                <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                  {t((d) => d.aiPlanner.notes)}
+                </Text>
                 <TextInput
                   value={feedback}
                   onChangeText={setFeedback}
@@ -364,7 +382,7 @@ export function AiPlanModal({
                     styles.multiline,
                     { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
                   ]}
-                  placeholder="Let AI know what to tweak"
+                  placeholder={t((d) => d.aiPlanner.notesPlaceholder)}
                   placeholderTextColor={palette.text}
                   multiline
                   numberOfLines={3}
@@ -376,15 +394,17 @@ export function AiPlanModal({
               <View style={styles.buttonRow}>
                 <Pressable
                   onPress={handleClose}
-                  style={({ pressed }) => [
-                    styles.outlineButton,
-                    {
-                      borderColor: palette.border,
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.buttonLabel, { color: palette.text }]}>Cancel</Text>
+                style={({ pressed }) => [
+                  styles.outlineButton,
+                  {
+                    borderColor: palette.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                  <Text style={[styles.buttonLabel, { color: palette.text }]}>
+                    {t((d) => d.common.cancel)}
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={handleGenerate}
@@ -400,14 +420,18 @@ export function AiPlanModal({
                   {loading ? (
                     <ActivityIndicator color={palette.background} />
                   ) : (
-                    <Text style={[styles.buttonLabel, { color: palette.background }]}>Generate plan</Text>
+                    <Text style={[styles.buttonLabel, { color: palette.background }]}>
+                      {t((d) => d.aiPlanner.generate)}
+                    </Text>
                   )}
                 </Pressable>
               </View>
             </ScrollView>
           ) : (
               <View style={styles.previewContainer}>
-                <Text style={[styles.previewTitle, { color: palette.text }]}>Suggested blocks</Text>
+                <Text style={[styles.previewTitle, { color: palette.text }]}>
+                  {t((d) => d.aiPlanner.suggestedBlocks)}
+                </Text>
                 <ScrollView
                   style={styles.previewList}
                   contentContainerStyle={styles.previewListContent}
@@ -415,7 +439,7 @@ export function AiPlanModal({
               >
                 {previewList.length === 0 ? (
                   <Text style={[styles.previewEmptyText, { color: palette.text }]}>
-                    {error ?? 'No blocks returned from AI.'}
+                    {error ?? t((d) => d.aiPlanner.noBlocks)}
                   </Text>
                 ) : (
                   previewList.map((block, index) => (
@@ -432,14 +456,14 @@ export function AiPlanModal({
                   {stage === 'preview' && (
                     <View style={styles.feedbackSection}>
                       <Text style={[styles.feedbackLabel, { color: palette.text }]}>
-                        Not quite right? Tell AI what to change
+                        {t((d) => d.aiPlanner.feedbackLabel)}
                       </Text>
                       <TextInput
                         style={[
                           styles.feedbackInput,
                           { borderColor: palette.border, color: palette.text },
                         ]}
-                        placeholder="e.g. Move gym to evening, fewer blocks in the morning"
+                        placeholder={t((d) => d.aiPlanner.feedbackPlaceholder)}
                         placeholderTextColor={palette.text}
                         multiline
                         value={feedback}
@@ -458,7 +482,7 @@ export function AiPlanModal({
                         ]}
                       >
                         <Text style={[styles.feedbackButtonText, { color: palette.text }]}>
-                          Regenerate with feedback
+                          {t((d) => d.aiPlanner.regenerate)}
                         </Text>
                       </Pressable>
                     </View>
@@ -474,7 +498,9 @@ export function AiPlanModal({
                     },
                   ]}
                 >
-                  <Text style={[styles.buttonLabel, { color: palette.text }]}>Back</Text>
+                  <Text style={[styles.buttonLabel, { color: palette.text }]}>
+                    {t((d) => d.aiPlanner.back)}
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={handleApply}
@@ -487,7 +513,9 @@ export function AiPlanModal({
                     },
                   ]}
                 >
-                  <Text style={[styles.buttonLabel, { color: palette.background }]}>Apply to my plan</Text>
+                  <Text style={[styles.buttonLabel, { color: palette.background }]}>
+                    {t((d) => d.aiPlanner.apply)}
+                  </Text>
                 </Pressable>
               </View>
             </View>

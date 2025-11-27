@@ -18,6 +18,8 @@ import {
   restoreAndGetCustomerInfo,
 } from '../src/lib/revenuecat';
 import { useTheme } from '../src/store/useTheme';
+import { useI18n } from '@/i18n/useI18n';
+import { translations } from '@/i18n/translations';
 
 type SelectedPlan = 'monthly' | 'yearly';
 
@@ -25,11 +27,13 @@ const PaywallScreen = () => {
   const insets = useSafeAreaInsets();
   const palette = useTheme((state) => state.palette);
   const router = useRouter();
+  const { t, lang } = useI18n();
   const { currentOffering, loading, refresh } = useRevenueCatStore();
   const [selected, setSelected] = useState<SelectedPlan>('yearly');
   const [monthlyPackage, setMonthlyPackage] = useState<any | null>(null);
   const [yearlyPackage, setYearlyPackage] = useState<any | null>(null);
   const [processing, setProcessing] = useState(false);
+  const paywallFeatures = translations[lang]?.paywall.features ?? translations.en.paywall.features;
 
   // --- LOGLAMA VE PAKET AYRIŞTIRMA ---
   useEffect(() => {
@@ -67,34 +71,34 @@ const PaywallScreen = () => {
     console.log('🛒 [Paywall] Satın alma başlatılıyor. Seçilen Paket:', pkg?.identifier);
 
     if (!pkg) {
-      Alert.alert('Hata', 'Seçilen paket şu an yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
-      return;
-    }
-    try {
-      setProcessing(true);
-      await purchasePackageAndGetCustomerInfo(pkg);
-      Alert.alert('Teşekkürler!', 'Planora Pro aboneliğiniz aktif.');
-    } catch (err: any) {
-      console.error('❌ [Paywall] Satın alma hatası:', err);
-      Alert.alert('Satın alma başarısız', err?.message ?? 'Lütfen tekrar deneyin.');
-    } finally {
-      setProcessing(false);
-    }
+    Alert.alert(t((d) => d.common.error), t((d) => d.paywall.errorNoPackage));
+    return;
+  }
+  try {
+    setProcessing(true);
+    await purchasePackageAndGetCustomerInfo(pkg);
+    Alert.alert(t((d) => d.paywall.badge), t((d) => d.paywall.thanks));
+  } catch (err: any) {
+    console.error('❌ [Paywall] Satın alma hatası:', err);
+    Alert.alert(t((d) => d.paywall.purchaseFailed), err?.message ?? t((d) => d.paywall.purchaseFailed));
+  } finally {
+    setProcessing(false);
+  }
   };
 
   const handleRestore = async () => {
-    try {
-      setProcessing(true);
-      console.log('♻️ [Paywall] Restore işlemi başladı');
-      await restoreAndGetCustomerInfo();
-      Alert.alert('Başarılı', 'Önceki satın alımlarınız geri yüklendi.');
-    } catch (err: any) {
-      console.error('❌ [Paywall] Restore hatası', err);
-      Alert.alert('Hata', err?.message ?? 'Lütfen tekrar deneyin.');
-    } finally {
-      setProcessing(false);
-    }
-  };
+  try {
+    setProcessing(true);
+    console.log('♻️ [Paywall] Restore işlemi başladı');
+    await restoreAndGetCustomerInfo();
+    Alert.alert(t((d) => d.paywall.restore), t((d) => d.paywall.restoreSuccess));
+  } catch (err: any) {
+    console.error('❌ [Paywall] Restore hatası', err);
+    Alert.alert(t((d) => d.paywall.restoreFailed), err?.message ?? t((d) => d.paywall.restoreFailed));
+  } finally {
+    setProcessing(false);
+  }
+};
 
   const primary = (palette as any).primary ?? palette.accent;
   const selectedPackage = selected === 'monthly' ? monthlyPackage : yearlyPackage;
@@ -173,11 +177,9 @@ const PaywallScreen = () => {
         </View>
 
         <View style={styles.heroSection}>
-          <Text style={styles.topBadge}>Planora</Text>
-          <Text style={styles.heroTitle}>See who swiped right on you and chat now</Text>
-          <Text style={styles.heroSubtitle}>
-            Brighter matches, instant replies, and premium boosts in one place.
-          </Text>
+          <Text style={styles.topBadge}>{t((d) => d.paywall.badge)}</Text>
+          <Text style={styles.heroTitle}>{t((d) => d.paywall.title)}</Text>
+          <Text style={styles.heroSubtitle}>{t((d) => d.paywall.subtitle)}</Text>
         </View>
 
         <View style={styles.planRow}>
@@ -185,25 +187,25 @@ const PaywallScreen = () => {
             {renderPlanCard(
               'yearly',
               yearlyPackage,
-              '1 YEAR',
-              'Popular',
-              'Save more vs monthly.',
+              t((d) => d.paywall.planYearly),
+              t((d) => d.paywall.planYearlyBadge),
+              t((d) => d.paywall.saveMore),
             )}
           </View>
           <View style={styles.planCardWrapper}>
             {renderPlanCard(
               'monthly',
               monthlyPackage,
-              '1 MONTH',
-              'Flexible',
-              'Try Pro month by month.',
+              t((d) => d.paywall.planMonthly),
+              t((d) => d.paywall.planMonthlyBadge),
+              t((d) => d.paywall.tryPro),
             )}
           </View>
         </View>
 
         <View style={styles.featuresCard}>
-          <Text style={styles.featuresTitle}>Included Planora Plus</Text>
-          {['See who added you', 'Free Boost every week', 'Unlimited swipes'].map((item) => (
+          <Text style={styles.featuresTitle}>{t((d) => d.paywall.featuresTitle)}</Text>
+          {paywallFeatures.map((item) => (
             <View key={item} style={styles.featureRow}>
               <Text style={styles.featureBullet}>✓</Text>
               <Text style={styles.featureText}>{item}</Text>
@@ -221,7 +223,7 @@ const PaywallScreen = () => {
           activeOpacity={0.9}
         >
           <Text style={styles.purchaseButtonText}>
-            {`Continue - ${selectedPackage?.product?.priceString ?? '—'} total`}
+            {`${t((d) => d.paywall.continueCta)} - ${selectedPackage?.product?.priceString ?? '—'}`}
           </Text>
         </TouchableOpacity>
 
@@ -229,20 +231,20 @@ const PaywallScreen = () => {
           <View style={styles.processingRow}>
             <ActivityIndicator color={primary} style={styles.loader} />
             <Text style={[styles.processingText, { color: palette.text }]}>
-              Processing your purchase...
+              {t((d) => d.paywall.processing)}
             </Text>
           </View>
         ) : null}
 
-        <Text style={styles.renewalNote}>Auto-renewable. Cancel anytime.</Text>
+        <Text style={styles.renewalNote}>{t((d) => d.paywall.renewalNote)}</Text>
 
         <View style={styles.footerLinks}>
-          <Text style={[styles.footerLink, { color: palette.text }]}>Terms of Use</Text>
+          <Text style={[styles.footerLink, { color: palette.text }]}>{t((d) => d.paywall.terms)}</Text>
           <Text style={[styles.footerSeparator, { color: palette.text }]}>•</Text>
-          <Text style={[styles.footerLink, { color: palette.text }]}>Privacy Policy</Text>
+          <Text style={[styles.footerLink, { color: palette.text }]}>{t((d) => d.paywall.privacy)}</Text>
           <Text style={[styles.footerSeparator, { color: palette.text }]}>•</Text>
           <TouchableOpacity onPress={handleRestore} disabled={processing}>
-            <Text style={[styles.footerLink, { color: palette.text }]}>Restore</Text>
+            <Text style={[styles.footerLink, { color: palette.text }]}>{t((d) => d.paywall.restore)}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

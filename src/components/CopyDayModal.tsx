@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/store/useTheme';
+import { useI18n } from '@/i18n/useI18n';
 
 type CopyDayModalProps = {
   visible: boolean;
@@ -66,6 +67,7 @@ export function CopyDayModal({
   onConfirm,
 }: CopyDayModalProps) {
   const { palette } = useTheme();
+  const { t } = useI18n();
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const candidates = useMemo(() => buildCandidates(sourceDate), [sourceDate]);
 
@@ -87,7 +89,7 @@ export function CopyDayModal({
     onClose();
   };
 
-  const title = `Copy plan from ${formatSourceLabel(sourceDate)}`;
+  const title = `${t((d) => d.plan.copyModal.titlePrefix)} ${formatSourceLabel(sourceDate)}`;
 
   return (
     <Modal
@@ -110,7 +112,7 @@ export function CopyDayModal({
         >
           <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
           <Text style={[styles.helper, { color: palette.text }]}>
-            Select one or more future dates to copy into.
+            {t((d) => d.plan.copyModal.helper)}
           </Text>
           <ScrollView
             style={styles.list}
@@ -164,7 +166,7 @@ export function CopyDayModal({
           </ScrollView>
           {!selectedDates.length && (
             <Text style={[styles.warning, { color: palette.text }]}>
-              Select at least one date to enable copying.
+              {t((d) => d.plan.copyModal.warning)}
             </Text>
           )}
           <View style={styles.actions}>
@@ -179,7 +181,9 @@ export function CopyDayModal({
                 },
               ]}
             >
-              <Text style={[styles.buttonLabel, { color: palette.text }]}>Cancel</Text>
+              <Text style={[styles.buttonLabel, { color: palette.text }]}>
+                {t((d) => d.common.cancel)}
+              </Text>
             </Pressable>
             <Pressable
               onPress={handleCopy}
@@ -191,18 +195,18 @@ export function CopyDayModal({
                   opacity: pressed ? 0.75 : 1,
                 },
               ]}
-            >
-              <Text
-                style={[
-                  styles.buttonLabel,
-                  {
-                    color: selectedDates.length ? palette.card : palette.text,
-                  },
-                ]}
               >
-                Copy
-              </Text>
-            </Pressable>
+                <Text
+                  style={[
+                    styles.buttonLabel,
+                    {
+                      color: selectedDates.length ? palette.card : palette.text,
+                    },
+                  ]}
+                >
+                {t((d) => d.plan.copyModal.copy)}
+                </Text>
+              </Pressable>
           </View>
         </View>
       </View>

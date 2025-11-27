@@ -19,7 +19,7 @@ import { PlanBlock, todayDate, usePlans } from '@/store/usePlans';
 import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
-import { useTranslation } from '@/i18n';
+import { useI18n } from '@/i18n/useI18n';
 import { useRouter } from 'expo-router';
 import { useWeather } from '@/store/useWeather';
 import { useFocusMode } from '@/store/useFocusMode';
@@ -43,10 +43,6 @@ const getInitials = (value: string) => {
   const first = parts[0][0];
   const last = parts[parts.length - 1][0];
   return `${first}${last}`.toUpperCase();
-};
-const formatCategoryLabel = (category: PlanBlock['category']) => {
-  if (!category) return 'Other';
-  return `${category.charAt(0).toUpperCase()}${category.slice(1)}`;
 };
 const getCategoryIcon = (category: PlanBlock['category']) => {
   switch (category) {
@@ -96,7 +92,7 @@ const createBottleScaleValues = () =>
 
 export default function TodayScreen() {
   const palette = useTheme((state) => state.palette);
-  const { t } = useTranslation();
+  const { t } = useI18n();
   const router = useRouter();
   const goToPlan = () => {
     router.push('/plan');
@@ -171,9 +167,27 @@ export default function TodayScreen() {
         borderWidth: 1,
         borderColor: palette.border,
       };
-  const fallbackName = isGuest ? 'Guest User' : user?.email?.split('@')[0] ?? 'User';
+  const fallbackName = isGuest
+    ? t((d) => d.common.guestUser)
+    : user?.email?.split('@')[0] ?? t((d) => d.common.user);
   const displayName = user?.user_metadata?.full_name ?? fallbackName;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const categoryLabels = useMemo(
+    () => ({
+      focus: t((d) => d.plan.categories.focus),
+      study: t((d) => d.plan.categories.study),
+      work: t((d) => d.plan.categories.work),
+      gym: t((d) => d.plan.categories.gym),
+      meeting: t((d) => d.plan.categories.meeting),
+      reading: t((d) => d.plan.categories.reading),
+      break: t((d) => d.plan.categories.break),
+      personal: t((d) => d.plan.categories.personal),
+      other: t((d) => d.plan.categories.other),
+    }),
+    [t],
+  );
+  const formatCategoryLabel = (category: PlanBlock['category']) =>
+    categoryLabels[category ?? 'other'] ?? categoryLabels.other;
   useEffect(() => {
     initializeStreak();
   }, [initializeStreak]);
@@ -236,8 +250,8 @@ export default function TodayScreen() {
       : totalHours.toFixed(1);
   const planStatsText =
     totalPlans === 0
-      ? t('today.planStatsEmpty')
-      : t('today.planStats', {
+      ? t((d) => d.today.planStatsEmpty)
+      : t((d) => d.today.planStats, {
           total: totalPlans,
           plural: totalPlans === 1 ? '' : 's',
           hours: planHoursDisplay,
@@ -324,7 +338,7 @@ export default function TodayScreen() {
                   opacity: pressed ? 0.8 : 1,
                 },
                 avatarFrameStyle,
-              ]}>
+            ]}>
               <Text style={[styles.avatarInitials, { color: palette.background }]}>
                 {initials}
               </Text>
@@ -332,7 +346,7 @@ export default function TodayScreen() {
 
             <View style={styles.friendsStrip}>
               <Text style={[styles.friendsLabel, { color: palette.text }]}>
-                {t('today.friends')}
+                {t((d) => d.today.friends)}
               </Text>
             </View>
           </View>
@@ -340,13 +354,15 @@ export default function TodayScreen() {
           <View style={styles.headerStats}>
             <View style={styles.statsInline}>
               <View style={[styles.statBlock, styles.streakBlock]}>
-                <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.streak')}</Text>
+                <Text style={[styles.statLabel, { color: palette.text }]}>
+                  {t((d) => d.today.streak)}
+                </Text>
                 <Text
                   style={[
                     styles.streakValue,
                     { color: palette.text },
                   ]}>
-                  {streakDays} days
+                  {t((d) => d.today.streakValue, { count: streakDays })}
                 </Text>
               </View>
 
@@ -374,8 +390,8 @@ export default function TodayScreen() {
                     ? '--°'
                     : weatherError
                     ? weatherError === 'Location off'
-                      ? weatherError
-                      : '--°'
+                      ? t((d) => d.today.locationOff)
+                      : t((d) => d.today.weatherUnavailable)
                     : temperature !== null
                     ? `${Math.round(temperature)}°`
                     : '--°'}
@@ -390,7 +406,9 @@ export default function TodayScreen() {
                   styles.buttonShadow,
                   pressed && styles.pointsPressed,
                 ]}>
-                <Text style={[styles.statLabel, { color: palette.text }]}>{t('today.points')}</Text>
+                <Text style={[styles.statLabel, { color: palette.text }]}>
+                  {t((d) => d.today.points)}
+                </Text>
                 <View
                   style={[
                     styles.pointsBadge,
@@ -411,7 +429,9 @@ export default function TodayScreen() {
             styles.buttonShadow,
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
-          <Text style={[styles.nextUpLabel, { color: palette.text }]}>{t('today.nextUp')}</Text>
+          <Text style={[styles.nextUpLabel, { color: palette.text }]}>
+            {t((d) => d.today.nextUp)}
+          </Text>
           {nextBlock ? (
             <>
               <Text style={[styles.nextUpTitle, { color: palette.text }]}>
@@ -447,14 +467,14 @@ export default function TodayScreen() {
                   },
                 ]}>
                 <Text style={[styles.startFocusText, { color: palette.background }]}>
-                  {t('today.startFocus')}
+                  {t((d) => d.today.startFocus)}
                 </Text>
               </Pressable>
             </>
           ) : (
             <View style={styles.nextUpEmptyContainer}>
               <Text style={[styles.nextUpEmpty, { color: palette.text }]}>
-                {t('today.noNextBlock')}
+                {t((d) => d.today.noNextBlock)}
               </Text>
               <Pressable
                 onPress={goToPlan}
@@ -468,7 +488,7 @@ export default function TodayScreen() {
                   },
                 ]}>
                 <Text style={[styles.startFocusText, { color: palette.background }]}>
-                  {t('today.createPlan')}
+                  {t((d) => d.today.createPlan)}
                 </Text>
               </Pressable>
             </View>
@@ -497,16 +517,18 @@ export default function TodayScreen() {
           <View
             style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
             <View style={styles.planHeaderRow}>
-              <Text style={[styles.planTitle, { color: palette.text }]}>{t('today.planSectionTitle')}</Text>
+              <Text style={[styles.planTitle, { color: palette.text }]}>
+                {t((d) => d.today.planSectionTitle)}
+              </Text>
               <Text style={[styles.planStatsText, { color: palette.text }]}>{planStatsText}</Text>
             </View>
             {todayBlocks.length === 0 ? (
               <View style={styles.planEmptyState}>
                 <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
-                  {t('today.planEmptyTitle')}
+                  {t((d) => d.today.planEmptyTitle)}
                 </Text>
                 <Text style={[styles.planEmptyHint, { color: palette.text }]}>
-                  {t('today.planEmptyHint')}
+                  {t((d) => d.today.planEmptyHint)}
                 </Text>
                 <Pressable
                   onPress={goToPlan}
@@ -521,7 +543,7 @@ export default function TodayScreen() {
                     },
                   ]}>
                   <Text style={[styles.startFocusText, { color: palette.background }]}>
-                    {t('today.openPlanner')}
+                    {t((d) => d.today.openPlanner)}
                   </Text>
                 </Pressable>
               </View>
@@ -623,10 +645,12 @@ export default function TodayScreen() {
             ]}>
             <View style={styles.weatherModalHeader}>
               <Text style={[styles.weatherModalTitle, { color: palette.text }]}>
-                This week’s weather
+                {t((d) => d.today.weeklyWeatherTitle)}
               </Text>
               <Pressable onPress={() => setWeatherModalVisible(false)}>
-                <Text style={[styles.weatherModalClose, { color: palette.accent }]}>Close</Text>
+                <Text style={[styles.weatherModalClose, { color: palette.accent }]}>
+                  {t((d) => d.today.close)}
+                </Text>
               </Pressable>
             </View>
             <View style={styles.weatherModalList}>
@@ -647,7 +671,7 @@ export default function TodayScreen() {
                 ))
               ) : (
                 <Text style={[styles.weeklyUnavailable, { color: palette.text }]}>
-                  Weather unavailable
+                  {t((d) => d.today.weeklyUnavailable)}
                 </Text>
               )}
             </View>

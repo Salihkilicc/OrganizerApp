@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/store/useAuth';
 import { supabase } from '@/lib/supabase';
+import { useI18n } from '@/i18n/useI18n';
 
 const palette = {
   text: '#111826',
@@ -37,19 +38,20 @@ export default function RegisterScreen() {
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'success' | 'error'>(
     'idle',
   );
+  const { t } = useI18n();
 
   const handleRegister = async () => {
     setErrorText('');
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      setErrorText('Please fill out every field.');
+      setErrorText(t((d) => d.auth.errors.fillAllFields));
       return;
     }
     if (password.length < 8) {
-      setErrorText('Password must be at least 8 characters.');
+      setErrorText(t((d) => d.auth.errors.passwordTooShort));
       return;
     }
     if (password !== confirmPassword) {
-      setErrorText('Passwords do not match.');
+      setErrorText(t((d) => d.auth.errors.passwordMismatch));
       return;
     }
     try {
@@ -59,16 +61,16 @@ export default function RegisterScreen() {
       router.replace('/(tabs)');
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : 'An error occurred during registration.';
+        error instanceof Error ? error.message : t((d) => d.auth.errors.registrationError);
       const lower = message.toLowerCase();
       if (lower.includes('email not confirmed')) {
         setNeedsConfirmation(true);
-        setErrorText('Please confirm your email to complete registration.');
+        setErrorText(t((d) => d.auth.errors.confirmEmail));
         return;
       }
       if (lower.includes('already registered') || lower.includes('duplicate')) {
         setNeedsConfirmation(false);
-        setErrorText('This email already has an account. Please log in.');
+        setErrorText(t((d) => d.auth.errors.duplicateEmail));
         router.replace('/(auth)/login');
         return;
       }
@@ -78,7 +80,7 @@ export default function RegisterScreen() {
 
   const handleResendConfirmation = async () => {
     if (!email) {
-      setErrorText('Enter your email so we can resend the confirmation link.');
+      setErrorText(t((d) => d.auth.errors.resendEnterEmail));
       return;
     }
     try {
@@ -92,13 +94,13 @@ export default function RegisterScreen() {
         throw error;
       }
       setResendStatus('success');
-      setErrorText('Confirmation email sent. Please check your inbox.');
+      setErrorText(t((d) => d.auth.errors.resendSent));
     } catch (resendError: unknown) {
       setResendStatus('error');
       setErrorText(
         resendError instanceof Error
           ? resendError.message
-          : 'Unable to resend confirmation email. Try again later.',
+          : t((d) => d.auth.errors.resendError),
       );
     }
   };
@@ -112,26 +114,26 @@ export default function RegisterScreen() {
           <Pressable style={styles.backCircle} onPress={() => router.back()}>
             <Text style={styles.backSymbol}>{'←'}</Text>
           </Pressable>
-          <Text style={styles.title}>Register</Text>
-          <Text style={styles.subtitle}>Create your profile and get started with Organizer.</Text>
+          <Text style={styles.title}>{t((d) => d.auth.registerTitle)}</Text>
+          <Text style={styles.subtitle}>{t((d) => d.auth.registerSubtitle)}</Text>
 
           <View style={[styles.row, styles.field]}>
             <View style={styles.rowItem}>
-              <Text style={styles.label}>First Name</Text>
+              <Text style={styles.label}>{t((d) => d.auth.firstName)}</Text>
               <TextInput
                 value={firstName}
                 onChangeText={setFirstName}
-                placeholder="John"
+                placeholder={t((d) => d.auth.firstNamePlaceholder)}
                 placeholderTextColor={palette.muted}
                 style={styles.input}
               />
             </View>
             <View style={[styles.rowItem, styles.lastColumn]}>
-              <Text style={styles.label}>Last Name</Text>
+              <Text style={styles.label}>{t((d) => d.auth.lastName)}</Text>
               <TextInput
                 value={lastName}
                 onChangeText={setLastName}
-                placeholder="Doe"
+                placeholder={t((d) => d.auth.lastNamePlaceholder)}
                 placeholderTextColor={palette.muted}
                 style={styles.input}
               />
@@ -139,12 +141,12 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>E-mail</Text>
+            <Text style={styles.label}>{t((d) => d.auth.emailLabel)}</Text>
             <TextInput
               value={email}
               inputMode="email"
               onChangeText={setEmail}
-              placeholder="Enter your email"
+              placeholder={t((d) => d.auth.emailPlaceholder)}
               autoCapitalize="none"
               keyboardType="email-address"
               placeholderTextColor={palette.muted}
@@ -153,36 +155,40 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t((d) => d.auth.passwordLabel)}</Text>
             <View style={[styles.input, styles.passwordWrapper]}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter your password"
+                placeholder={t((d) => d.auth.passwordPlaceholder)}
                 placeholderTextColor={palette.muted}
                 secureTextEntry={!showPassword}
                 style={styles.passwordInput}
               />
               <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                <Text style={styles.toggle}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.toggle}>
+                  {showPassword ? t((d) => d.auth.toggleHide) : t((d) => d.auth.toggleShow)}
+                </Text>
               </Pressable>
             </View>
-            <Text style={styles.small}>must contain 8 char.</Text>
+            <Text style={styles.small}>{t((d) => d.auth.passwordRule)}</Text>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Confirm Password</Text>
+            <Text style={styles.label}>{t((d) => d.auth.confirmPassword)}</Text>
             <View style={[styles.input, styles.passwordWrapper]}>
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder="Re-enter password"
+                placeholder={t((d) => d.auth.confirmPassword)}
                 placeholderTextColor={palette.muted}
                 secureTextEntry={!showConfirm}
                 style={styles.passwordInput}
               />
               <Pressable onPress={() => setShowConfirm((prev) => !prev)}>
-                <Text style={styles.toggle}>{showConfirm ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.toggle}>
+                  {showConfirm ? t((d) => d.auth.toggleHide) : t((d) => d.auth.toggleShow)}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -197,19 +203,25 @@ export default function RegisterScreen() {
                 resendStatus === 'sending' && styles.disabled,
               ]}>
               <Text style={styles.resendText}>
-                {resendStatus === 'sending' ? 'Resending…' : 'Resend confirmation email'}
+                {resendStatus === 'sending'
+                  ? t((d) => d.auth.errors.resendSending)
+                  : t((d) => d.auth.resendConfirmation)}
               </Text>
             </Pressable>
           )}
 
-          <Pressable style={[styles.button, loading ? styles.disabled : null]} onPress={handleRegister} disabled={loading}>
-            <Text style={styles.buttonText}>Create Account</Text>
+          <Pressable
+            style={[styles.button, loading ? styles.disabled : null]}
+            onPress={handleRegister}
+            disabled={loading}>
+            <Text style={styles.buttonText}>{t((d) => d.auth.registerButton)}</Text>
           </Pressable>
 
           <Text style={styles.bottomCopy}>
-            By continuing, you agree to our{' '}
-            <Text style={styles.linkText}>Terms of Service</Text> and{' '}
-            <Text style={styles.linkText}>Privacy Policy</Text>.
+            {t((d) => d.auth.termsPrefix)}{' '}
+            <Text style={styles.linkText}>{t((d) => d.auth.termsService)}</Text>{' '}
+            {t((d) => d.auth.termsConnector)}{' '}
+            <Text style={styles.linkText}>{t((d) => d.auth.privacyPolicy)}</Text>.
           </Text>
         </View>
       </KeyboardAvoidingView>

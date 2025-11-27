@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
 import { getRedirect } from '@/lib/oauth';
+import { useI18n } from '@/i18n/useI18n';
 
 const palette = {
   text: '#111826',
@@ -28,12 +29,13 @@ export default function ForgotPasswordScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const { t } = useI18n();
 
   const handleReset = async () => {
     setErrorText('');
     setSuccessMessage('');
     if (!email) {
-      setErrorText('Lütfen e-posta adresinizi girin.');
+      setErrorText(t((d) => d.auth.forgotMissingEmail));
       return;
     }
 
@@ -52,7 +54,7 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    setSuccessMessage('Sıfırlama bağlantısı e-posta kutunuza gönderildi.');
+    setSuccessMessage(t((d) => d.auth.forgotSuccess));
   };
 
   return (
@@ -64,19 +66,16 @@ export default function ForgotPasswordScreen() {
           <Pressable style={styles.backCircle} onPress={() => router.back()}>
             <Text style={styles.backSymbol}>{'←'}</Text>
           </Pressable>
-          <Text style={styles.title}>Forgot Password</Text>
-          <Text style={styles.subtitle}>
-            No worries! Enter your email address below and we will send you a code to reset
-            password.
-          </Text>
+          <Text style={styles.title}>{t((d) => d.auth.forgotTitle)}</Text>
+          <Text style={styles.subtitle}>{t((d) => d.auth.forgotSubtitle)}</Text>
 
           <View style={styles.field}>
-            <Text style={styles.label}>E-mail</Text>
+            <Text style={styles.label}>{t((d) => d.auth.emailLabel)}</Text>
             <TextInput
               value={email}
               inputMode="email"
               onChangeText={setEmail}
-              placeholder="Enter your email"
+              placeholder={t((d) => d.auth.emailPlaceholder)}
               autoCapitalize="none"
               keyboardType="email-address"
               placeholderTextColor={palette.muted}
@@ -92,7 +91,7 @@ export default function ForgotPasswordScreen() {
             onPress={handleReset}
             disabled={submitting}>
             <Text style={styles.buttonText}>
-              {submitting ? 'Sending…' : 'Send Reset Instruction'}
+              {submitting ? t((d) => d.auth.forgotSubmitting) : t((d) => d.auth.forgotButton)}
             </Text>
           </Pressable>
         </View>

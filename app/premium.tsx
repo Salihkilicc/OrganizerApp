@@ -15,8 +15,8 @@ import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/store/useTheme';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
-import { useTranslation } from '@/i18n';
-import type { TranslationKey } from '@/i18n/translations';
+import { useI18n } from '@/i18n/useI18n';
+import type { TranslationKeys } from '@/i18n/translations';
 import {
   ENTITLEMENT_ID,
   getMonthlyAndYearlyPackages,
@@ -28,72 +28,77 @@ import { PURCHASES_ERROR_CODE } from '@revenuecat/purchases-typescript-internal'
 
 type PremiumFeature = {
   icon: string;
-  titleKey: TranslationKey;
-  descriptionKey: TranslationKey;
+  title: (dict: TranslationKeys) => string;
+  description: (dict: TranslationKeys) => string;
 };
 
 const premiumFeatures: PremiumFeature[] = [
   {
     icon: '🧠',
-    titleKey: 'premium.feature.aiPlanning',
-    descriptionKey: 'premium.feature.aiPlanningDesc',
+    title: (d) => d.premium.feature.aiPlanning,
+    description: (d) => d.premium.feature.aiPlanningDesc,
   },
   {
     icon: '⏱️',
-    titleKey: 'premium.feature.focusMode',
-    descriptionKey: 'premium.feature.focusModeDesc',
+    title: (d) => d.premium.feature.focusMode,
+    description: (d) => d.premium.feature.focusModeDesc,
   },
   {
     icon: '🔥',
-    titleKey: 'premium.feature.streaks',
-    descriptionKey: 'premium.feature.streaksDesc',
+    title: (d) => d.premium.feature.streaks,
+    description: (d) => d.premium.feature.streaksDesc,
   },
   {
     icon: '📊',
-    titleKey: 'premium.feature.weeklySummary',
-    descriptionKey: 'premium.feature.weeklySummaryDesc',
+    title: (d) => d.premium.feature.weeklySummary,
+    description: (d) => d.premium.feature.weeklySummaryDesc,
   },
 ];
 
 const isPurchasesError = (value: unknown): value is PurchasesError =>
   typeof value === 'object' && value !== null && 'code' in value && 'message' in value;
 
-const formatFriendlyError = (error: unknown) => {
+type TranslateFn = ReturnType<typeof useI18n>['t'];
+
+const formatFriendlyError = (error: unknown, t: TranslateFn) => {
   if (isPurchasesError(error)) {
     if (error.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
-      return 'The purchase was cancelled.';
+      return t((d) => d.premium.purchaseCancelled);
     }
-    return error.message ?? 'Unable to complete the transaction.';
+    return error.message ?? t((d) => d.premium.purchaseGenericError);
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return 'Something went wrong. Try again later.';
+  return t((d) => d.premium.purchaseGenericError);
 };
 
-const getPaywallResultMessage = (result: PAYWALL_RESULT | null | undefined) => {
+const getPaywallResultMessage = (
+  result: PAYWALL_RESULT | null | undefined,
+  t: TranslateFn,
+) => {
   switch (result) {
     case PAYWALL_RESULT.PURCHASED:
-      return 'Purchase confirmed via RevenueCat paywall.';
+      return t((d) => d.premium.paywallResult.purchased);
     case PAYWALL_RESULT.RESTORED:
-      return 'Restored entitlements via RevenueCat paywall.';
+      return t((d) => d.premium.paywallResult.restored);
     case PAYWALL_RESULT.CANCELLED:
-      return 'Paywall closed without action.';
+      return t((d) => d.premium.paywallResult.cancelled);
     case PAYWALL_RESULT.ERROR:
-      return 'Paywall encountered an error.';
+      return t((d) => d.premium.paywallResult.error);
     case PAYWALL_RESULT.NOT_PRESENTED:
-      return 'Paywall was not presented because entitlement is already active.';
+      return t((d) => d.premium.paywallResult.notPresented);
     default:
       return null;
   }
 };
 
-const formatDateLabel = (value?: string | null) => {
+const formatDateLabel = (value: string | null | undefined, t: TranslateFn) => {
   if (value === null) {
-    return 'Lifetime';
+    return t((d) => d.premium.lifetime);
   }
   if (!value) {
-    return 'Never';
+    return t((d) => d.premium.never);
   }
   return new Date(value).toLocaleDateString();
 };
@@ -101,7 +106,7 @@ const formatDateLabel = (value?: string | null) => {
 export default function PremiumScreen() {
   const palette = useTheme((s) => s.palette);
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useI18n();
   const customerInfo = useRevenueCatStore((state) => state.customerInfo);
   const currentOffering = useRevenueCatStore((state) => state.currentOffering);
   const loading = useRevenueCatStore((state) => state.loading);
@@ -136,11 +141,15 @@ export default function PremiumScreen() {
   const isPremiumActive = Boolean(entitlement?.isActive);
   const statusColor = isPremiumActive ? palette.accent : palette.text;
   const activeEntitlements = Object.keys(customerInfo?.entitlements.active ?? {});
-  const latestExpiration = formatDateLabel(entitlement?.expirationDate ?? customerInfo?.latestExpirationDate);
+  const latestExpiration = formatDateLabel(
+    entitlement?.expirationDate ?? customerInfo?.latestExpirationDate,
+    t,
+  );
   const activeSubscriptions = customerInfo?.activeSubscriptions?.length
     ? customerInfo.activeSubscriptions.join(', ')
-    : 'None';
-  const recentProduct = customerInfo?.allPurchasedProductIdentifiers?.slice(-1).join(', ') ?? 'None';
+    : t((d) => d.common.none);
+  const recentProduct =
+    customerInfo?.allPurchasedProductIdentifiers?.slice(-1).join(', ') ?? t((d) => d.common.none);
   const loadingAny = Boolean(loading || purchasingPackageId);
 
   const handlePurchasePackage = useCallback(
@@ -151,18 +160,18 @@ export default function PremiumScreen() {
         const info = await purchasePackageAndGetCustomerInfo(pkg);
         setFromCustomerInfo(info);
         const successMessage = isEntitledToPremium(info)
-          ? 'Organizer Pro is unlocked.'
-          : 'Purchase succeeded, RevenueCat is syncing your entitlement.';
-        Alert.alert('Purchase complete', successMessage);
+          ? t((d) => d.premium.purchaseCompleteEntitled)
+          : t((d) => d.premium.purchaseCompletePending);
+        Alert.alert(t((d) => d.premium.purchaseCompleteTitle), successMessage);
       } catch (error) {
-        const message = formatFriendlyError(error);
+        const message = formatFriendlyError(error, t);
         setLocalError(message);
-        Alert.alert('Could not purchase', message);
+        Alert.alert(t((d) => d.premium.purchaseFailedTitle), message);
       } finally {
         setPurchasingPackageId(null);
       }
     },
-    [setFromCustomerInfo],
+    [setFromCustomerInfo, t],
   );
 
   const handleRestore = useCallback(async () => {
@@ -171,15 +180,15 @@ export default function PremiumScreen() {
       const info = await restoreAndGetCustomerInfo();
       setFromCustomerInfo(info);
       const message = isEntitledToPremium(info)
-        ? 'Restored purchases and refreshed entitlements.'
-        : 'No purchases were restored.';
-      Alert.alert('Restore complete', message);
+        ? t((d) => d.premium.restoreCompleteEntitled)
+        : t((d) => d.premium.restoreCompleteNone);
+      Alert.alert(t((d) => d.premium.restoreCompleteTitle), message);
     } catch (error) {
-      const message = formatFriendlyError(error);
+      const message = formatFriendlyError(error, t);
       setLocalError(message);
-      Alert.alert('Restore failed', message);
+      Alert.alert(t((d) => d.premium.restoreFailedTitle), message);
     }
-  }, [setFromCustomerInfo]);
+  }, [setFromCustomerInfo, t]);
 
   const handleShowPaywall = useCallback(async () => {
     setLocalError(null);
@@ -189,18 +198,18 @@ export default function PremiumScreen() {
         offering: currentOffering ?? undefined,
         displayCloseButton: true,
       });
-      const message = getPaywallResultMessage(result);
+      const message = getPaywallResultMessage(result, t);
       if (message) {
-        Alert.alert('RevenueCat Paywall', message);
+        Alert.alert(t((d) => d.premium.paywallResultTitle), message);
       }
     } catch (error) {
-      const message = formatFriendlyError(error);
+      const message = formatFriendlyError(error, t);
       setLocalError(message);
-      Alert.alert('Paywall failed', message);
+      Alert.alert(t((d) => d.premium.paywallResultTitle), message);
     } finally {
       void refresh();
     }
-  }, [currentOffering, refresh]);
+  }, [currentOffering, refresh, t]);
 
 
   return (
@@ -226,9 +235,9 @@ export default function PremiumScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.title, { color: palette.text }]}>{t('premium.title')}</Text>
+        <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.premium.title)}</Text>
         <Text style={[styles.subtitle, { color: palette.text, opacity: 0.85 }]}>
-          {t('premium.subtitle')}
+          {t((d) => d.premium.subtitle)}
         </Text>
 
         <View
@@ -243,9 +252,11 @@ export default function PremiumScreen() {
         >
           <Text style={[styles.heroEmoji, { color: palette.accent }]}>✨</Text>
           <View style={styles.heroCopy}>
-            <Text style={[styles.heroTitle, { color: palette.text }]}>{t('premium.heroTitle')}</Text>
+            <Text style={[styles.heroTitle, { color: palette.text }]}>
+              {t((d) => d.premium.heroTitle)}
+            </Text>
             <Text style={[styles.heroDescription, { color: palette.text, opacity: 0.75 }]}>
-              {t('premium.heroDescription')}
+              {t((d) => d.premium.heroDescription)}
             </Text>
           </View>
         </View>
@@ -272,7 +283,7 @@ export default function PremiumScreen() {
               </View>
               <View style={styles.featureCopy}>
                 <Text style={[styles.featureTitle, { color: palette.text }]}>
-                  {t(feature.titleKey)}
+                  {t(feature.title)}
                 </Text>
                 <Text
                   style={[
@@ -280,7 +291,7 @@ export default function PremiumScreen() {
                     { color: palette.text, opacity: 0.75 },
                   ]}
                 >
-                  {t(feature.descriptionKey)}
+                  {t(feature.description)}
                 </Text>
               </View>
             </View>
@@ -289,20 +300,29 @@ export default function PremiumScreen() {
 
         <View style={[styles.section, { borderColor: palette.border }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>Subscription status</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>
+              {t((d) => d.premium.subscriptionStatusTitle)}
+            </Text>
             <Text style={[styles.statusBadge, { color: statusColor }]}>
-              {isPremiumActive ? 'Organizer Pro' : 'Free'},
+              {isPremiumActive
+                ? t((d) => d.premium.statusActiveLabel)
+                : t((d) => d.premium.statusInactiveLabel)}
+              ,
             </Text>
           </View>
           <View style={styles.statusGrid}>
             <View style={styles.statusColumn}>
-              <Text style={[styles.statusLabel, { color: palette.text }]}>Entitlements</Text>
+              <Text style={[styles.statusLabel, { color: palette.text }]}>
+                {t((d) => d.premium.entitlementsLabel)}
+              </Text>
               <Text style={[styles.statusValue, { color: palette.text }]}>
-                {activeEntitlements.length ? activeEntitlements.join(', ') : 'None'}
+                {activeEntitlements.length ? activeEntitlements.join(', ') : t((d) => d.common.none)}
               </Text>
             </View>
             <View style={styles.statusColumn}>
-              <Text style={[styles.statusLabel, { color: palette.text }]}>Expires</Text>
+              <Text style={[styles.statusLabel, { color: palette.text }]}>
+                {t((d) => d.premium.expiresLabel)}
+              </Text>
               <Text style={[styles.statusValue, { color: palette.text }]}>
                 {latestExpiration}
               </Text>
@@ -310,13 +330,17 @@ export default function PremiumScreen() {
           </View>
           <View style={styles.statusGrid}>
             <View style={styles.statusColumn}>
-              <Text style={[styles.statusLabel, { color: palette.text }]}>Active subscriptions</Text>
+              <Text style={[styles.statusLabel, { color: palette.text }]}>
+                {t((d) => d.premium.activeSubscriptionsLabel)}
+              </Text>
               <Text style={[styles.statusValue, { color: palette.text }]}>
                 {activeSubscriptions}
               </Text>
             </View>
             <View style={styles.statusColumn}>
-              <Text style={[styles.statusLabel, { color: palette.text }]}>Last product</Text>
+              <Text style={[styles.statusLabel, { color: palette.text }]}>
+                {t((d) => d.premium.lastProductLabel)}
+              </Text>
               <Text style={[styles.statusValue, { color: palette.text }]}>
                 {recentProduct}
               </Text>
@@ -326,22 +350,24 @@ export default function PremiumScreen() {
             <View style={styles.loaderRow}>
               <ActivityIndicator color={palette.accent} />
               <Text style={[styles.loaderText, { color: palette.text }]}>
-                Refreshing subscription info...
+                {t((d) => d.premium.refreshing)}
               </Text>
             </View>
           )}
         </View>
 
         <View style={[styles.section, { borderColor: palette.border }]}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>Subscription options</Text>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t((d) => d.premium.subscriptionOptionsTitle)}
+          </Text>
           <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.7 }]}>
-            {t('premium.subtitle')}
+            {t((d) => d.premium.subtitle)}
           </Text>
           {loading ? (
             <View style={styles.loaderRow}>
               <ActivityIndicator color={palette.accent} />
               <Text style={[styles.loaderText, { color: palette.text }]}>
-                Loading plans...
+                {t((d) => d.premium.loadingPlans)}
               </Text>
             </View>
           ) : subscriptionPackages.length ? (
@@ -384,14 +410,16 @@ export default function PremiumScreen() {
             </View>
           ) : (
             <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.6 }]}>
-              No products are configured yet.
+              {t((d) => d.premium.noProducts)}
             </Text>
           )}
           {localError && <Text style={styles.errorText}>{localError}</Text>}
         </View>
 
         <View style={[styles.section, { borderColor: palette.border }]}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>RevenueCat tools</Text>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t((d) => d.premium.toolsTitle)}
+          </Text>
           <View style={styles.toolRow}>
             <Pressable
               onPress={handleShowPaywall}
@@ -405,7 +433,7 @@ export default function PremiumScreen() {
               ]}
             >
               <Text style={[styles.toolLabel, { color: palette.text }]}>
-                Open paywall (Organizer Pro)
+                {t((d) => d.premium.openPaywall)}
               </Text>
             </Pressable>
           </View>
@@ -420,12 +448,14 @@ export default function PremiumScreen() {
               },
             ]}
           >
-            <Text style={[styles.restoreLabel, { color: palette.text }]}>Restore purchases</Text>
+            <Text style={[styles.restoreLabel, { color: palette.text }]}>
+              {t((d) => d.premium.restorePurchases)}
+            </Text>
           </Pressable>
         </View>
 
         <Text style={[styles.infoText, { color: palette.text, opacity: 0.7 }]}>
-          {t('premium.info')}
+          {t((d) => d.premium.info)}
         </Text>
       </ScrollView>
 
@@ -441,11 +471,11 @@ export default function PremiumScreen() {
           {loadingAny ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.purchaseText}>{t('premium.cta')}</Text>
+            <Text style={styles.purchaseText}>{t((d) => d.premium.cta)}</Text>
           )}
         </Pressable>
         <Text style={[styles.purchaseSubtext, { color: palette.text }]}>
-          {t('premium.footerNote')}
+          {t((d) => d.premium.footerNote)}
         </Text>
       </View>
 

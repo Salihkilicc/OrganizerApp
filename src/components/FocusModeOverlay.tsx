@@ -10,6 +10,7 @@ import {
 
 import { useFocusMode } from '@/store/useFocusMode';
 import { useTheme } from '@/store/useTheme';
+import { useI18n } from '@/i18n/useI18n';
 
 const DEFAULT_MINUTES = 30;
 const EXTEND_MINUTES = 15;
@@ -26,6 +27,7 @@ export function FocusModeOverlay({ visible, onClose }: FocusModeOverlayProps) {
     useFocusMode();
   const wasActiveRef = useRef(false);
   const [tickTime, setTickTime] = useState(() => Date.now());
+  const { t } = useI18n();
 
   useEffect(() => {
     if (visible && !active) {
@@ -93,10 +95,11 @@ export function FocusModeOverlay({ visible, onClose }: FocusModeOverlayProps) {
       <View style={styles.backdrop}>
         <SafeAreaView style={styles.safeArea}>
           <View style={[styles.card, { backgroundColor: palette.card }]}>
-            <Text style={[styles.title, { color: palette.text }]}>Focus mode engaged</Text>
+            <Text style={[styles.title, { color: palette.text }]}>
+              {t((d) => d.focus.overlayTitle)}
+            </Text>
             <Text style={[styles.description, { color: palette.text }]}>
-              This app can’t block calls or system notifications. For full silence, also enable your
-              phone’s Focus / Do Not Disturb mode.
+              {t((d) => d.focus.overlayDescription)}
             </Text>
             <Text style={[styles.countdown, { color: palette.text }]}>{countdown}</Text>
             <View style={styles.buttonRow}>
@@ -111,7 +114,9 @@ export function FocusModeOverlay({ visible, onClose }: FocusModeOverlayProps) {
                     opacity: pressed ? 0.75 : 1,
                   },
                 ]}>
-                <Text style={[styles.buttonLabel, { color: palette.text }]}>Exit mode</Text>
+                <Text style={[styles.buttonLabel, { color: palette.text }]}>
+                  {t((d) => d.focus.overlayExit)}
+                </Text>
               </Pressable>
               <Pressable
                 onPress={handleExtend}
@@ -123,7 +128,9 @@ export function FocusModeOverlay({ visible, onClose }: FocusModeOverlayProps) {
                     opacity: pressed ? 0.85 : 1,
                   },
                 ]}>
-                <Text style={[styles.buttonLabel, { color: palette.background }]}>Add +15 minutes</Text>
+                <Text style={[styles.buttonLabel, { color: palette.background }]}>
+                  {t((d) => d.focus.overlayAddMinutes)}
+                </Text>
               </Pressable>
             </View>
           </View>

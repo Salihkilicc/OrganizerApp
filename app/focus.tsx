@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useFocusMode } from '@/store/useFocusMode';
 import { useTheme } from '@/store/useTheme';
-import { useTranslation } from '@/i18n';
+import { useI18n } from '@/i18n/useI18n';
 import type { PlanCategory } from '@/store/usePlans';
 
 const DEFAULT_MINUTES = 30;
@@ -17,11 +17,6 @@ type FocusParams = {
   category?: PlanCategory;
   startMin?: string;
   endMin?: string;
-};
-
-const formatCategoryLabel = (category?: PlanCategory) => {
-  if (!category) return 'Other';
-  return `${category.charAt(0).toUpperCase()}${category.slice(1)}`;
 };
 
 const getCategoryIcon = (category?: PlanCategory) => {
@@ -50,12 +45,26 @@ const getCategoryIcon = (category?: PlanCategory) => {
 export default function FocusScreen() {
   const { palette } = useTheme();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useI18n();
   const params = useLocalSearchParams<FocusParams>();
   const [tickTime, setTickTime] = useState(() => Date.now());
   const wasActiveRef = useRef(false);
   const { active, remainingMinutes, lastTickAt, startedAt, start, exit, addMinutes } =
     useFocusMode();
+  const categoryLabels = useMemo(
+    () => ({
+      focus: t((d) => d.plan.categories.focus),
+      study: t((d) => d.plan.categories.study),
+      work: t((d) => d.plan.categories.work),
+      gym: t((d) => d.plan.categories.gym),
+      meeting: t((d) => d.plan.categories.meeting),
+      reading: t((d) => d.plan.categories.reading),
+      break: t((d) => d.plan.categories.break),
+      personal: t((d) => d.plan.categories.personal),
+      other: t((d) => d.focus.categoryOther),
+    }),
+    [t],
+  );
 
   const initialMinutes = useMemo(() => {
     const startMin = Number(params.startMin);
@@ -110,15 +119,15 @@ export default function FocusScreen() {
     .toString()
     .padStart(2, '0')}`;
 
-  const title = params.title ?? 'Focus session';
-  const categoryLabel = formatCategoryLabel(params.category);
+  const title = params.title ?? t((d) => d.focus.sessionFallback);
+  const categoryLabel = categoryLabels[params.category ?? 'other'] ?? categoryLabels.other;
   const categoryIcon = getCategoryIcon(params.category);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
       <View style={styles.layout}>
         <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.heading, { color: palette.text }]}>{t('focus.title')}</Text>
+          <Text style={[styles.heading, { color: palette.text }]}>{t((d) => d.focus.title)}</Text>
           <Text style={[styles.sessionTitle, { color: palette.text }]} numberOfLines={2}>
             {title}
           </Text>
@@ -134,13 +143,15 @@ export default function FocusScreen() {
               {`${categoryIcon} ${categoryLabel}`}
             </Text>
           </View>
-          <Text style={[styles.description, { color: palette.text }]}>{t('focus.description')}</Text>
+          <Text style={[styles.description, { color: palette.text }]}>
+            {t((d) => d.focus.description)}
+          </Text>
           <Text style={[styles.countdown, { color: palette.text }]}>{countdown}</Text>
           <Text style={[styles.description, { color: palette.text, marginTop: 6 }]}>
-            {t('focus.minutesLabel', { minutes: displayMinutes })}
+            {t((d) => d.focus.minutesLabel, { minutes: displayMinutes })}
           </Text>
           <Text style={[styles.description, { color: palette.text, marginTop: 4 }]}>
-            {t('focus.pointsPerMinute', { points: 1 })}
+            {t((d) => d.focus.pointsPerMinute, { points: 1 })}
           </Text>
           <View style={styles.buttonRow}>
             <Pressable
@@ -154,7 +165,9 @@ export default function FocusScreen() {
                   opacity: pressed ? 0.75 : 1,
                 },
               ]}>
-              <Text style={[styles.buttonLabel, { color: palette.text }]}>{t('focus.exit')}</Text>
+              <Text style={[styles.buttonLabel, { color: palette.text }]}>
+                {t((d) => d.focus.exit)}
+              </Text>
             </Pressable>
             <Pressable
               onPress={handleExtend}
@@ -167,7 +180,7 @@ export default function FocusScreen() {
                 },
               ]}>
               <Text style={[styles.buttonLabel, { color: palette.background }]}>
-                {t('focus.addMinutes')}
+                {t((d) => d.focus.addMinutes)}
               </Text>
             </Pressable>
           </View>

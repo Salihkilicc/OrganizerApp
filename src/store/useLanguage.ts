@@ -4,63 +4,55 @@ import { create } from 'zustand';
 export type SupportedLanguage =
   | 'en'
   | 'tr'
-  | 'es'
   | 'de'
   | 'fr'
+  | 'es'
   | 'it'
   | 'pt'
   | 'ru'
   | 'ar'
-  | 'zh';
-
-export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
-  en: 'English',
-  tr: 'Türkçe',
-  es: 'Español',
-  de: 'Deutsch',
-  fr: 'Français',
-  it: 'Italiano',
-  pt: 'Português',
-  ru: 'Русский',
-  ar: 'العربية',
-  zh: '中文',
-};
-
-export const LANGUAGE_OPTIONS: { code: SupportedLanguage; label: string }[] = [
-  { code: 'en', label: LANGUAGE_LABELS.en },
-  { code: 'tr', label: LANGUAGE_LABELS.tr },
-  { code: 'es', label: LANGUAGE_LABELS.es },
-  { code: 'de', label: LANGUAGE_LABELS.de },
-  { code: 'fr', label: LANGUAGE_LABELS.fr },
-  { code: 'it', label: LANGUAGE_LABELS.it },
-  { code: 'pt', label: LANGUAGE_LABELS.pt },
-  { code: 'ru', label: LANGUAGE_LABELS.ru },
-  { code: 'ar', label: LANGUAGE_LABELS.ar },
-  { code: 'zh', label: LANGUAGE_LABELS.zh },
-];
+  | 'zh'
+  | 'ja'
+  | 'ko'
+  | 'hi'
+  | 'nl'
+  | 'sv'
+  | 'pl';
 
 type LanguageState = {
-  current: SupportedLanguage;
+  language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
   hydrate: () => Promise<void>;
 };
 
-const STORAGE_KEY = 'organizer_language';
+const STORAGE_KEY = 'planora_language';
+
+const isSupportedLanguage = (value: unknown): value is SupportedLanguage =>
+  typeof value === 'string' &&
+  ['en', 'tr', 'de', 'fr', 'es', 'it', 'pt', 'ru', 'ar', 'zh', 'ja', 'ko', 'hi', 'nl', 'sv', 'pl'].includes(
+    value,
+  );
 
 export const useLanguage = create<LanguageState>((set) => ({
-  current: 'en',
+  language: 'en',
   setLanguage: (lang) => {
-    set({ current: lang });
-    void AsyncStorage.setItem(STORAGE_KEY, lang);
+    set({ language: lang });
+    void AsyncStorage.setItem(STORAGE_KEY, lang).catch((error) => {
+      console.warn('[Language] persist failed', error);
+    });
   },
   hydrate: async () => {
     try {
       const saved = await AsyncStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        set({ current: saved as SupportedLanguage });
+      if (isSupportedLanguage(saved)) {
+        set({ language: saved });
+        return;
       }
     } catch (e) {
       console.warn('[Language] hydrate failed', e);
     }
+    set({ language: 'en' });
   },
 }));
+
+export const getCurrentLanguage = () => useLanguage.getState().language;

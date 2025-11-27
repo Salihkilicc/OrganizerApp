@@ -3,15 +3,15 @@ import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'rea
 import { usePoints } from '@/store/usePoints';
 import { ShopItemCategory, useShop } from '@/store/useShop';
 import { useTheme } from '@/store/useTheme';
-import { useTranslation } from '@/i18n';
+import { useI18n } from '@/i18n/useI18n';
 import { useRouter } from 'expo-router';
+import type { TranslationKeys } from '@/i18n/translations';
 
-const sections: { titleKey: 'points.themes' | 'points.badges' | 'points.frames'; category: ShopItemCategory }[] =
-  [
-    { titleKey: 'points.themes', category: 'theme' },
-    { titleKey: 'points.badges', category: 'badge' },
-    { titleKey: 'points.frames', category: 'frame' },
-  ];
+const sections: { title: (dict: TranslationKeys) => string; category: ShopItemCategory }[] = [
+  { title: (d) => d.points.themes, category: 'theme' },
+  { title: (d) => d.points.badges, category: 'badge' },
+  { title: (d) => d.points.frames, category: 'frame' },
+];
 
 export default function PointsScreen() {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function PointsScreen() {
   const items = useShop((state) => state.items);
   const buyWithPoints = useShop((state) => state.buyWithPoints);
   const equipItem = useShop((state) => state.equipItem);
-  const { t } = useTranslation();
+  const { t } = useI18n();
 
   const renderStatus = (itemStatus: string, equipped: boolean) => {
     const pillStyle = [
@@ -86,7 +86,7 @@ export default function PointsScreen() {
                   styles.actionText,
                   { color: canBuy ? palette.background : palette.text },
                 ]}>
-                {t('points.button.buy')}
+                {t((d) => d.points.button.buy)}
               </Text>
             </Pressable>
           )}
@@ -106,7 +106,9 @@ export default function PointsScreen() {
                     styles.actionText,
                     { color: item.equipped ? palette.text : palette.background },
                   ]}>
-                  {item.equipped ? t('points.button.equipped') : t('points.button.equip')}
+                  {item.equipped
+                    ? t((d) => d.points.button.equipped)
+                    : t((d) => d.points.button.equip)}
                 </Text>
             </Pressable>
           )}
@@ -117,15 +119,15 @@ export default function PointsScreen() {
 
   const statusLabelFor = (item: typeof items[number]) => {
     if (item.equipped) {
-      return t('points.status.equipped');
+      return t((d) => d.points.status.equipped);
     }
     if (item.owned) {
-      return t('points.status.owned');
+      return t((d) => d.points.status.owned);
     }
     if (item.unlockType === 'points' && typeof item.cost === 'number') {
-      return t('points.status.price', { price: item.cost });
+      return t((d) => d.points.status.price, { price: item.cost });
     }
-    return t('points.status.locked');
+    return t((d) => d.points.status.locked);
   };
 
   return (
@@ -146,12 +148,12 @@ export default function PointsScreen() {
           </Pressable>
           <View>
             <Text style={[styles.sectionHeadline, { color: palette.text }]}>
-              {t('points.title')}
+              {t((d) => d.points.title)}
             </Text>
           </View>
           <View style={styles.pointsContainer}>
             <Text style={[styles.pointsLabel, { color: palette.text }]}>
-              {t('points.totalPoints')}
+              {t((d) => d.points.totalPoints)}
             </Text>
             <View
               style={[
@@ -170,7 +172,7 @@ export default function PointsScreen() {
           return (
             <View key={section.category} style={styles.section}>
               <Text style={[styles.sectionTitle, { color: palette.text }]}>
-                {t(section.titleKey)}
+                {t(section.title)}
               </Text>
               <View style={styles.sectionGrid}>
                 {filtered.map((item) => renderItem(item))}

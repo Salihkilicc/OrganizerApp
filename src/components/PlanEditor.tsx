@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { useTheme } from '@/store/useTheme';
 import type { PlanBlock, PlanCategory } from '@/store/usePlans';
+import { useI18n } from '@/i18n/useI18n';
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const pad = (value: number) => value.toString().padStart(2, '0');
@@ -51,20 +52,21 @@ type Props = {
 };
 
 const MIN_DURATION = 30;
-const CATEGORY_OPTIONS: { label: string; value: PlanCategory }[] = [
-  { label: 'Focus', value: 'focus' },
-  { label: 'Study', value: 'study' },
-  { label: 'Work', value: 'work' },
-  { label: 'Gym', value: 'gym' },
-  { label: 'Meeting', value: 'meeting' },
-  { label: 'Reading', value: 'reading' },
-  { label: 'Break', value: 'break' },
-  { label: 'Personal', value: 'personal' },
-  { label: 'Other', value: 'other' },
+const CATEGORY_OPTIONS: { value: PlanCategory }[] = [
+  { value: 'focus' },
+  { value: 'study' },
+  { value: 'work' },
+  { value: 'gym' },
+  { value: 'meeting' },
+  { value: 'reading' },
+  { value: 'break' },
+  { value: 'personal' },
+  { value: 'other' },
 ];
 
 export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete }: Props) => {
   const { palette } = useTheme();
+  const { t } = useI18n();
   const defaultStart = useMemo(() => initial?.startMin ?? 8 * 60, [initial]);
   const defaultEnd = useMemo(
     () => initial?.endMin ?? defaultStart + 60,
@@ -177,13 +179,13 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
       });
 
       if (!Number.isFinite(normalizedStart) || !Number.isFinite(normalizedEnd)) {
-        throw new Error('Start or end time is invalid');
+        throw new Error(t((d) => d.plan.editor.errorInvalidTime));
       }
       if (normalizedEnd <= normalizedStart) {
-        throw new Error('End time must be after start time');
+        throw new Error(t((d) => d.plan.editor.errorEndBeforeStart));
       }
       if (trimmedTitle.length === 0) {
-        throw new Error('Title is required');
+        throw new Error(t((d) => d.plan.editor.errorTitleRequired));
       }
 
       applyStartTime(normalizedStart);
@@ -199,7 +201,10 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
       });
     } catch (err) {
       console.warn('[PlanEditor/error]', err);
-      Alert.alert('Plan save failed', err instanceof Error ? err.message : String(err));
+      Alert.alert(
+        t((d) => d.plan.editor.saveErrorTitle),
+        err instanceof Error ? err.message : String(err),
+      );
     }
   };
 
@@ -223,7 +228,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 borderColor: palette.border,
               },
             ]}
-            placeholder="Title"
+            placeholder={t((d) => d.plan.editor.titlePlaceholder)}
             placeholderTextColor={palette.text}
             value={title}
             onChangeText={setTitle}
@@ -231,7 +236,9 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
           <View style={styles.sectionGap}>
             <View style={styles.timeRow}>
             <View style={styles.timeInputContainer}>
-                <Text style={[styles.label, { color: palette.text }]}>Start</Text>
+                <Text style={[styles.label, { color: palette.text }]}>
+                  {t((d) => d.plan.editor.startLabel)}
+                </Text>
                 <View style={styles.timeInputRow}>
                   <TextInput
                     style={[
@@ -272,7 +279,9 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
               </View>
               <View
                 style={[styles.timeInputContainer, styles.timeInputContainerRight]}>
-                <Text style={[styles.label, { color: palette.text }]}>End</Text>
+                <Text style={[styles.label, { color: palette.text }]}>
+                  {t((d) => d.plan.editor.endLabel)}
+                </Text>
                 <View style={styles.timeInputRow}>
                   <TextInput
                     style={[
@@ -317,6 +326,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
             <View style={[styles.categoryRow, { borderColor: palette.border }]}>
               {CATEGORY_OPTIONS.map((option) => {
                 const selected = option.value === category;
+                const label = t((d) => d.plan.categories[option.value]);
                 return (
                   <Pressable
                     key={option.value}
@@ -333,7 +343,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                         styles.categoryLabel,
                         { color: selected ? palette.background : palette.text },
                       ]}>
-                      {option.label}
+                      {label}
                     </Text>
                   </Pressable>
                 );
@@ -351,7 +361,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 borderColor: palette.border,
               },
             ]}
-            placeholder="Note (optional)"
+            placeholder={t((d) => d.plan.editor.notePlaceholder)}
             placeholderTextColor={palette.text}
             multiline
             textAlignVertical="top"
@@ -376,7 +386,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                     styles.doneActionText,
                     { color: done ? palette.background : palette.accent },
                   ]}>
-                  {done ? 'Completed' : 'Mark as completed'}
+                  {done ? t((d) => d.plan.editor.completed) : t((d) => d.plan.editor.markCompleted)}
                 </Text>
               </Pressable>
             )}
@@ -387,8 +397,10 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 styles.actionGhost,
                 { borderColor: palette.border },
                 pressed && { opacity: 0.7 },
-              ]}>
-              <Text style={[styles.actionText, { color: palette.text }]}>Cancel</Text>
+            ]}>
+              <Text style={[styles.actionText, { color: palette.text }]}>
+                {t((d) => d.plan.editor.cancel)}
+              </Text>
             </Pressable>
             <Pressable
               onPress={handleSave}
@@ -400,12 +412,14 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                   opacity: pressed ? 0.7 : 1,
                 },
               ]}>
-              <Text style={[styles.actionText, { color: palette.background }]}>Save</Text>
+              <Text style={[styles.actionText, { color: palette.background }]}>
+                {t((d) => d.plan.editor.save)}
+              </Text>
             </Pressable>
           </View>
           {canDelete && (
             <View style={styles.deleteRow}>
-              <Button title="Delete plan" type="ghost" onPress={handleDelete} />
+              <Button title={t((d) => d.plan.editor.delete)} type="ghost" onPress={handleDelete} />
             </View>
           )}
         </View>

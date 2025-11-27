@@ -12,19 +12,20 @@ import {
 
 import { useAuth } from '@/store/useAuth';
 import { type ThemeId, useTheme } from '@/store/useTheme';
-import { LANGUAGE_LABELS, LANGUAGE_OPTIONS, useLanguage } from '@/store/useLanguage';
+import { useLanguage } from '@/store/useLanguage';
 import { useSettings } from '@/store/useSettings';
 import { usePremium } from '@/store/usePremium';
-import { useTranslation } from '@/i18n';
+import { availableLanguages, getLanguageName, useI18n } from '@/i18n/useI18n';
 import { Button } from '@/components/ui/Button';
 import { CrownIcon } from '@/components/icons/CrownIcon';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import type { TranslationKeys } from '@/i18n/translations';
 
-const themeLabelMap: Record<ThemeId, 'lightTheme' | 'darkTheme' | 'ninjaTheme'> = {
-  light: 'lightTheme',
-  dark: 'darkTheme',
-  ninja: 'ninjaTheme',
+const themeLabelMap: Record<ThemeId, (dict: TranslationKeys) => string> = {
+  light: (d) => d.settings.themeLight,
+  dark: (d) => d.settings.themeDark,
+  ninja: (d) => d.settings.themeNinja,
 };
 
 const getInitials = (value: string) => {
@@ -45,18 +46,21 @@ export default function SettingsScreen() {
   const user = useAuth((state) => state.user);
   const status = useAuth((state) => state.status);
   const signOut = useAuth((state) => state.signOut);
-  const { t } = useTranslation();
-  const currentLanguage = useLanguage((state) => state.current);
+  const { t } = useI18n();
+  const currentLanguage = useLanguage((state) => state.language);
   const setLanguage = useSettings((state) => state.setLanguage);
   const isPremium = usePremium((state) => state.isPremium);
 
-  const displayName = user?.user_metadata?.full_name ?? user?.name ?? 'User';
+  const displayName =
+    user?.user_metadata?.full_name ?? user?.name ?? t((d) => d.common.user);
   const isGuest = status === 'guest';
-  const userLabel = isGuest ? 'guest' : user?.email ?? 'guest';
+  const guestLabel = t((d) => d.profile.guestLabel);
+  const userLabel = isGuest ? guestLabel : user?.email ?? guestLabel;
   const initials = useMemo(() => getInitials(displayName), [displayName]);
-  const authButtonLabel = status === 'authenticated' ? t('settings.signOut') : 'Log in';
+  const authButtonLabel =
+    status === 'authenticated' ? t((d) => d.settings.signOut) : t((d) => d.common.logIn);
 
-  const handleSelectLanguage = (code: typeof LANGUAGE_OPTIONS[number]['code']) => {
+  const handleSelectLanguage = (code: (typeof availableLanguages)[number]['code']) => {
     setLanguage(code);
   };
 
@@ -67,17 +71,19 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      t('settings.deleteAccount'),
-      t('settings.deleteAccountWarning'),
+      t((d) => d.settings.deleteAccount),
+      t((d) => d.settings.deleteAccountWarning),
       [
-        { text: t('settings.deleteAccountCancel'), style: 'cancel' },
+        { text: t((d) => d.settings.deleteAccountCancel), style: 'cancel' },
         {
-          text: t('settings.deleteAccountConfirm'),
+          text: t((d) => d.settings.deleteAccountConfirm),
           style: 'destructive',
           onPress: () => {
-            Alert.alert(t('settings.deleteAccount'), t('settings.deleteAccountSupport'), [
-              { text: t('settings.deleteAccountCancel'), style: 'cancel' },
-            ]);
+            Alert.alert(
+              t((d) => d.settings.deleteAccount),
+              t((d) => d.settings.deleteAccountSupport),
+              [{ text: t((d) => d.settings.deleteAccountCancel), style: 'cancel' }],
+            );
           },
         },
       ],
@@ -97,7 +103,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, styles.headerMargin]}>
-          <Text style={[styles.heading, { color: palette.text }]}>{t('settings.title')}</Text>
+          <Text style={[styles.heading, { color: palette.text }]}>{t((d) => d.settings.title)}</Text>
         </View>
 
         <View
@@ -137,9 +143,11 @@ export default function SettingsScreen() {
               <View style={styles.premiumTextWrapper}>
                 <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
                 <View style={styles.premiumTextGroup}>
-                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>Premium</Text>
+                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>
+                    {t((d) => d.settings.premiumActiveTitle)}
+                  </Text>
                   <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
-                    You already have access to premium features
+                    {t((d) => d.settings.premiumActiveSubtitle)}
                   </Text>
                 </View>
               </View>
@@ -160,9 +168,11 @@ export default function SettingsScreen() {
               <View style={styles.premiumTextWrapper}>
                 <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
                 <View style={styles.premiumTextGroup}>
-                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>Unlock Premium</Text>
+                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>
+                    {t((d) => d.settings.unlockPremiumTitle)}
+                  </Text>
                   <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
-                    Tap to unlock powerful focus tools
+                    {t((d) => d.settings.unlockPremiumSubtitle)}
                   </Text>
                 </View>
               </View>
@@ -181,7 +191,9 @@ export default function SettingsScreen() {
               marginTop: 0,
             },
           ]}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>Your settings</Text>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t((d) => d.settings.yourSettings)}
+          </Text>
           <Pressable
             onPress={() => router.push('/profile')}
             style={({ pressed }) => [
@@ -195,8 +207,12 @@ export default function SettingsScreen() {
             ]}>
             <Ionicons name="person-outline" size={20} color={palette.text} />
             <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>Personal details</Text>
-              <Text style={[styles.sectionHint, { color: palette.text }]}>Update name, email, and avatar</Text>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>
+                {t((d) => d.settings.personalDetails)}
+              </Text>
+              <Text style={[styles.sectionHint, { color: palette.text }]}>
+                {t((d) => d.settings.personalDetailsDescription)}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
           </Pressable>
@@ -213,8 +229,12 @@ export default function SettingsScreen() {
             ]}>
             <Ionicons name="language-outline" size={20} color={palette.text} />
             <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>Language</Text>
-              <Text style={[styles.sectionHint, { color: palette.text }]}>{LANGUAGE_LABELS[currentLanguage]}</Text>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>
+                {t((d) => d.settings.languageTitle)}
+              </Text>
+              <Text style={[styles.sectionHint, { color: palette.text }]}>
+                {getLanguageName(currentLanguage)}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
           </Pressable>
@@ -231,10 +251,11 @@ export default function SettingsScreen() {
             ]}>
             <Ionicons name="sunny-outline" size={20} color={palette.text} />
             <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>Appearance</Text>
-              <Text
-                style={[styles.sectionHint, { color: palette.text }]}>
-                {t(themeLabelMap[themeKey] ?? 'lightTheme')}
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>
+                {t((d) => d.settings.appearance)}
+              </Text>
+              <Text style={[styles.sectionHint, { color: palette.text }]}>
+                {t(themeLabelMap[themeKey])}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
@@ -248,6 +269,7 @@ export default function SettingsScreen() {
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
           <Pressable
+            onPress={() => router.push('/terms')}
             style={({ pressed }) => [
               styles.sectionRow,
               styles.sectionShadow,
@@ -259,11 +281,14 @@ export default function SettingsScreen() {
             ]}>
             <Ionicons name="document-text-outline" size={20} color={palette.text} />
             <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>Terms and Conditions</Text>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>
+                {t((d) => d.legal.termsTitle)}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
           </Pressable>
           <Pressable
+            onPress={() => router.push('/privacy')}
             style={({ pressed }) => [
               styles.sectionRow,
               styles.sectionShadow,
@@ -275,11 +300,14 @@ export default function SettingsScreen() {
             ]}>
             <Ionicons name="lock-closed-outline" size={20} color={palette.text} />
             <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>Privacy Policy</Text>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>
+                {t((d) => d.legal.privacyTitle)}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
           </Pressable>
           <Pressable
+            onPress={() => router.push('/support')}
             style={({ pressed }) => [
               styles.sectionRow,
               styles.sectionShadow,
@@ -291,7 +319,9 @@ export default function SettingsScreen() {
             ]}>
             <Ionicons name="mail-outline" size={20} color={palette.text} />
             <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>Support Email</Text>
+              <Text style={[styles.sectionLabel, { color: palette.text }]}>
+                {t((d) => d.legal.supportTitle)}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
           </Pressable>
@@ -308,7 +338,9 @@ export default function SettingsScreen() {
             ]}>
             <Ionicons name="trash-outline" size={20} color="#D32F2F" />
             <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: '#D32F2F' }]}>Delete Account</Text>
+              <Text style={[styles.sectionLabel, { color: '#D32F2F' }]}>
+                {t((d) => d.settings.deleteAccount)}
+              </Text>
             </View>
           </Pressable>
           <View style={styles.signOutInline}>
@@ -335,13 +367,13 @@ export default function SettingsScreen() {
             ]}>
             <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
             <Text style={[styles.selectorModalTitle, { color: palette.text }]}>
-              {t('settings.language')}
+              {t((d) => d.settings.languageTitle)}
             </Text>
             <ScrollView
               style={styles.selectorModalList}
               contentContainerStyle={styles.selectorModalListContent}
               showsVerticalScrollIndicator={false}>
-              {LANGUAGE_OPTIONS.map((option) => {
+              {availableLanguages.map((option) => {
                 const isActive = option.code === currentLanguage;
                 return (
                   <Pressable
@@ -363,7 +395,7 @@ export default function SettingsScreen() {
                         styles.selectorItemText,
                         { color: isActive ? palette.background : palette.text },
                       ]}>
-                      {option.label}
+                      {option.name}
                     </Text>
                     {isActive && (
                       <Text style={[styles.selectorItemCheck, { color: palette.background }]}>

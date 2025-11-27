@@ -35,7 +35,7 @@ import { usePoints } from '@/store/usePoints';
 import { usePremium } from '@/store/usePremium';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTranslation } from '@/i18n';
+import { useI18n } from '@/i18n/useI18n';
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -81,7 +81,7 @@ type EditorValues = {
 export default function PlanScreen() {
   const router = useRouter();
   const { palette } = useTheme();
-  const { t } = useTranslation();
+  const { t } = useI18n();
   const today = todayDate();
   const [selectedDate, setSelectedDateState] = useState(() => {
     const initial = toISO(new Date());
@@ -144,12 +144,12 @@ export default function PlanScreen() {
   const totalHours = totalMinutes / 60;
   const summaryMessage =
     blockCount > 0
-      ? t('plan.summary.withPlans', {
+      ? t((d) => d.plan.summary.withPlans, {
           total: blockCount,
           plural: blockCount === 1 ? '' : 's',
           hours: totalHours.toFixed(1),
         })
-      : t('plan.summary.noPlans');
+      : t((d) => d.plan.summary.noPlans);
 
   const hasManualBlocks = dailyBlocks.some((block) => !block.aiGenerated);
   const selectedDateInstance = useMemo(() => parseISO(selectedDate), [selectedDate]);
@@ -227,7 +227,7 @@ export default function PlanScreen() {
       const current = blocks.find((block) => block.id === id);
       if (!current) return;
       if (isBeforeToday(current.date)) {
-        Alert.alert(t('plan.pastPlansAlert'));
+        Alert.alert(t((d) => d.plan.pastPlansAlert));
         return;
       }
       setEditorInitial(current);
@@ -318,9 +318,8 @@ export default function PlanScreen() {
       );
       if (occupied) {
         Alert.alert(
-          t('plan.copyConflictTitle') ?? 'Selected days must be empty',
-          t('plan.copyConflictMessage') ??
-            'Please choose target days with no existing plans before copying.',
+          t((d) => d.plan.copyConflictTitle),
+          t((d) => d.plan.copyConflictMessage),
         );
         return;
       }
@@ -331,10 +330,10 @@ export default function PlanScreen() {
 
   const handleClearDayPlans = useCallback(() => {
     if (blockCount === 0) return;
-    Alert.alert(t('plan.deleteAllConfirmTitle'), t('plan.deleteAllConfirmMessage'), [
-      { text: t('plan.deleteAllConfirmNo'), style: 'cancel' },
+    Alert.alert(t((d) => d.plan.deleteAllConfirmTitle), t((d) => d.plan.deleteAllConfirmMessage), [
+      { text: t((d) => d.plan.deleteAllConfirmNo), style: 'cancel' },
       {
-        text: t('plan.deleteAllConfirmYes'),
+        text: t((d) => d.plan.deleteAllConfirmYes),
         style: 'destructive',
         onPress: () => {
           clearPlansByDate(selectedDate);
@@ -416,7 +415,7 @@ export default function PlanScreen() {
                 },
               ]}>
               <Text style={[styles.monthLabel, { color: palette.text }]}>
-                {t('plan.monthsLabel')}
+                {t((d) => d.plan.monthsLabel)}
               </Text>
               <Ionicons
                 name="chevron-down"
@@ -445,7 +444,7 @@ export default function PlanScreen() {
               <View style={styles.aiButtonContent}>
                 <Text style={[styles.aiButtonSpark, { color: palette.accent }]}>✨</Text>
                 <Text style={[styles.aiButtonText, { color: palette.text }]}>
-                  {t('plan.aiButton')}
+                  {t((d) => d.plan.aiButton)}
                 </Text>
               </View>
             </Pressable>
@@ -473,10 +472,10 @@ export default function PlanScreen() {
                   backgroundColor: palette.card,
                   borderColor: palette.border,
                 },
-              ]}>
-              <View style={[styles.monthModalHandle, { backgroundColor: palette.border }]} />
-              <Text style={[styles.monthModalTitle, { color: palette.text }]}>
-                {t('plan.selectMonth')}
+            ]}>
+            <View style={[styles.monthModalHandle, { backgroundColor: palette.border }]} />
+            <Text style={[styles.monthModalTitle, { color: palette.text }]}>
+                {t((d) => d.plan.selectMonth)}
               </Text>
               <ScrollView
                 style={styles.monthModalList}

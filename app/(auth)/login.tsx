@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 
 import { useAuth } from '@/store/useAuth';
+import { useI18n } from '@/i18n/useI18n';
 
 const palette = {
   text: '#111826',
@@ -34,17 +35,18 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { t } = useI18n();
 
   const handleLogin = async () => {
     setErrorText('');
     if (!email || !password) {
-      setErrorText('Please enter an email and password.');
+      setErrorText(t((d) => d.auth.missingCredentials));
       return;
     }
     try {
       await signInWithEmail(email.trim(), password);
     } catch (error: unknown) {
-      setErrorText(error instanceof Error ? error.message : 'An error occurred during login.');
+      setErrorText(error instanceof Error ? error.message : t((d) => d.auth.loginError));
     }
   };
 
@@ -54,7 +56,7 @@ export default function LoginScreen() {
       await signInWithGoogle();
     } catch (error: unknown) {
       console.log('[Login] Google sign-in error', error);
-      Alert.alert('Google sign-in failed', 'Please try again.');
+      Alert.alert(t((d) => d.auth.googleErrorTitle), t((d) => d.auth.googleErrorMessage));
     } finally {
       setSubmitting(false);
     }
@@ -71,16 +73,16 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}>
         <View style={styles.container}>
-          <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>Access Organizer with your email and password.</Text>
+          <Text style={styles.title}>{t((d) => d.auth.loginTitle)}</Text>
+          <Text style={styles.subtitle}>{t((d) => d.auth.loginSubtitle)}</Text>
 
           <View style={styles.field}>
-            <Text style={styles.label}>E-mail</Text>
+            <Text style={styles.label}>{t((d) => d.auth.emailLabel)}</Text>
             <TextInput
               value={email}
               inputMode="email"
               onChangeText={setEmail}
-              placeholder="jsmith@mail.com"
+              placeholder={t((d) => d.auth.emailPlaceholder)}
               autoCapitalize="none"
               keyboardType="email-address"
               placeholderTextColor={palette.muted}
@@ -89,18 +91,20 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t((d) => d.auth.passwordLabel)}</Text>
             <View style={[styles.input, styles.passwordWrapper]}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter your password"
+                placeholder={t((d) => d.auth.passwordPlaceholder)}
                 placeholderTextColor={palette.muted}
                 secureTextEntry={!showPassword}
                 style={styles.passwordInput}
               />
               <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                <Text style={styles.toggle}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.toggle}>
+                  {showPassword ? t((d) => d.auth.toggleHide) : t((d) => d.auth.toggleShow)}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -112,10 +116,12 @@ export default function LoginScreen() {
               style={[styles.button, loading ? styles.disabled : null]}
               onPress={handleLogin}
               disabled={loading}>
-              <Text style={styles.buttonText}>{loading ? 'Logging in…' : 'Login'}</Text>
+              <Text style={styles.buttonText}>
+                {loading ? t((d) => d.auth.loggingIn) : t((d) => d.auth.loginButton)}
+              </Text>
             </Pressable>
 
-            <Text style={styles.auxText}>or login with</Text>
+            <Text style={styles.auxText}>{t((d) => d.auth.orLoginWith)}</Text>
 
             <Pressable
               style={styles.googleButton}
@@ -125,7 +131,7 @@ export default function LoginScreen() {
                 <Text style={styles.googleLetter}>G</Text>
               </View>
               <Text style={styles.googleText}>
-                {submitting ? 'Signing in with Google…' : 'Continue with Google'}
+                {submitting ? t((d) => d.auth.googleLoading) : t((d) => d.auth.googleButton)}
               </Text>
               {submitting ? (
                 <ActivityIndicator
@@ -141,10 +147,10 @@ export default function LoginScreen() {
             <Pressable
               onPress={() => router.push('/(auth)/register')}
               style={styles.registerLink}>
-              <Text style={styles.registerText}>Create account</Text>
+              <Text style={styles.registerText}>{t((d) => d.auth.createAccount)}</Text>
             </Pressable>
             <Pressable style={styles.guestButton} onPress={handleGuestMode}>
-              <Text style={styles.guestText}>Continue as guest</Text>
+              <Text style={styles.guestText}>{t((d) => d.auth.continueAsGuest)}</Text>
             </Pressable>
           </View>
         </View>

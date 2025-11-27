@@ -4,9 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { useTheme } from '@/store/useTheme';
+import { useI18n } from '@/i18n/useI18n';
 
 export default function TabLayout() {
   const { palette } = useTheme();
+  const { t } = useI18n();
 
   return (
       <Tabs
@@ -43,21 +45,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Today',
+          title: t((d) => d.tabs.today),
           tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="plan"
         options={{
-          title: 'Plan',
+          title: t((d) => d.tabs.plan),
           tabBarIcon: ({ color }) => <Ionicons name="calendar" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t((d) => d.tabs.settings),
           tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
         }}
       />
