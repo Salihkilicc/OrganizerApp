@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { getFrameDecoration } from '@/lib/frameStyles';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from '@/i18n';
+import { useI18n } from '@/i18n/useI18n';
 import {
   Alert,
   Pressable,
@@ -21,7 +21,7 @@ import {
 export default function ProfileScreen() {
   const palette = useTheme((state) => state.palette);
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useI18n();
   const user = useAuth((state) => state.user);
   const isGuest = useAuth((state) => state.isGuest);
   const totalPoints = usePoints((state) => state.total);
@@ -44,8 +44,8 @@ export default function ProfileScreen() {
       };
 
   const fallbackName = isGuest
-    ? 'Guest User'
-    : user?.email?.split('@')[0] ?? 'User';
+    ? t((d) => d.common.guestUser)
+    : user?.email?.split('@')[0] ?? t((d) => d.common.user);
   const initialName = user?.user_metadata?.full_name ?? user?.name ?? fallbackName;
   const [fullName, setFullName] = useState(initialName);
 
@@ -66,7 +66,7 @@ export default function ProfileScreen() {
     return `${first}${last}`.toUpperCase();
   }, [fullName]);
 
-  const displayEmail = isGuest ? 'guest' : user?.email ?? 'guest';
+  const displayEmail = isGuest ? t((d) => d.profile.guestLabel) : user?.email ?? t((d) => d.profile.guestLabel);
   const streakDays = 0; // TODO: surface real streak metrics once focus tracking is wired.
   const totalFocusMinutes = 0; // TODO: replace with actual focus minutes from the tracker.
 
@@ -92,32 +92,52 @@ export default function ProfileScreen() {
 
   const badgeDefinitions = useMemo(
     () => [
-      { label: 'Starter', icon: '✨', unlocked: true },
-      { label: 'Focus 60m', icon: '🎯', unlocked: totalPoints >= 60 },
-      { label: 'Planner', icon: '📝', unlocked: blocks.length >= 3 },
-      { label: 'Consistency', icon: '💡', unlocked: streakDays >= 5 },
+      { label: t((d) => d.profile.badgeStarter), icon: '✨', unlocked: true },
+      { label: t((d) => d.profile.badgeFocus60), icon: '🎯', unlocked: totalPoints >= 60 },
+      { label: t((d) => d.profile.badgePlanner), icon: '📝', unlocked: blocks.length >= 3 },
+      { label: t((d) => d.profile.badgeConsistency), icon: '💡', unlocked: streakDays >= 5 },
     ],
-    [blocks.length, streakDays, totalPoints],
+    [blocks.length, streakDays, t, totalPoints],
   );
+  const categoryLabels = useMemo(
+    () => ({
+      focus: t((d) => d.plan.categories.focus),
+      study: t((d) => d.plan.categories.study),
+      work: t((d) => d.plan.categories.work),
+      gym: t((d) => d.plan.categories.gym),
+      meeting: t((d) => d.plan.categories.meeting),
+      reading: t((d) => d.plan.categories.reading),
+      break: t((d) => d.plan.categories.break),
+      personal: t((d) => d.plan.categories.personal),
+      other: t((d) => d.plan.categories.other),
+    }),
+    [t],
+  );
+  const mostActiveCategoryLabel = mostActiveCategory
+    ? categoryLabels[mostActiveCategory] ?? categoryLabels.other
+    : null;
 
   const handleAvatarPress = () => {
     // TODO: integrate ImagePicker/photo library when ready.
-    Alert.alert('Change photo', 'Not implemented yet.');
+    Alert.alert(t((d) => d.profile.changePhotoTitle), t((d) => d.profile.changePhotoMessage));
   };
 
   const handleEmailChange = () => {
     // TODO: wire up email change flow.
-    Alert.alert('Change email', 'Email change is not implemented yet.');
+    Alert.alert(t((d) => d.profile.changeEmailTitle), t((d) => d.profile.changeEmailMessage));
   };
 
   const handlePasswordChange = () => {
     // TODO: wire up password update flow.
-    Alert.alert('Change password', 'Password change is not implemented yet.');
+    Alert.alert(
+      t((d) => d.profile.changePasswordTitle),
+      t((d) => d.profile.changePasswordMessage),
+    );
   };
 
   const handleSaveName = () => {
     // TODO: persist name to backend/profile store.
-    Alert.alert('Save name', 'Name persistence is not implemented yet.');
+    Alert.alert(t((d) => d.profile.saveNameTitle), t((d) => d.profile.saveNameMessage));
   };
 
   return (
@@ -152,10 +172,10 @@ export default function ProfileScreen() {
             </Pressable>
             <View style={styles.headerStats}>
               <Text style={[styles.headerStatValue, { color: palette.accent }]}>
-                {t('profile.totalPoints')}: {totalPoints} pts
+                {t((d) => d.profile.totalPoints)}: {totalPoints} pts
               </Text>
               <Text style={[styles.headerStatSub, { color: palette.text }]}>
-                {t('profile.streak')}: {streakDays} {t('profile.days')}
+                {t((d) => d.profile.streak)}: {streakDays} {t((d) => d.profile.days)}
               </Text>
             </View>
           </View>
@@ -167,11 +187,13 @@ export default function ProfileScreen() {
             { borderColor: palette.border, backgroundColor: palette.card },
           ]}>
           <View style={[styles.sectionStackRow, styles.sectionStackColumn]}>
-            <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.name')}</Text>
+            <Text style={[styles.fieldLabel, { color: palette.text }]}>
+              {t((d) => d.profile.name)}
+            </Text>
             <TextInput
               value={fullName}
               onChangeText={setFullName}
-              placeholder={t('profile.name')}
+              placeholder={t((d) => d.profile.name)}
               placeholderTextColor={palette.text + '99'}
               style={[
                 styles.textInput,
@@ -183,7 +205,9 @@ export default function ProfileScreen() {
               ]}
             />
             <Pressable onPress={handleSaveName} style={styles.saveButton}>
-              <Text style={[styles.saveText, { color: palette.accent }]}>{t('profile.saveName')}</Text>
+              <Text style={[styles.saveText, { color: palette.accent }]}>
+                {t((d) => d.profile.saveName)}
+              </Text>
             </Pressable>
           </View>
 
@@ -193,7 +217,9 @@ export default function ProfileScreen() {
               styles.sectionStackColumn,
               { borderTopWidth: 1, borderColor: palette.border },
             ]}>
-            <Text style={[styles.fieldLabel, { color: palette.text }]}>{t('profile.email')}</Text>
+            <Text style={[styles.fieldLabel, { color: palette.text }]}>
+              {t((d) => d.profile.email)}
+            </Text>
             <View
               style={[
                 styles.infoRow,
@@ -201,14 +227,16 @@ export default function ProfileScreen() {
                 { borderColor: palette.border, backgroundColor: palette.background },
               ]}>
               <View style={styles.infoText}>
-                <Text style={[styles.infoLabel, { color: palette.text }]}>{t('profile.current')}</Text>
+                <Text style={[styles.infoLabel, { color: palette.text }]}>
+                  {t((d) => d.profile.current)}
+                </Text>
                 <Text style={[styles.infoValue, { color: palette.text }]} numberOfLines={1}>
                   {displayEmail}
                 </Text>
               </View>
               <Pressable onPress={handleEmailChange} style={styles.changeButton}>
                 <Text style={[styles.changeText, { color: palette.accent }]}>
-                  {t('profile.changeEmail')}
+                  {t((d) => d.profile.changeEmail)}
                 </Text>
               </Pressable>
             </View>
@@ -226,14 +254,16 @@ export default function ProfileScreen() {
               },
             ]}>
             <Text style={[styles.passwordText, { color: palette.text }]}>
-              {t('profile.changePassword')}
+              {t((d) => d.profile.changePassword)}
             </Text>
             <Text style={[styles.passwordText, { color: palette.accent }]}>›</Text>
           </Pressable>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>{t('profile.badges')}</Text>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            {t((d) => d.profile.badges)}
+          </Text>
         </View>
         <View style={styles.badgesRow}>
           {badgeDefinitions.map((badge) => (
@@ -262,7 +292,7 @@ export default function ProfileScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            {t('profile.stats')}
+            {t((d) => d.profile.stats)}
           </Text>
         </View>
           <View style={styles.statsRow}>
@@ -272,10 +302,10 @@ export default function ProfileScreen() {
                 { borderColor: palette.border, backgroundColor: palette.card, marginRight: scaleValue(10) },
               ]}>
             <Text style={[styles.statsLabel, { color: palette.text }]}>
-              {t('profile.mostActiveCategory')}
+              {t((d) => d.profile.mostActiveCategory)}
             </Text>
             <Text style={[styles.statsValue, { color: palette.text }]}>
-              {mostActiveCategory ? `${mostActiveCategory[0].toUpperCase()}${mostActiveCategory.slice(1)}` : 'None yet'}
+              {mostActiveCategoryLabel ?? t((d) => d.profile.mostActiveNone)}
             </Text>
           </View>
           <View
@@ -284,9 +314,11 @@ export default function ProfileScreen() {
               { borderColor: palette.border, backgroundColor: palette.card },
             ]}>
             <Text style={[styles.statsLabel, { color: palette.text }]}>
-              {t('profile.totalFocusTime')}
+              {t((d) => d.profile.totalFocusTime)}
             </Text>
-            <Text style={[styles.statsValue, { color: palette.text }]}>{totalFocusMinutes} min</Text>
+            <Text style={[styles.statsValue, { color: palette.text }]}>
+              {t((d) => d.profile.totalFocusMinutesLabel, { minutes: totalFocusMinutes })}
+            </Text>
           </View>
         </View>
       </ScrollView>
