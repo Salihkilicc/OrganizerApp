@@ -35,40 +35,59 @@ export default function PrivacyScreen() {
         </View>
 
         <Text style={[styles.lead, { color: palette.text }]}>
-          {t((d) => d.legal.privacyIntro)}
+          Privacy Policy for Planora: AI Organizer
+        </Text>
+        <Text style={[styles.paragraph, { color: palette.text, marginTop: 0 }]}>
+          Last updated: 2025
         </Text>
 
-        <Text style={[styles.sectionHeading, { color: palette.text }]}>
-          Information We Collect
-        </Text>
         <Text style={[styles.paragraph, { color: palette.text }]}>
-          This is a placeholder Privacy Policy for Planora: AI Organizer. We collect basic account
-          details to create and maintain your profile, app usage data to improve your experience,
-          and diagnostic logs to keep the service stable. No sensitive data is shared without your
-          consent.
+          Planora: AI Organizer (“the App”) respects your privacy. This Privacy Policy explains what
+          data we collect, how we use it, and how it is protected.
         </Text>
 
-        <Text style={[styles.sectionHeading, { color: palette.text }]}>
-          How Your Data Is Used
-        </Text>
+        <Text style={[styles.sectionHeading, { color: palette.text }]}>1. Information We Collect</Text>
         <Text style={[styles.paragraph, { color: palette.text }]}>
-          We use the information you provide to deliver the app’s core functionality, personalize
-          recommendations, and troubleshoot issues. Aggregated analytics help us understand which
-          features you find valuable so we can prioritize improvements.
-        </Text>
-
-        <Text style={[styles.sectionHeading, { color: palette.text }]}>Data Sharing</Text>
-        <Text style={[styles.paragraph, { color: palette.text }]}>
-          We do not sell your data. Limited sharing only occurs with trusted providers needed to
-          operate the service, such as authentication, payments, or notifications—always under
-          contractual safeguards and only what is necessary.
+          <Text style={styles.bold}>Account Information:</Text> Email address or third‑party login
+          identifiers (Google/Apple) if you choose to sign in.{'\n\n'}
+          <Text style={styles.bold}>Usage Data:</Text> App interactions such as creating tasks,
+          plans, or using focus mode.{'\n\n'}
+          <Text style={styles.bold}>Device Data:</Text> Device model, OS version, and crash logs (for app improvement).{'\n\n'}
+          <Text style={styles.bold}>No Sensitive Data:</Text> We do not collect contacts, photos, messages, or location.
         </Text>
 
-        <Text style={[styles.sectionHeading, { color: palette.text }]}>Your Choices</Text>
+        <Text style={[styles.sectionHeading, { color: palette.text }]}>2. How We Use Your Data</Text>
         <Text style={[styles.paragraph, { color: palette.text }]}>
-          You can access or update your account details from the Profile and Settings screens at any
-          time. If you wish to delete your account, you can request removal from the settings page
-          and we will guide you through the process.
+          • To provide and improve app features.{'\n'}
+          • To sync your plans and preferences across devices.{'\n'}
+          • To generate AI-based plans when requested by you.{'\n'}
+          • To ensure subscription and premium features work correctly.
+        </Text>
+
+        <Text style={[styles.sectionHeading, { color: palette.text }]}>3. Third‑Party Services</Text>
+        <Text style={[styles.paragraph, { color: palette.text }]}>
+          The App uses the following services:{'\n'}
+          • Supabase – authentication and cloud storage.{'\n'}
+          • RevenueCat – subscription and purchase handling.{'\n'}
+          • OpenAI – AI‑generated planning (your raw personal data is NOT shared).
+        </Text>
+
+        <Text style={[styles.sectionHeading, { color: palette.text }]}>4. Data Protection</Text>
+        <Text style={[styles.paragraph, { color: palette.text }]}>
+          Your data is stored securely using encrypted connections. We do not sell or share your
+          personal data with advertisers.
+        </Text>
+
+        <Text style={[styles.sectionHeading, { color: palette.text }]}>5. Your Rights</Text>
+        <Text style={[styles.paragraph, { color: palette.text }]}>
+          You may request deletion of your account.{'\n'}
+          You may export your stored data anytime by contacting us.{'\n'}
+          You may opt out of AI features and continue using the app normally.
+        </Text>
+
+        <Text style={[styles.sectionHeading, { color: palette.text }]}>6. Contact Us</Text>
+        <Text style={[styles.paragraph, { color: palette.text }]}>
+          If you have questions, email us at: support@planoraapp.com
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -122,5 +141,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 12,
+  },
+  bold: {
+    fontWeight: '700',
   },
 });

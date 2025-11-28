@@ -28,7 +28,7 @@ import { useTheme } from '@/store/useTheme';
 import { useLanguage } from '@/store/useLanguage';
 import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { useAvatarStore } from '@/store/useAvatar';
-import { configureRevenueCat } from '@/lib/revenuecat';
+import { configureRevenueCat, removeRevenueCatListeners } from '@/lib/revenuecat';
 import { ensureInitialized, scheduleWeeklySummary, syncDayNotifications } from '@/lib/notifications';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
 import { initSupabaseAuthListener } from '@/lib/supabase';
@@ -45,7 +45,7 @@ const SF_PRO_FONT_FAMILY =
   }) ?? 'System';
 
 const applySfProFont = () => {
-  const defaultTextProps = Text.defaultProps ?? {};
+  const defaultTextProps = (Text as any).defaultProps ?? {};
   const fontStyle = { fontFamily: SF_PRO_FONT_FAMILY };
   const existingStyle = defaultTextProps.style;
   const combinedStyle = existingStyle
@@ -54,7 +54,7 @@ const applySfProFont = () => {
       : [fontStyle, existingStyle]
     : fontStyle;
 
-  Text.defaultProps = {
+  (Text as any).defaultProps = {
     ...defaultTextProps,
     style: combinedStyle,
   };
@@ -109,6 +109,7 @@ export default function RootLayout() {
   const pointsHydrated = usePoints((state) => state.hydrated);
   const premiumHydrated = usePremium((state) => state.hydrated);
   const avatarHydrated = useAvatarStore((state) => state.hydrated);
+  const setCustomerInfo = useRevenueCatStore((state) => state.setCustomerInfo);
   const [showStartupScreen, setShowStartupScreen] = useState(true);
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const isHydrating =
@@ -162,9 +163,12 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    configureRevenueCat();
+    configureRevenueCat(setCustomerInfo);
     void useRevenueCatStore.getState().refresh();
-  }, []);
+    return () => {
+      removeRevenueCatListeners();
+    };
+  }, [setCustomerInfo]);
 
   useEffect(() => {
     if (status === 'checking') {
@@ -233,18 +237,9 @@ export default function RootLayout() {
       void scheduleWeeklySummary(blocks, settingsState.notificationTypes, streakDays);
     };
 
-    const unsubPlans = usePlans.subscribe(
-      (state) => state.blocks,
-      () => syncNotifications(),
-    );
-    const unsubSettings = useSettings.subscribe(
-      (state) => state.notificationTypes,
-      () => syncNotifications(),
-    );
-    const unsubWater = useSettings.subscribe(
-      (state) => state.waterReminderEnabled,
-      () => syncNotifications(),
-    );
+    const unsubPlans = usePlans.subscribe(() => syncNotifications());
+    const unsubSettings = useSettings.subscribe(() => syncNotifications());
+    const unsubWater = useSettings.subscribe(() => syncNotifications());
     syncNotifications();
 
     const intervalId = setInterval(() => {

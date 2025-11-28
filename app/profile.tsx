@@ -11,12 +11,14 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   View,
 } from 'react-native';
 import { useAvatarStore } from '@/store/useAvatar';
@@ -26,6 +28,8 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { Popup } from '@/components/Popup';
 import { useShop } from '@/store/useShop';
 import { Ionicons } from '@expo/vector-icons';
+import { Button } from '@/components/ui/Button';
+import { supabase } from '@/lib/supabase';
 
 export default function ProfileScreen() {
   const palette = useTheme((state) => state.palette);
@@ -33,6 +37,7 @@ export default function ProfileScreen() {
   const { t } = useI18n();
   const headerHeight = useHeaderHeight();
   const user = useAuth((state) => state.user);
+  const setFromSession = useAuth((state) => state.setFromSession);
   const profilePhoto =
     (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
     (user?.user_metadata as Record<string, string | undefined> | undefined)?.picture;
@@ -66,12 +71,30 @@ export default function ProfileScreen() {
     ? t((d) => d.common.guestUser)
     : user?.email?.split('@')[0] ?? t((d) => d.common.user);
   const initialName = user?.user_metadata?.full_name ?? user?.name ?? fallbackName;
+  const initialEmail = user?.email ?? '';
+
   const [fullName, setFullName] = useState(initialName);
+  const [email, setEmail] = useState(initialEmail);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     setFullName(initialName);
   }, [initialName]);
+
+  useEffect(() => {
+    setEmail(initialEmail);
+  }, [initialEmail]);
+
+  useEffect(() => {
+    setStatusMessage(null);
+  }, [fullName, email]);
 
   const initials = useMemo(() => {
     const parts = fullName.split(' ').filter(Boolean);
@@ -86,7 +109,6 @@ export default function ProfileScreen() {
     return `${first}${last}`.toUpperCase();
   }, [fullName]);
 
-  const displayEmail = isGuest ? t((d) => d.profile.guestLabel) : user?.email ?? t((d) => d.profile.guestLabel);
   const streakDays = 0; // TODO: surface real streak metrics once focus tracking is wired.
   const totalFocusMinutes = 0; // TODO: replace with actual focus minutes from the tracker.
 
@@ -138,22 +160,138 @@ export default function ProfileScreen() {
     setAvatarModalVisible(true);
   };
 
-  const handleEmailChange = () => {
-    // TODO: wire up email change flow.
-    Alert.alert(t((d) => d.profile.changeEmailTitle), t((d) => d.profile.changeEmailMessage));
+  const storedName = (user?.user_metadata?.full_name ?? user?.name ?? '').trim();
+  const storedEmail = user?.email ?? '';
+  const pendingName = fullName.trim();
+  const pendingEmail = email.trim();
+  const canEditProfile = Boolean(user?.id) && !isGuest;
+  const hasProfileChanges =
+    canEditProfile &&
+    ((pendingName.length > 0 && pendingName !== storedName) ||
+      (pendingEmail.length > 0 && pendingEmail !== storedEmail));
+
+  const handleSaveProfile = async () => {
+    if (!user || !canEditProfile) {
+      Alert.alert(t((d) => d.common.error), t((d) => d.auth.loginError));
+      return;
+    }
+
+    const nameChanged = pendingName.length > 0 && pendingName !== storedName;
+    const emailChanged = pendingEmail.length > 0 && pendingEmail !== storedEmail;
+
+    if (!nameChanged && !emailChanged) {
+      setStatusMessage({
+        type: 'success',
+        text: t((d) => d.profile.saveNameMessage),
+      });
+      return;
+    }
+
+    if (emailChanged && !pendingEmail.includes('@')) {
+      setStatusMessage({
+        type: 'error',
+        text: t((d) => d.auth.errors.fillAllFields),
+      });
+      return;
+    }
+
+    setSavingProfile(true);
+    setStatusMessage(null);
+
+    try {
+      const payload: Parameters<typeof supabase.auth.updateUser>[0] = {};
+      if (nameChanged) {
+        payload.data = {
+          ...(user.user_metadata ?? {}),
+          full_name: pendingName,
+        };
+      }
+      if (emailChanged) {
+        payload.email = pendingEmail;
+      }
+
+      const { error } = await supabase.auth.updateUser(payload);
+      if (error) {
+        throw error;
+      }
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (!sessionError && sessionData.session) {
+        setFromSession(sessionData.session);
+      }
+
+      if (emailChanged) {
+        setStatusMessage({
+          type: 'success',
+          text: t((d) => d.profile.changeEmailMessage, { email: pendingEmail }),
+        });
+      } else {
+        setStatusMessage({
+          type: 'success',
+          text: t((d) => d.profile.saveNameMessage),
+        });
+      }
+    } catch (error) {
+      setStatusMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : t((d) => d.common.error),
+      });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const handlePasswordChange = () => {
-    // TODO: wire up password update flow.
-    Alert.alert(
-      t((d) => d.profile.changePasswordTitle),
-      t((d) => d.profile.changePasswordMessage),
-    );
+  const showPasswordSuccessToast = () => {
+    const successText = t((d) => d.profile.changePasswordTitle);
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(successText, ToastAndroid.SHORT);
+      return;
+    }
+    Alert.alert(successText);
   };
 
-  const handleSaveName = () => {
-    // TODO: persist name to backend/profile store.
-    Alert.alert(t((d) => d.profile.saveNameTitle), t((d) => d.profile.saveNameMessage));
+  const handlePasswordSubmit = async () => {
+    if (!user || !canEditProfile) {
+      Alert.alert(t((d) => d.common.error), t((d) => d.auth.loginError));
+      return;
+    }
+
+    setPasswordError(null);
+    const trimmedPassword = newPassword.trim();
+    const trimmedConfirm = confirmPassword.trim();
+
+    if (!trimmedPassword || trimmedPassword.length < 8) {
+      setPasswordError(t((d) => d.auth.errors.passwordTooShort));
+      return;
+    }
+    if (trimmedPassword !== trimmedConfirm) {
+      setPasswordError(t((d) => d.auth.errors.passwordMismatch));
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: trimmedPassword });
+      if (error) {
+        throw error;
+      }
+      showPasswordSuccessToast();
+      setPasswordModalVisible(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : t((d) => d.common.error));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const closePasswordModal = () => {
+    if (passwordLoading) return;
+    setPasswordModalVisible(false);
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
   };
 
   useEffect(() => {
@@ -169,7 +307,9 @@ export default function ProfileScreen() {
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets>
         <View style={styles.headerRow}>
           <View style={styles.avatarColumn}>
             <Pressable
@@ -224,6 +364,7 @@ export default function ProfileScreen() {
               onChangeText={setFullName}
               placeholder={t((d) => d.profile.name)}
               placeholderTextColor={palette.text + '99'}
+              editable={canEditProfile}
               style={[
                 styles.textInput,
                 {
@@ -233,11 +374,6 @@ export default function ProfileScreen() {
                 },
               ]}
             />
-            <Pressable onPress={handleSaveName} style={styles.saveButton}>
-              <Text style={[styles.saveText, { color: palette.accent }]}>
-                {t((d) => d.profile.saveName)}
-              </Text>
-            </Pressable>
           </View>
 
           <View
@@ -249,37 +385,58 @@ export default function ProfileScreen() {
             <Text style={[styles.fieldLabel, { color: palette.text }]}>
               {t((d) => d.profile.email)}
             </Text>
-            <View
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t((d) => d.profile.email)}
+              placeholderTextColor={palette.text + '99'}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
+              editable={canEditProfile}
               style={[
-                styles.infoRow,
-                styles.infoRowCompact,
-                { borderColor: palette.border, backgroundColor: palette.background },
+                styles.textInput,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.background,
+                  color: palette.text,
+                },
+              ]}
+            />
+          </View>
+
+          {statusMessage ? (
+            <Text
+              style={[
+                styles.statusMessage,
+                {
+                  color: statusMessage.type === 'error' ? '#ef4444' : palette.accent,
+                },
               ]}>
-              <View style={styles.infoText}>
-                <Text style={[styles.infoLabel, { color: palette.text }]}>
-                  {t((d) => d.profile.current)}
-                </Text>
-                <Text style={[styles.infoValue, { color: palette.text }]} numberOfLines={1}>
-                  {displayEmail}
-                </Text>
-              </View>
-              <Pressable onPress={handleEmailChange} style={styles.changeButton}>
-                <Text style={[styles.changeText, { color: palette.accent }]}>
-                  {t((d) => d.profile.changeEmail)}
-                </Text>
-              </Pressable>
-            </View>
+              {statusMessage.text}
+            </Text>
+          ) : null}
+
+          <View style={[styles.sectionStackRow, styles.saveRow]}>
+            <Button
+              title={savingProfile ? t((d) => d.common.loading) : t((d) => d.profile.saveName)}
+              onPress={handleSaveProfile}
+              loading={savingProfile}
+              disabled={!hasProfileChanges || savingProfile || !canEditProfile}
+            />
           </View>
 
           <Pressable
-            onPress={handlePasswordChange}
-            style={[
+            onPress={() => setPasswordModalVisible(true)}
+            disabled={!canEditProfile}
+            style={({ pressed }) => [
               styles.sectionStackRow,
               styles.sectionStackLastRow,
               {
                 borderTopWidth: 1,
                 borderColor: palette.border,
                 backgroundColor: palette.card,
+                opacity: !canEditProfile ? 0.5 : pressed ? 0.85 : 1,
               },
             ]}>
             <Text style={[styles.passwordText, { color: palette.text }]}>
@@ -294,12 +451,12 @@ export default function ProfileScreen() {
             {t((d) => d.profile.stats)}
           </Text>
         </View>
-          <View style={styles.statsRow}>
-            <View
-              style={[
-                styles.statsCard,
-                { borderColor: palette.border, backgroundColor: palette.card, marginRight: scaleValue(10) },
-              ]}>
+        <View style={styles.statsRow}>
+          <View
+            style={[
+              styles.statsCard,
+              { borderColor: palette.border, backgroundColor: palette.card, marginRight: scaleValue(10) },
+            ]}>
             <Text style={[styles.statsLabel, { color: palette.text }]}>
               {t((d) => d.profile.mostActiveCategory)}
             </Text>
@@ -403,6 +560,71 @@ export default function ProfileScreen() {
         actionLabel={t((d) => d.today.close)}
         onClose={() => setAvatarModalVisible(false)}
       />
+
+      <Modal
+        visible={passwordModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={closePasswordModal}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalCardWrapper}>
+            <View
+              style={[
+                styles.modalCard,
+                { backgroundColor: palette.card, borderColor: palette.border },
+              ]}>
+              <Text style={[styles.modalTitle, { color: palette.text }]}>
+                {t((d) => d.profile.changePassword)}
+              </Text>
+              <Text style={[styles.modalDescription, { color: palette.text + 'CC' }]}>
+                {t((d) => d.profile.changePasswordMessage)}
+              </Text>
+              <TextInput
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder={t((d) => d.auth.passwordPlaceholder)}
+                placeholderTextColor={palette.text + '88'}
+                secureTextEntry
+                style={[
+                  styles.modalInput,
+                  { borderColor: palette.border, backgroundColor: palette.background, color: palette.text },
+                ]}
+              />
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder={t((d) => d.auth.confirmPassword)}
+                placeholderTextColor={palette.text + '88'}
+                secureTextEntry
+                style={[
+                  styles.modalInput,
+                  { borderColor: palette.border, backgroundColor: palette.background, color: palette.text },
+                ]}
+              />
+              {passwordError ? (
+                <Text style={[styles.statusMessage, { color: '#ef4444' }]}>{passwordError}</Text>
+              ) : null}
+              <View style={styles.modalActions}>
+                <Button
+                  title={t((d) => d.common.cancel)}
+                  onPress={closePasswordModal}
+                  disabled={passwordLoading}
+                  type="ghost"
+                />
+                <View style={styles.modalActionSpacing} />
+                <Button
+                  title={passwordLoading ? t((d) => d.common.loading) : t((d) => d.profile.changePassword)}
+                  onPress={handlePasswordSubmit}
+                  loading={passwordLoading}
+                  disabled={passwordLoading}
+                />
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -421,6 +643,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
+    flexGrow: 1,
     padding: scaleValue(16),
     paddingBottom: scaleValue(32),
   },
@@ -515,47 +738,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: scaleValue(14),
     fontSize: scaleValue(14),
   },
-  saveButton: {
-    marginTop: scaleValue(10),
-    alignSelf: 'flex-end',
-  },
-  saveText: {
+  statusMessage: {
+    paddingHorizontal: scaleValue(14),
+    marginTop: scaleValue(6),
     fontSize: scaleValue(13),
     fontWeight: '600',
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: scaleValue(14),
-    padding: scaleValue(10),
-    borderWidth: 1,
-  },
-  infoRowCompact: {
-    borderWidth: 0,
-    paddingVertical: scaleValue(8),
-    paddingHorizontal: scaleValue(10),
-  },
-  infoText: {
-    flex: 1,
-    marginRight: scaleValue(10),
-  },
-  infoLabel: {
-    fontSize: scaleValue(11),
-    letterSpacing: scaleValue(0.5),
-    marginBottom: scaleValue(2),
-  },
-  infoValue: {
-    fontSize: scaleValue(15),
-    fontWeight: '600',
-  },
-  changeButton: {
-    paddingHorizontal: scaleValue(6),
-    paddingVertical: scaleValue(2),
-  },
-  changeText: {
-    fontSize: scaleValue(12),
-    fontWeight: '600',
+  saveRow: {
+    alignItems: 'flex-end',
   },
   passwordText: {
     fontSize: scaleValue(15),
@@ -666,5 +856,52 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: scaleValue(0.4),
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: scaleValue(16),
+  },
+  modalCardWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  modalCard: {
+    borderWidth: 1,
+    borderRadius: scaleValue(18),
+    padding: scaleValue(16),
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: scaleValue(18),
+    fontWeight: '700',
+    marginBottom: scaleValue(6),
+  },
+  modalDescription: {
+    fontSize: scaleValue(13),
+    lineHeight: scaleValue(18),
+    marginBottom: scaleValue(10),
+  },
+  modalInput: {
+    height: scaleValue(44),
+    borderWidth: 1,
+    borderRadius: scaleValue(12),
+    paddingHorizontal: scaleValue(12),
+    fontSize: scaleValue(14),
+    marginBottom: scaleValue(10),
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: scaleValue(4),
+  },
+  modalActionSpacing: {
+    width: scaleValue(10),
   },
 });

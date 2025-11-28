@@ -140,37 +140,111 @@ export function AiPlanModal({
   const dateLabel = useMemo(() => formatDateLabel(date), [date]);
   const previewList = previewBlocks ?? [];
   const hasPreview = previewList.length > 0;
+  const helperTexts = useMemo(
+    () => ({
+      priorities: t((d) => d.aiPlanner.prioritiesHelper),
+      habits: t((d) => d.aiPlanner.habitsHelper),
+      feedbackExamples: t((d) => d.aiPlanner.feedbackExamples),
+    }),
+    [t],
+  );
 
-<<<<<<< ours
-<<<<<<< ours
+  const parseDurationFromText = useCallback((text: string): number | null => {
+    const hoursMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:saat|hour|hr|h)\b/);
+    if (hoursMatch) {
+      const value = Number(hoursMatch[1].replace(',', '.'));
+      if (Number.isFinite(value)) return Math.round(value * 60);
+    }
+    const minsMatch = text.match(/(\d+)\s*(?:dk|dakika|min|mins|minute|minutes)\b/);
+    if (minsMatch) {
+      const value = Number(minsMatch[1]);
+      if (Number.isFinite(value)) return value;
+    }
+    return null;
+  }, []);
+
+  const formatListInput = useCallback((value: string) => {
+    const parts = value
+      .split(/[\n,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (parts.length <= 1) return value.trim();
+    return parts.map((item) => `- ${item}`).join('\n');
+  }, []);
+
+  const adjustBlocksWithFeedback = useCallback(
+    (blocks: AiPlanBlock[]) => {
+      const text = feedback.trim().toLowerCase();
+      if (!text) return blocks;
+
+      const isExtend = /uzat|extend|longer|increase/.test(text);
+      const isShorten = /kısalt|kisalt|shorten|shorter|reduce/.test(text);
+      if (!isExtend && !isShorten) return blocks;
+
+      const parsedMinutes = parseDurationFromText(text);
+      const deltaMinutes = parsedMinutes ?? (isExtend ? 30 : 15);
+      const delta = isExtend ? deltaMinutes : -deltaMinutes;
+
+      return blocks.map((block) => {
+        const duration = Math.max(1, block.endMin - block.startMin);
+        const nextDuration = Math.max(1, duration + delta);
+        let startMin = block.startMin;
+        let endMin = startMin + nextDuration;
+        if (endMin > 1439) {
+          endMin = 1439;
+          startMin = Math.max(0, endMin - nextDuration);
+        }
+        return { ...block, startMin, endMin };
+      });
+    },
+    [feedback, parseDurationFromText],
+  );
+
   const enforceWorkWindow = useCallback(
     (blocks: AiPlanBlock[]) => {
       if (!works || workStartMinutes === undefined || workEndMinutes === undefined) return blocks;
       const workTitle = t((d) => d.plan.categories.work);
-      const outsideWindow = blocks.filter((block) => {
-        const overlapsWork =
-          block.startMin < workEndMinutes && block.endMin > workStartMinutes;
-        return !overlapsWork;
+      const start = workStartMinutes;
+      const end = workEndMinutes;
+
+      const nonWorkBlocks = blocks.filter((block) => block.category !== 'work');
+      const overlapping: AiPlanBlock[] = [];
+      const nonOverlapping: AiPlanBlock[] = [];
+
+      nonWorkBlocks.forEach((block) => {
+        const overlaps = block.startMin < end && block.endMin > start;
+        if (overlaps) {
+          overlapping.push(block);
+        } else {
+          nonOverlapping.push(block);
+        }
       });
-      const withWorkBlock: AiPlanBlock[] = [
-        ...outsideWindow,
-        {
-          title: workTitle,
-          note: undefined,
-          startMin: workStartMinutes,
-          endMin: workEndMinutes,
-          category: 'work',
-        },
-      ];
-      return withWorkBlock.sort((a, b) => a.startMin - b.startMin);
+
+      const latestExistingEnd = nonOverlapping.reduce((max, block) => Math.max(max, block.endMin), end);
+
+      let cursor = Math.max(end, latestExistingEnd);
+      const rescheduled = overlapping
+        .sort((a, b) => a.startMin - b.startMin)
+        .map((block) => {
+          const duration = Math.max(1, block.endMin - block.startMin);
+          const startMin = cursor;
+          const endMin = startMin + duration;
+          cursor = endMin;
+          return { ...block, startMin, endMin };
+        });
+
+      const workBlock: AiPlanBlock = {
+        title: workTitle,
+        note: undefined,
+        startMin: start,
+        endMin: end,
+        category: 'work',
+      };
+
+      return [...nonOverlapping, workBlock, ...rescheduled].sort((a, b) => a.startMin - b.startMin);
     },
     [t, workEndMinutes, workStartMinutes, works],
   );
-
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
   const getPreviousPlanString = useCallback(() => {
     if (lastAiPlanString?.trim()) return lastAiPlanString.trim();
     if (previewBlocks.length) return serializePlanBlocks(previewBlocks);
@@ -196,8 +270,8 @@ export function AiPlanModal({
   const buildRequestPayload = useCallback(
     (options?: { includePreviousPlanString?: boolean }): AiPlanRequest => {
       const normalizedFeedback = feedback.trim();
-      const normalizedPriorities = priorities.trim();
-      const normalizedHabits = habits.trim();
+      const normalizedPriorities = formatListInput(priorities);
+      const normalizedHabits = formatListInput(habits);
       const hasWorkWindow = works && workStart.trim() && workEnd.trim();
       return {
         date,
@@ -224,6 +298,7 @@ export function AiPlanModal({
       works,
       previousBlocks,
       getPreviousPlanString,
+      formatListInput,
     ],
   );
 
@@ -242,9 +317,11 @@ export function AiPlanModal({
       const { blocks } = await generatePlanFromAI(payload);
       console.log('[AiPlanModal] Received blocks', blocks);
       const blocksArray = Array.isArray(blocks) ? blocks : [];
-      setLastAiPlanString(serializePlanBlocks(blocksArray));
-      setPreviewBlocks(blocksArray);
-      if (blocksArray.length === 0) {
+      const feedbackAdjusted = adjustBlocksWithFeedback(blocksArray);
+      const workAdjusted = enforceWorkWindow(feedbackAdjusted);
+      setLastAiPlanString(serializePlanBlocks(workAdjusted));
+      setPreviewBlocks(workAdjusted);
+      if (workAdjusted.length === 0) {
         setError(t((d) => d.aiPlanner.noBlocks));
       } else {
         setError(null);
@@ -257,7 +334,16 @@ export function AiPlanModal({
     } finally {
       setIsGenerating(false);
     }
-  }, [buildRequestPayload, hasExistingBlocks, setLastAiPlanString, t, workValidationError, works]);
+  }, [
+    adjustBlocksWithFeedback,
+    buildRequestPayload,
+    enforceWorkWindow,
+    hasExistingBlocks,
+    setLastAiPlanString,
+    t,
+    workValidationError,
+    works,
+  ]);
 
   const handleRegenerate = useCallback(async () => {
     if (!date) return;
@@ -267,14 +353,17 @@ export function AiPlanModal({
       console.log('[AiPlanModal] Request payload (regenerate)', payload);
       const { blocks } = await generatePlanFromAI(payload);
       console.log('[AiPlanModal] Received blocks (regenerate)', blocks);
-      if (!Array.isArray(blocks) || blocks.length === 0) {
+      const blocksArray = Array.isArray(blocks) ? blocks : [];
+      const feedbackAdjusted = adjustBlocksWithFeedback(blocksArray);
+      const workAdjusted = enforceWorkWindow(feedbackAdjusted);
+      if (workAdjusted.length === 0) {
         setError(t((d) => d.aiPlanner.noBetterPlan));
         setPreviewBlocks([]);
         return;
       }
       setError(null);
-      setLastAiPlanString(serializePlanBlocks(blocks));
-      setPreviewBlocks(blocks);
+      setLastAiPlanString(serializePlanBlocks(workAdjusted));
+      setPreviewBlocks(workAdjusted);
     } catch (err) {
       console.error('[AiPlanModal] Error regenerating plan', err);
       setPreviewBlocks([]);
@@ -282,7 +371,7 @@ export function AiPlanModal({
     } finally {
       setIsRegenerating(false);
     }
-  }, [buildRequestPayload, date, setLastAiPlanString, t]);
+  }, [adjustBlocksWithFeedback, buildRequestPayload, date, enforceWorkWindow, setLastAiPlanString, t]);
 
   const handleApply = useCallback(() => {
     const planBlocks = previewBlocks.map((block) => buildPlanBlock(date, block));
@@ -436,6 +525,9 @@ export function AiPlanModal({
                   multiline
                   numberOfLines={3}
                 />
+                <Text style={[styles.helperText, { color: palette.text }]}>
+                  {helperTexts.priorities}
+                </Text>
               </View>
               <View style={styles.field}>
                 <Text style={[styles.fieldLabel, { color: palette.text }]}>
@@ -454,6 +546,9 @@ export function AiPlanModal({
                   multiline
                   numberOfLines={3}
                 />
+                <Text style={[styles.helperText, { color: palette.text }]}>
+                  {helperTexts.habits}
+                </Text>
               </View>
               <View style={styles.field}>
                 <Text style={[styles.fieldLabel, { color: palette.text }]}>
@@ -472,6 +567,9 @@ export function AiPlanModal({
                   multiline
                   numberOfLines={3}
                 />
+                <Text style={[styles.helperText, { color: palette.text }]}>
+                  {helperTexts.feedbackExamples}
+                </Text>
               </View>
               {error ? (
                 <Text style={[styles.errorText, { color: palette.accent }]}>{error}</Text>
@@ -671,6 +769,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     marginBottom: 6,
     fontWeight: '600',
+  },
+  helperText: {
+    fontSize: 11,
+    opacity: 0.65,
+    marginTop: 4,
   },
   input: {
     borderWidth: 1,

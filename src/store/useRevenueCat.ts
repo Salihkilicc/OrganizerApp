@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CustomerInfo, PurchasesOffering } from 'react-native-purchases';
+import Purchases, { type CustomerInfo, type PurchasesOffering } from 'react-native-purchases';
 
 import { usePremium } from '@/store/usePremium';
 import { getCurrentOfferings, isEntitledToPremium } from '@/lib/revenuecat';
@@ -9,7 +9,7 @@ type RevenueCatState = {
   currentOffering: PurchasesOffering | null;
   loading: boolean;
   refresh: () => Promise<void>;
-  setFromCustomerInfo: (info: CustomerInfo | null) => void;
+  setCustomerInfo: (info: CustomerInfo | null) => void;
 };
 
 export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
@@ -17,10 +17,16 @@ export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
   currentOffering: null,
   loading: false,
 
-  setFromCustomerInfo(info) {
+  setCustomerInfo(info) {
     set({ customerInfo: info });
     const entitled = isEntitledToPremium(info);
-    void usePremium.getState().setPremium(entitled);
+    // Keep premium state in sync with RevenueCat entitlement updates.
+    usePremium.setState((state) => ({
+      ...state,
+      isPremium: entitled,
+      hydrated: true,
+      loading: false,
+    }));
   },
 
   async refresh() {
@@ -29,15 +35,18 @@ export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
     }
     set({ loading: true });
     try {
-      const [offering, purchasesModule] = await Promise.all([
+      const [offering, info] = await Promise.all([
         getCurrentOfferings(),
-        import('react-native-purchases'),
+        Purchases.getCustomerInfo().catch((error) => {
+          console.warn('[useRevenueCat] getCustomerInfo failed', error);
+          return null;
+        }),
       ]);
-      const customerInfo = await purchasesModule.default.getCustomerInfo();
       set({ currentOffering: offering });
-      get().setFromCustomerInfo(customerInfo);
+      get().setCustomerInfo(info);
     } catch (error) {
       console.warn('[useRevenueCat] refresh failed', error);
+      get().setCustomerInfo(null);
     } finally {
       set({ loading: false });
     }

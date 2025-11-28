@@ -33,6 +33,13 @@ const isSupportedLanguage = (value: unknown): value is SupportedLanguage =>
     value,
   );
 
+const detectDeviceLanguage = (): SupportedLanguage => {
+  const locale = (Intl.DateTimeFormat().resolvedOptions().locale || '').toLowerCase();
+  const candidates = locale ? [locale, locale.split('-')[0]] : [];
+  const match = candidates.find((code) => isSupportedLanguage(code));
+  return match ?? 'en';
+};
+
 export const useLanguage = create<LanguageState>((set) => ({
   language: 'en',
   setLanguage: (lang) => {
@@ -51,7 +58,7 @@ export const useLanguage = create<LanguageState>((set) => ({
     } catch (e) {
       console.warn('[Language] hydrate failed', e);
     }
-    set({ language: 'en' });
+    set({ language: detectDeviceLanguage() });
   },
 }));
 

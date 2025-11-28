@@ -37,6 +37,8 @@ export type PlansStore = {
   blocks: PlanBlock[];
   hydrated: boolean;
   userId?: string;
+  lastAiPlanString?: string | null;
+  setLastAiPlanString: (value?: string | null) => void;
   load: () => Promise<void>;
   add: (b: Omit<PlanBlock, 'id'>) => Promise<string>;
   addMany: (blocks: Omit<PlanBlock, 'id'>[]) => Promise<string[]>;
@@ -262,6 +264,11 @@ export const usePlans = create<PlansStore>((set, get) => {
     blocks: [],
     hydrated: false,
     userId: undefined,
+    lastAiPlanString: undefined,
+
+    setLastAiPlanString: (value) => {
+      set({ lastAiPlanString: value ?? null });
+    },
 
     load,
 

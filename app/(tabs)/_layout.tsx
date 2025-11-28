@@ -1,10 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { useTheme } from '@/store/useTheme';
 import { useI18n } from '@/i18n/useI18n';
+import { useTheme } from '@/store/useTheme';
 
 export default function TabLayout() {
   const { palette } = useTheme();
@@ -22,7 +22,7 @@ export default function TabLayout() {
             left: 12,
             right: 12,
             marginBottom: -6,
-            bottom: -6,
+            bottom: -1,
             borderRadius: 28,
             height: 80,
             paddingTop: 10,
@@ -34,7 +34,7 @@ export default function TabLayout() {
             elevation: 12,
           },
             tabBarItemStyle: {
-              paddingTop: 4,
+              paddingTop: 1,
               paddingBottom: 10,
             },
             tabBarIconStyle: {

@@ -124,12 +124,21 @@ const parseRequest = async (req: Request) => {
     priorities,
     habits,
     feedback,
+    previous_plan,
+    previousPlan,
     previousBlocks: rawPreviousBlocks,
   } = json as Record<string, unknown>;
 
   if (typeof date !== 'string' || !date) {
     throw new Error('`date` is required and must be a string');
   }
+
+  const previousPlanTextRaw =
+    typeof previous_plan === 'string'
+      ? previous_plan
+      : typeof previousPlan === 'string'
+        ? previousPlan
+        : undefined;
 
   const normalizedPreviousBlocks: NormalizedBlock[] = Array.isArray(rawPreviousBlocks)
     ? rawPreviousBlocks
@@ -175,6 +184,10 @@ const parseRequest = async (req: Request) => {
       typeof feedback === 'string' && feedback.trim()
         ? feedback.trim()
         : undefined,
+    previousPlanText:
+      typeof previousPlanTextRaw === 'string' && previousPlanTextRaw.trim()
+        ? previousPlanTextRaw.trim()
+        : undefined,
     previousBlocks: normalizedPreviousBlocks,
   };
 };
@@ -198,21 +211,24 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
     `User habits: ${payload.habits ?? 'None provided.'}`,
     `User priorities: ${payload.priorities ?? 'None provided.'}`,
     `User feedback from previous plan: ${payload.feedback ?? 'None provided.'}`,
+    `Previous plan string provided: ${payload.previousPlanText ? 'Yes, see below.' : 'No.'}`,
   ];
 
-  const previousPlanInstruction = payload.previousBlocks.length
-    ? 'A previous plan is provided. Treat it as the baseline truth. Only change blocks the feedback explicitly mentions (move/shift/extend/shorten/swap/add/remove). All other blocks must stay untouched.'
-    : 'No previous AI plan data was provided for this date. Build only from the supplied priorities/habits and optional work window.';
+  const previousPlanInstruction =
+    payload.previousBlocks.length || payload.previousPlanText
+      ? 'A previous plan is provided. Treat it as the baseline truth. Revise the previous plan—do not rewrite the structure. Apply changes respecting the previous layout and only change blocks the feedback explicitly mentions (move/shift/extend/shorten/swap/add/remove). All other blocks must stay untouched.'
+      : 'No previous AI plan data was provided for this date. Build only from the supplied priorities/habits and optional work window.';
 
   const strictRulesPart = [
     '',
     'STRICT RULES:',
     '1) Break/meal/leisure/stretch/commute/buffer/prep/pause/idle/empty/rest blocks are forbidden unless the user explicitly listed them. If not provided, leave that time empty.',
     '2) If workStart/workEnd are provided, output exactly ONE block titled "WORK" spanning the full work window. Do NOT split it. If workStart/workEnd are missing, output ZERO work blocks.',
-    '3) All blocks must be between wakeTime and sleepTime and in chronological order. Gaps are allowed.',
-    '4) Never fabricate new tasks. Use only what appears in priorities/habits/feedback (plus the WORK block when applicable).',
-    '5) Output must be pure JSON with NO commentary: an array like [{"title":"...", "start":"HH:MM", "end":"HH:MM"}]. Keep the colon in every time.',
-    '6) During regenerate, modify only the blocks referenced in feedback verbs such as shift, extend, move, swap, delay, shorten, push later, bring earlier, add, insert, remove, delete. Keep all other baseline blocks unchanged.',
+    '3) You must never place any block inside the work interval. All non-work tasks must be fully outside that window.',
+    '4) All blocks must be between wakeTime and sleepTime and in chronological order. Gaps are allowed.',
+    '5) Never fabricate new tasks. Use only what appears in priorities/habits/feedback (plus the WORK block when applicable).',
+    '6) During regenerate, revise the previous plan—do not overwrite its structure. Apply changes respecting the previous layout, and adjust only the blocks referenced by feedback verbs such as shift, extend, move, swap, delay, shorten, push later, bring earlier, add, insert, remove, delete.',
+    '7) Output must be pure JSON with NO commentary: an array like [{"title":"...", "start":"HH:MM", "end":"HH:MM"}]. Keep the colon in every time.',
     previousPlanInstruction,
   ];
 
@@ -231,6 +247,7 @@ const buildMessages = (
     })),
   );
   const feedbackSummary = payload.feedback && payload.feedback.length > 0 ? payload.feedback : 'None provided.';
+  const previousPlanText = payload.previousPlanText ?? 'None provided.';
   return [
     {
       role: 'system',
@@ -243,7 +260,7 @@ const buildMessages = (
     },
     {
       role: 'user',
-      content: `Previous plan blocks (if any): ${previousBlocksJson}\nUser feedback: ${feedbackSummary}`,
+      content: `Previous plan blocks (if any): ${previousBlocksJson}\nPrevious plan JSON (raw, do not drop structure): ${previousPlanText}\nUser feedback: ${feedbackSummary}`,
     },
   ];
 };
@@ -322,6 +339,16 @@ const sanitizeBlocks = (
     })
     .filter((value): value is NormalizedBlock => Boolean(value))
     .filter((block) => block.endMin - block.startMin >= 10);
+};
+
+const removeBlocksInWorkInterval = (
+  blocks: NormalizedBlock[],
+  workWindow?: { startMin: number; endMin: number } | null,
+) => {
+  if (!workWindow || workWindow.endMin <= workWindow.startMin) return blocks;
+  return blocks.filter(
+    (block) => block.endMin <= workWindow.startMin || block.startMin >= workWindow.endMin,
+  );
 };
 
 const isChangeRequested = (title: string, feedback: string) => {
@@ -511,6 +538,20 @@ serve(async (req) => {
       typeof workEndMinutes === 'number' &&
       workEndMinutes > workStartMinutes;
 
+    const clampedWork =
+      hasWorkSchedule && typeof workStartMinutes === 'number' && typeof workEndMinutes === 'number'
+        ? {
+            startMin:
+              typeof wakeMinutes === 'number'
+                ? Math.max(workStartMinutes, wakeMinutes)
+                : workStartMinutes,
+            endMin:
+              typeof sleepMinutes === 'number'
+                ? Math.min(workEndMinutes, sleepMinutes)
+                : workEndMinutes,
+          }
+        : null;
+
     const allowanceText = `${payload.priorities ?? ''} ${payload.habits ?? ''} ${
       payload.feedback ?? ''
     }`.toLowerCase();
@@ -527,33 +568,18 @@ serve(async (req) => {
       wakeMinutes,
       sleepMinutes,
     });
-    const requestedNew = sanitizedNew.filter((block) => isRequestedTask(block.title, allowanceText));
+    const sanitizedNewOutsideWork = removeBlocksInWorkInterval(sanitizedNew, clampedWork);
+    const previousOutsideWork = removeBlocksInWorkInterval(previousSanitized, clampedWork);
+    const requestedNew = sanitizedNewOutsideWork.filter((block) =>
+      isRequestedTask(block.title, allowanceText),
+    );
 
     const merged =
-      previousSanitized.length > 0
-        ? mergeWithPrevious(previousSanitized, requestedNew, payload.feedback ?? '', allowanceText)
+      previousOutsideWork.length > 0
+        ? mergeWithPrevious(previousOutsideWork, requestedNew, payload.feedback ?? '', allowanceText)
         : requestedNew;
 
-    const clampedWork =
-      hasWorkSchedule && typeof workStartMinutes === 'number' && typeof workEndMinutes === 'number'
-        ? {
-            startMin:
-              typeof wakeMinutes === 'number'
-                ? Math.max(workStartMinutes, wakeMinutes)
-                : workStartMinutes,
-            endMin:
-              typeof sleepMinutes === 'number'
-                ? Math.min(workEndMinutes, sleepMinutes)
-                : workEndMinutes,
-          }
-        : null;
-
-    const mergedWithoutOverlap =
-      clampedWork && clampedWork.endMin > clampedWork.startMin
-        ? merged.filter(
-            (block) => block.endMin <= clampedWork.startMin || block.startMin >= clampedWork.endMin,
-          )
-        : merged;
+    const mergedWithoutOverlap = removeBlocksInWorkInterval(merged, clampedWork);
 
     const workBlock =
       clampedWork && clampedWork.endMin > clampedWork.startMin

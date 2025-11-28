@@ -34,6 +34,42 @@ export type AiPlanResponse = {
 };
 
 const pad = (value: number) => value.toString().padStart(2, '0');
+const clampToDay = (minutes: number) => Math.max(0, Math.min(1439, minutes));
+const hasKeyword = (text: string, keywords: string[]) => keywords.some((keyword) => text.includes(keyword));
+const hasBreakKeyword = (text?: string | null) => {
+  if (!text) return false;
+  const normalized = text.toLowerCase();
+  return (
+    normalized.includes('break') ||
+    normalized.includes('lunch') ||
+    normalized.includes('dinner') ||
+    normalized.includes('breakfast')
+  );
+};
+const adjustBlockForKeywords = (block: AiPlanBlock): AiPlanBlock => {
+  const duration = Math.max(1, block.endMin - block.startMin);
+  const text = `${block.title} ${block.note ?? ''}`.toLowerCase();
+  let start = block.startMin;
+
+  if (hasKeyword(text, ['night', 'gece'])) {
+    start = Math.max(start, 23 * 60);
+  } else if (hasKeyword(text, ['evening', 'akşam', 'aksam'])) {
+    if (start < 19 * 60) start = 19 * 60;
+  } else if (hasKeyword(text, ['noon', 'midday', 'öğlen', 'oglen', 'afternoon'])) {
+    const latestStart = 19 * 60 - duration;
+    start = clampToDay(Math.min(Math.max(start, 12 * 60), Math.max(12 * 60, latestStart)));
+  } else if (hasKeyword(text, ['morning', 'sabah'])) {
+    if (start >= 12 * 60) start = 8 * 60;
+  }
+
+  let end = start + duration;
+  if (end > 1439) {
+    end = 1439;
+    start = clampToDay(end - duration);
+  }
+
+  return { ...block, startMin: start, endMin: end };
+};
 
 const formatMinutes = (minutes: number) => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
 
@@ -115,17 +151,21 @@ const normalizeResponseBlocks = (blocks: unknown): AiPlanBlock[] => {
         ? Math.floor(block.endMin)
         : parseTimeString(typeof block.end === 'string' ? block.end : undefined);
 
+    if (hasBreakKeyword(title) || hasBreakKeyword(note)) return null;
+
     if (!title || startMin === undefined || endMin === undefined) return null;
     if (startMin < 0 || endMin < 0 || startMin > 1439 || endMin > 1439) return null;
     if (endMin <= startMin) return null;
 
-    return {
+    const blockWithTimes: AiPlanBlock = {
       title,
       note,
       startMin,
       endMin,
       category,
     };
+
+    return adjustBlockForKeywords(blockWithTimes);
   });
 
   return normalized.filter((value): value is AiPlanBlock => Boolean(value)).sort((a, b) => a.startMin - b.startMin);

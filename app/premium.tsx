@@ -111,9 +111,7 @@ export default function PremiumScreen() {
   const currentOffering = useRevenueCatStore((state) => state.currentOffering);
   const loading = useRevenueCatStore((state) => state.loading);
   const refresh = useRevenueCatStore((state) => state.refresh);
-  const setFromCustomerInfo = useRevenueCatStore(
-    (state) => state.setFromCustomerInfo,
-  );
+  const setCustomerInfo = useRevenueCatStore((state) => state.setCustomerInfo);
   const [purchasingPackageId, setPurchasingPackageId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -150,6 +148,8 @@ export default function PremiumScreen() {
     : t((d) => d.common.none);
   const recentProduct =
     customerInfo?.allPurchasedProductIdentifiers?.slice(-1).join(', ') ?? t((d) => d.common.none);
+  const offeringMissing = !currentOffering;
+  const loadingProducts = Boolean(loading);
   const loadingAny = Boolean(loading || purchasingPackageId);
 
   const handlePurchasePackage = useCallback(
@@ -158,7 +158,7 @@ export default function PremiumScreen() {
       setPurchasingPackageId(pkg.identifier);
       try {
         const info = await purchasePackageAndGetCustomerInfo(pkg);
-        setFromCustomerInfo(info);
+        setCustomerInfo(info);
         const successMessage = isEntitledToPremium(info)
           ? t((d) => d.premium.purchaseCompleteEntitled)
           : t((d) => d.premium.purchaseCompletePending);
@@ -171,14 +171,14 @@ export default function PremiumScreen() {
         setPurchasingPackageId(null);
       }
     },
-    [setFromCustomerInfo, t],
+    [setCustomerInfo, t],
   );
 
   const handleRestore = useCallback(async () => {
     setLocalError(null);
     try {
       const info = await restoreAndGetCustomerInfo();
-      setFromCustomerInfo(info);
+      setCustomerInfo(info);
       const message = isEntitledToPremium(info)
         ? t((d) => d.premium.restoreCompleteEntitled)
         : t((d) => d.premium.restoreCompleteNone);
@@ -188,7 +188,7 @@ export default function PremiumScreen() {
       setLocalError(message);
       Alert.alert(t((d) => d.premium.restoreFailedTitle), message);
     }
-  }, [setFromCustomerInfo, t]);
+  }, [setCustomerInfo, t]);
 
   const handleShowPaywall = useCallback(async () => {
     setLocalError(null);
@@ -364,7 +364,7 @@ export default function PremiumScreen() {
           <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.7 }]}>
             Premium’u açarak tüm Planora özelliklerini sınırsız kullanın.
           </Text>
-          {loading ? (
+          {loadingProducts ? (
             <View style={styles.loaderRow}>
               <ActivityIndicator color={palette.accent} />
               <Text style={[styles.loaderText, { color: palette.text }]}>
@@ -410,9 +410,16 @@ export default function PremiumScreen() {
               ))}
             </View>
           ) : (
-            <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.6 }]}>
-              {t((d) => d.premium.noProducts)}
-            </Text>
+            <View>
+              <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.6 }]}>
+                {t((d) => d.premium.noProducts)}
+              </Text>
+              {offeringMissing && (
+                <Text style={[styles.sectionSubtitle, { color: palette.text, opacity: 0.6 }]}>
+                  {t((d) => d.premium.loadingPlans)}
+                </Text>
+              )}
+            </View>
           )}
           {localError && <Text style={styles.errorText}>{localError}</Text>}
         </View>
