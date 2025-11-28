@@ -73,10 +73,13 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="height"
+        enabled={Platform.OS === 'android'}
         keyboardVerticalOffset={headerHeight + 12}
         style={styles.flex}>
         <ScrollView
+          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="on-drag"
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
@@ -91,7 +94,10 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               placeholder={t((d) => d.auth.emailPlaceholder)}
               autoCapitalize="none"
+              autoCorrect={false}
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="username"
               placeholderTextColor={palette.muted}
               style={styles.input}
               returnKeyType="next"
@@ -107,6 +113,9 @@ export default function LoginScreen() {
                 placeholder={t((d) => d.auth.passwordPlaceholder)}
                 placeholderTextColor={palette.muted}
                 secureTextEntry={!showPassword}
+                autoCorrect={false}
+                autoComplete="password"
+                textContentType="password"
                 style={styles.passwordInput}
                 returnKeyType="done"
               />
@@ -233,8 +242,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   actions: {
-    flex: 1,
-    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 18,
   },
   button: {
@@ -294,7 +302,8 @@ const styles = StyleSheet.create({
   bottomRow: {
     marginTop: 28,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   registerLink: {
@@ -303,6 +312,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: palette.border,
+    marginHorizontal: 6,
+    marginBottom: 10,
   },
   registerText: {
     color: palette.text,
@@ -315,6 +326,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: palette.border,
+    marginHorizontal: 6,
+    marginBottom: 10,
   },
   guestText: {
     color: palette.text,

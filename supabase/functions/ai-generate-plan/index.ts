@@ -25,6 +25,7 @@ const BREAK_KEYWORDS = [
   'tea',
   'snack',
   'snacks',
+  'snack time',
   'lunch',
   'dinner',
   'breakfast',
@@ -33,15 +34,29 @@ const BREAK_KEYWORDS = [
   'eat',
   'eating',
   'recharge',
+  'stretch',
+  'stretching',
+  'leisure',
+  'commute',
+  'commuting',
+  'travel',
+  'buffer',
+  'prep',
+  'preparation',
+  'transition',
+  'evening break',
+  'buffer block',
 ];
 
-function removeBreaklikeBlocks(blocks: any[]) {
-  return blocks.filter((block) => {
-    const title = (block?.title ?? '').toLowerCase();
-    const note = (block?.note ?? '').toLowerCase();
-    return !BREAK_KEYWORDS.some((keyword) => title.includes(keyword) || note.includes(keyword));
-  });
-}
+const padNumber = (value: number) => value.toString().padStart(2, '0');
+
+const formatMinutes = (minutes: number) => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${padNumber(hours)}:${padNumber(mins)}`;
+};
+
+const normalizeTitle = (value: string) => value.trim().toLowerCase();
 
 const parseTimeToMinutes = (value?: string) => {
   if (!value) return undefined;
@@ -65,6 +80,36 @@ const parseTimeToMinutes = (value?: string) => {
   return hours * 60 + minutes;
 };
 
+const normalizeTimeString = (value?: string) => {
+  const minutes = parseTimeToMinutes(value);
+  if (minutes === undefined) return undefined;
+  return formatMinutes(minutes);
+};
+
+type NormalizedBlock = {
+  title: string;
+  startMin: number;
+  endMin: number;
+  start: string;
+  end: string;
+  category?: string;
+  note?: string;
+};
+
+const parseTimeField = (value: unknown): { minutes?: number; text?: string } => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const minutes = Math.floor(value);
+    if (minutes < 0 || minutes > 1439) return { minutes: undefined, text: undefined };
+    return { minutes, text: formatMinutes(minutes) };
+  }
+  if (typeof value === 'string') {
+    const minutes = parseTimeToMinutes(value);
+    if (minutes === undefined) return { minutes: undefined, text: undefined };
+    return { minutes, text: normalizeTimeString(value) ?? formatMinutes(minutes) };
+  }
+  return { minutes: undefined, text: undefined };
+};
+
 const parseRequest = async (req: Request) => {
   const json = await req.json().catch(() => null);
   if (!json || typeof json !== 'object') {
@@ -86,39 +131,36 @@ const parseRequest = async (req: Request) => {
     throw new Error('`date` is required and must be a string');
   }
 
-  const normalizedPreviousBlocks = Array.isArray(rawPreviousBlocks)
+  const normalizedPreviousBlocks: NormalizedBlock[] = Array.isArray(rawPreviousBlocks)
     ? rawPreviousBlocks
         .map((value) => {
           if (!value || typeof value !== 'object') return null;
           const block = value as Record<string, unknown>;
-          const title =
-            typeof block.title === 'string' ? block.title.trim() : '';
-          const startMin =
-            typeof block.startMin === 'number'
-              ? Math.floor(block.startMin)
-              : undefined;
-          const endMin =
-            typeof block.endMin === 'number'
-              ? Math.floor(block.endMin)
-              : undefined;
-          const category =
-            typeof block.category === 'string'
-              ? block.category.trim()
-              : undefined;
-          const note =
-            typeof block.note === 'string' ? block.note.trim() : undefined;
-          if (!title || startMin === undefined || endMin === undefined) {
-            return null;
-          }
+          const title = typeof block.title === 'string' ? block.title.trim() : '';
+          const category = typeof block.category === 'string' ? block.category.trim() : undefined;
+          const note = typeof block.note === 'string' ? block.note.trim() : undefined;
+          const { minutes: startMin, text: start } = parseTimeField(
+            block.start ?? block.startTime ?? block.start_min ?? block.startMin,
+          );
+          const { minutes: endMin, text: end } = parseTimeField(
+            block.end ?? block.endTime ?? block.end_min ?? block.endMin,
+          );
+          if (!title || startMin === undefined || endMin === undefined) return null;
           if (startMin < 0 || endMin < 0 || startMin > 1439 || endMin > 1439) {
             return null;
           }
-          if (endMin <= startMin) {
-            return null;
-          }
-          return { title, startMin, endMin, category, note };
+          if (endMin <= startMin) return null;
+          return {
+            title,
+            category,
+            note,
+            startMin,
+            endMin,
+            start: start ?? formatMinutes(startMin),
+            end: end ?? formatMinutes(endMin),
+          };
         })
-        .filter((value): value is NonNullable<typeof value> => Boolean(value))
+        .filter((value): value is NormalizedBlock => Boolean(value))
     : [];
 
   return {
@@ -144,9 +186,9 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
       : 'not provided (the user does not have fixed work hours)';
 
   const userContextPart = [
-    'You create a daily schedule for the Organizer app.',
-    'You MUST respect: date, wakeTime / sleepTime, workStart / workEnd (when provided), habits, priorities, and feedback.',
-    'Treat `habits`, `priorities`, and `feedback` as HARD CONSTRAINTS, not just suggestions.',
+    'You create a deterministic daily schedule for the Organizer app.',
+    'Respect wake/sleep times, optional work window, priorities, habits, and the latest feedback as strict constraints.',
+    'Use only the tasks the user provided (priorities, habits, feedback). Leave unused time empty instead of inventing filler tasks.',
     '',
     'User context:',
     `Date: ${payload.date}`,
@@ -159,62 +201,36 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
   ];
 
   const previousPlanInstruction = payload.previousBlocks.length
-    ? 'If previousBlocks is non-empty, consider it the last AI plan for this date. Try to keep the strong parts and adjust only where needed.'
-    : 'No previous AI plan data was provided for this date.';
-
-  const previousPlanSection = [
-    '',
-    'Previous plan context:',
-    previousPlanInstruction,
-    `The user feedback is: ${payload.feedback ?? 'None provided.'}`,
-    'Use this feedback to adjust start/end times, categories, and titles, but do NOT add explicit break, lunch, dinner, breakfast, snack, coffee, tea, downtime, rest, relax, chill, pause, nap, or similar blocks.',
-    'Gaps (empty time ranges) are allowed instead of those break-like blocks.',
-  ];
+    ? 'A previous plan is provided. Treat it as the baseline truth. Only change blocks the feedback explicitly mentions (move/shift/extend/shorten/swap/add/remove). All other blocks must stay untouched.'
+    : 'No previous AI plan data was provided for this date. Build only from the supplied priorities/habits and optional work window.';
 
   const strictRulesPart = [
     '',
-    '⚠️ STRICT RULES (MUST FOLLOW EXACTLY):',
-    '1) DO NOT generate any break, meal, snack, or rest block. That includes titles or notes containing lunch, dinner, breakfast, snack, snacks, coffee, tea, break, breaks, short break, quick rest, relax, relaxing, downtime, wind down, chill, nap, pause, free time, gap, empty, idle, unwind, or recharge. Leave those periods empty instead.',
-    '2) Respect the user constraints as HARD constraints:',
-    '   - Use wakeTime and sleepTime as strict bounds for the day.',
-    '   - If workStart/workEnd are provided, treat that window as reserved for work and do NOT schedule other activities inside it.',
-    '   - If workStart/workEnd are not provided, the user does not have fixed work hours so schedule freely between wake and sleep.',
-    '   - Habits, priorities, and feedback must be honored.',
-    '3) Schedule only meaningful activity blocks (focus, study, work, gym, other). Let AI decide how much focus time to include, using multiple focus blocks between 25 and 90 minutes each.',
-    '4) Output ONLY JSON with a top-level "blocks" array.',
-    `5) Each block must include title (English string), category (one of ${VALID_CATEGORIES
-      .map((c) => `"${c}"`)
-      .join(', ')}), startMin, endMin, and an optional note.`,
-    '6) Do not add any text outside the JSON response.',
-    '7) Do not output placeholder or "nothing" blocks. If there is no activity during a time range, just leave it empty.',
-    '',
-    'Output ONLY valid JSON with this shape:',
-    '{',
-    '  "blocks": [',
-    '    {',
-    '      "title": string,',
-    '      "note": string | null,',
-    '      "category": "focus" | "study" | "work" | "gym" | "other",',
-    '      "startMin": number, // minutes from 00:00',
-    '      "endMin": number    // minutes from 00:00, > startMin',
-    '    }',
-    '  ]',
-    '}',
-    'No extra text, no explanations, only JSON.',
+    'STRICT RULES:',
+    '1) Break/meal/leisure/stretch/commute/buffer/prep/pause/idle/empty/rest blocks are forbidden unless the user explicitly listed them. If not provided, leave that time empty.',
+    '2) If workStart/workEnd are provided, output exactly ONE block titled "WORK" spanning the full work window. Do NOT split it. If workStart/workEnd are missing, output ZERO work blocks.',
+    '3) All blocks must be between wakeTime and sleepTime and in chronological order. Gaps are allowed.',
+    '4) Never fabricate new tasks. Use only what appears in priorities/habits/feedback (plus the WORK block when applicable).',
+    '5) Output must be pure JSON with NO commentary: an array like [{"title":"...", "start":"HH:MM", "end":"HH:MM"}]. Keep the colon in every time.',
+    '6) During regenerate, modify only the blocks referenced in feedback verbs such as shift, extend, move, swap, delay, shorten, push later, bring earlier, add, insert, remove, delete. Keep all other baseline blocks unchanged.',
+    previousPlanInstruction,
   ];
 
-  return [...userContextPart, ...previousPlanSection, ...strictRulesPart].join('\\n');
+  return [...userContextPart, ...strictRulesPart].join('\n');
 };
 
 const buildMessages = (
   prompt: string,
   payload: Awaited<ReturnType<typeof parseRequest>>,
 ) => {
-  const previousBlocksJson = JSON.stringify(payload.previousBlocks ?? []);
-  const feedbackSummary =
-    payload.feedback && payload.feedback.length > 0
-      ? JSON.stringify(payload.feedback)
-      : 'None provided.';
+  const previousBlocksJson = JSON.stringify(
+    (payload.previousBlocks ?? []).map((block) => ({
+      title: block.title,
+      start: block.start,
+      end: block.end,
+    })),
+  );
+  const feedbackSummary = payload.feedback && payload.feedback.length > 0 ? payload.feedback : 'None provided.';
   return [
     {
       role: 'system',
@@ -232,39 +248,179 @@ const buildMessages = (
   ];
 };
 
-const validateBlocks = (
-  blocks: Array<Record<string, unknown>>,
-): Array<{
-  title: string;
-  category: (typeof VALID_CATEGORIES)[number];
-  startMin: number;
-  endMin: number;
-  note?: string;
-}> => {
+const CHANGE_KEYWORDS = [
+  'shift',
+  'extend',
+  'move',
+  'swap',
+  'delay',
+  'shorten',
+  'make shorter',
+  'make longer',
+  'push later',
+  'bring earlier',
+  'earlier',
+  'later',
+  'update',
+  'adjust',
+  'reschedule',
+  'resched',
+];
+
+const REMOVAL_KEYWORDS = ['remove', 'delete', 'drop', 'cancel', 'skip'];
+
+const matchesTitle = (title: string, haystack: string) => {
+  const normalized = normalizeTitle(title);
+  if (haystack.includes(normalized)) return true;
+  const parts = normalized.split(/\s+/).filter((part) => part.length >= 3);
+  return parts.some((part) => haystack.includes(part));
+};
+
+const isBreaklikeBlock = (block: NormalizedBlock, allowanceText: string) => {
+  const text = `${block.title} ${block.note ?? ''}`.toLowerCase();
+  return BREAK_KEYWORDS.some(
+    (keyword) => text.includes(keyword) && !allowanceText.includes(keyword),
+  );
+};
+
+const isWorkBlock = (block: NormalizedBlock) => {
+  const titleLower = normalizeTitle(block.title);
+  const hasIsolatedWork = /\bwork\b/.test(titleLower);
+  return hasIsolatedWork || block.category === 'work';
+};
+
+const sanitizeBlocks = (
+  blocks: NormalizedBlock[],
+  options: {
+    allowanceText: string;
+    wakeMinutes?: number;
+    sleepMinutes?: number;
+  },
+) => {
+  return blocks
+    .filter((block) => !isBreaklikeBlock(block, options.allowanceText))
+    .filter((block) => !isWorkBlock(block)) // work handled separately
+    .map((block) => {
+      let startMin = block.startMin;
+      let endMin = block.endMin;
+      if (typeof options.wakeMinutes === 'number') {
+        if (endMin <= options.wakeMinutes) return null;
+        startMin = Math.max(startMin, options.wakeMinutes);
+      }
+      if (typeof options.sleepMinutes === 'number') {
+        if (startMin >= options.sleepMinutes) return null;
+        endMin = Math.min(endMin, options.sleepMinutes);
+      }
+      if (endMin <= startMin) return null;
+      return {
+        ...block,
+        startMin,
+        endMin,
+        start: formatMinutes(startMin),
+        end: formatMinutes(endMin),
+      };
+    })
+    .filter((value): value is NormalizedBlock => Boolean(value))
+    .filter((block) => block.endMin - block.startMin >= 10);
+};
+
+const isChangeRequested = (title: string, feedback: string) => {
+  const text = feedback.toLowerCase();
+  return CHANGE_KEYWORDS.some((keyword) => text.includes(keyword)) && matchesTitle(title, text);
+};
+
+const isRemovalRequested = (title: string, feedback: string) => {
+  const text = feedback.toLowerCase();
+  return REMOVAL_KEYWORDS.some((keyword) => text.includes(keyword)) && matchesTitle(title, text);
+};
+
+const isRequestedTask = (title: string, requestText: string) => {
+  return matchesTitle(title, requestText);
+};
+
+const mergeWithPrevious = (
+  previousBlocks: NormalizedBlock[],
+  newBlocks: NormalizedBlock[],
+  feedback: string,
+  requestText: string,
+) => {
+  const usedPrevious = new Set<number>();
+  const merged: NormalizedBlock[] = [];
+
+  newBlocks.forEach((block) => {
+    const normalizedTitle = normalizeTitle(block.title);
+    const prevIndex = previousBlocks.findIndex(
+      (prev, index) => !usedPrevious.has(index) && normalizeTitle(prev.title) === normalizedTitle,
+    );
+    const removal = isRemovalRequested(block.title, feedback);
+    const changeRequested = isChangeRequested(block.title, feedback);
+    const requestedAddition = isRequestedTask(block.title, requestText) || changeRequested;
+
+    if (prevIndex >= 0) {
+      const prev = previousBlocks[prevIndex];
+      usedPrevious.add(prevIndex);
+      if (removal) {
+        return;
+      }
+      if (changeRequested || block.startMin !== prev.startMin || block.endMin !== prev.endMin) {
+        merged.push({ ...block, title: prev.title });
+      } else {
+        merged.push(prev);
+      }
+      return;
+    }
+
+    if (!removal && requestedAddition) {
+      merged.push(block);
+    }
+  });
+
+  previousBlocks.forEach((block, index) => {
+    if (usedPrevious.has(index)) return;
+    if (isRemovalRequested(block.title, feedback)) return;
+    merged.push(block);
+  });
+
+  return merged;
+};
+
+const extractBlocksFromContent = (content: string) => {
+  const parsed = JSON.parse(content);
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && Array.isArray(parsed.blocks)) return parsed.blocks;
+  throw new Error('Missing blocks array in OpenAI response');
+};
+
+const normalizeModelBlocks = (blocks: any[]): NormalizedBlock[] => {
   return blocks
     .map((block) => {
-      const title = typeof block.title === 'string' ? block.title.trim() : '';
+      if (!block || typeof block !== 'object') return null;
+      const raw = block as Record<string, unknown>;
+      const title = typeof raw.title === 'string' ? raw.title.trim() : '';
       const category =
-        typeof block.category === 'string' && VALID_CATEGORIES.includes(block.category as any)
-          ? (block.category as typeof VALID_CATEGORIES[number])
+        typeof raw.category === 'string' && VALID_CATEGORIES.includes(raw.category as any)
+          ? (raw.category as string)
           : undefined;
-      const startMin =
-        typeof block.startMin === 'number' ? Math.floor(block.startMin) : undefined;
-      const endMin = typeof block.endMin === 'number' ? Math.floor(block.endMin) : undefined;
-      const note = typeof block.note === 'string' ? block.note.trim() : undefined;
-
-      if (!title || !category || startMin === undefined || endMin === undefined) {
-        return null;
-      }
-      if (startMin < 0 || startMin > 1439 || endMin < 0 || endMin > 1439) {
-        return null;
-      }
-      if (endMin <= startMin) {
-        return null;
-      }
-      return { title, category, startMin, endMin, note };
+      const note = typeof raw.note === 'string' ? raw.note.trim() : undefined;
+      const { minutes: startMin, text: start } = parseTimeField(
+        raw.start ?? raw.startTime ?? raw.start_min ?? raw.startMin,
+      );
+      const { minutes: endMin, text: end } = parseTimeField(
+        raw.end ?? raw.endTime ?? raw.end_min ?? raw.endMin,
+      );
+      if (!title || startMin === undefined || endMin === undefined) return null;
+      if (endMin <= startMin) return null;
+      return {
+        title,
+        category,
+        note,
+        startMin,
+        endMin,
+        start: start ?? formatMinutes(startMin),
+        end: end ?? formatMinutes(endMin),
+      };
     })
-    .filter((value): value is NonNullable<typeof value> => Boolean(value));
+    .filter((value): value is NormalizedBlock => Boolean(value));
 };
 
 const callOpenAI = async (payload: Awaited<ReturnType<typeof parseRequest>>) => {
@@ -277,7 +433,7 @@ const callOpenAI = async (payload: Awaited<ReturnType<typeof parseRequest>>) => 
     },
     body: JSON.stringify({
       model: MODEL,
-      temperature: 0.3,
+      temperature: 0,
       messages: buildMessages(prompt, payload),
     }),
   });
@@ -293,11 +449,8 @@ const callOpenAI = async (payload: Awaited<ReturnType<typeof parseRequest>>) => 
     throw new Error('OpenAI returned an unexpected response');
   }
 
-  const parsed = JSON.parse(content);
-  if (!parsed || !Array.isArray(parsed.blocks)) {
-    throw new Error('Missing blocks array in OpenAI response');
-  }
-  return parsed.blocks;
+  const parsedBlocks = extractBlocksFromContent(content);
+  return normalizeModelBlocks(parsedBlocks);
 };
 
 serve(async (req) => {
@@ -349,61 +502,92 @@ serve(async (req) => {
   }
 
   try {
-    const blocksJson = await callOpenAI(payload);
-    const initialBlocks = blocksJson ?? [];
-    const breakFilteredBlocks = removeBreaklikeBlocks(initialBlocks);
-    const noMicroBreakBlocks = breakFilteredBlocks.filter((block: any) => {
-      const startMin =
-        typeof block?.startMin === 'number' ? Math.floor(block.startMin) : undefined;
-      const endMin = typeof block?.endMin === 'number' ? Math.floor(block.endMin) : undefined;
-      if (startMin === undefined || endMin === undefined) {
-        return true;
-      }
-      return endMin - startMin >= 10;
-    });
-    const validatedBlocks = validateBlocks(noMicroBreakBlocks);
-    const sanitizedBlocks = validatedBlocks.filter((block) => {
-      const titleLower = block.title.toLowerCase();
-      return !(titleLower === 'work hours' && block.category === 'work');
-    });
+    const wakeMinutes = parseTimeToMinutes(payload.wakeTime);
+    const sleepMinutes = parseTimeToMinutes(payload.sleepTime);
     const workStartMinutes = parseTimeToMinutes(payload.workStart);
     const workEndMinutes = parseTimeToMinutes(payload.workEnd);
     const hasWorkSchedule =
       typeof workStartMinutes === 'number' &&
       typeof workEndMinutes === 'number' &&
       workEndMinutes > workStartMinutes;
-    const filteredForWork = hasWorkSchedule
-      ? sanitizedBlocks.filter(
-          (block) => block.endMin <= workStartMinutes || block.startMin >= workEndMinutes,
-        )
-      : sanitizedBlocks;
-    const workBlock = hasWorkSchedule
-      ? {
-          title: 'Work hours',
-          category: 'work' as (typeof VALID_CATEGORIES)[number],
-          startMin: workStartMinutes,
-          endMin: workEndMinutes,
-          note: 'Time reserved for work.',
-        }
-      : null;
-    const finalBlocks = [...filteredForWork];
-    if (workBlock) {
-      finalBlocks.push(workBlock);
-    }
-    finalBlocks.sort((a, b) => a.startMin - b.startMin);
-    console.log(
-      '[ai-generate-plan] Generated blocks',
-      finalBlocks.length,
-      'after filtering strict constraints',
-      {
-        total: initialBlocks.length,
-        breakLikeRemoved: initialBlocks.length - breakFilteredBlocks.length,
-        microRemoved: breakFilteredBlocks.length - noMicroBreakBlocks.length,
-        overlappingWithWorkFiltered: sanitizedBlocks.length - filteredForWork.length,
-        addedWorkBlock: Boolean(workBlock),
-      },
-    );
-    return Response.json({ blocks: finalBlocks });
+
+    const allowanceText = `${payload.priorities ?? ''} ${payload.habits ?? ''} ${
+      payload.feedback ?? ''
+    }`.toLowerCase();
+
+    const previousSanitized = sanitizeBlocks(payload.previousBlocks, {
+      allowanceText,
+      wakeMinutes,
+      sleepMinutes,
+    });
+
+    const aiBlocks = await callOpenAI(payload);
+    const sanitizedNew = sanitizeBlocks(aiBlocks, {
+      allowanceText,
+      wakeMinutes,
+      sleepMinutes,
+    });
+    const requestedNew = sanitizedNew.filter((block) => isRequestedTask(block.title, allowanceText));
+
+    const merged =
+      previousSanitized.length > 0
+        ? mergeWithPrevious(previousSanitized, requestedNew, payload.feedback ?? '', allowanceText)
+        : requestedNew;
+
+    const clampedWork =
+      hasWorkSchedule && typeof workStartMinutes === 'number' && typeof workEndMinutes === 'number'
+        ? {
+            startMin:
+              typeof wakeMinutes === 'number'
+                ? Math.max(workStartMinutes, wakeMinutes)
+                : workStartMinutes,
+            endMin:
+              typeof sleepMinutes === 'number'
+                ? Math.min(workEndMinutes, sleepMinutes)
+                : workEndMinutes,
+          }
+        : null;
+
+    const mergedWithoutOverlap =
+      clampedWork && clampedWork.endMin > clampedWork.startMin
+        ? merged.filter(
+            (block) => block.endMin <= clampedWork.startMin || block.startMin >= clampedWork.endMin,
+          )
+        : merged;
+
+    const workBlock =
+      clampedWork && clampedWork.endMin > clampedWork.startMin
+        ? ({
+            title: 'WORK',
+            category: 'work',
+            startMin: clampedWork.startMin,
+            endMin: clampedWork.endMin,
+            start: formatMinutes(clampedWork.startMin),
+            end: formatMinutes(clampedWork.endMin),
+          } as NormalizedBlock)
+        : null;
+
+    const finalBlocks = [
+      ...mergedWithoutOverlap,
+      ...(workBlock ? [workBlock] : []),
+    ].sort((a, b) => a.startMin - b.startMin);
+
+    const responseBlocks = finalBlocks.map((block) => ({
+      title: block.title,
+      start: formatMinutes(block.startMin),
+      end: formatMinutes(block.endMin),
+    }));
+
+    console.log('[ai-generate-plan] Generated blocks', {
+      totalFromModel: aiBlocks.length,
+      sanitizedNewCount: sanitizedNew.length,
+      previousCount: previousSanitized.length,
+      mergedCount: merged.length,
+      finalCount: responseBlocks.length,
+      hasWorkSchedule,
+    });
+
+    return Response.json(responseBlocks);
   } catch (error) {
     console.error('[ai-generate-plan] Error', error);
     return Response.json(

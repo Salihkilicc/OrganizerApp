@@ -36,6 +36,7 @@ import { usePremium } from '@/store/usePremium';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useI18n } from '@/i18n/useI18n';
+import type { SupportedLanguage } from '@/store/useLanguage';
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -48,6 +49,26 @@ const HOUR_COPIES = 3;
 const DAY_MINUTES = HOURS_PER_DAY * 60;
 const DAY_HEIGHT = DAY_MINUTES * PX_PER_MIN;
 const AI_PLAN_CATEGORIES: AiPlanBlock['category'][] = ['focus', 'study', 'work', 'gym', 'other'];
+const LANGUAGE_LOCALE: Record<SupportedLanguage, string> = {
+  en: 'en-US',
+  tr: 'tr-TR',
+  de: 'de-DE',
+  fr: 'fr-FR',
+  es: 'es-ES',
+  it: 'it-IT',
+  pt: 'pt-BR',
+  ru: 'ru-RU',
+  ar: 'ar',
+  zh: 'zh-CN',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  hi: 'hi-IN',
+  nl: 'nl-NL',
+  sv: 'sv-SE',
+  pl: 'pl-PL',
+};
+
+const getLocaleForLanguage = (lang: SupportedLanguage) => LANGUAGE_LOCALE[lang] ?? lang;
 
 const toISO = (date: Date) => {
   const pad = (value: number) => value.toString().padStart(2, '0');
@@ -80,7 +101,8 @@ type EditorValues = {
 export default function PlanScreen() {
   const router = useRouter();
   const { palette } = useTheme();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const locale = useMemo(() => getLocaleForLanguage(lang), [lang]);
   const today = todayDate();
   const [selectedDate, setSelectedDateState] = useState(() => {
     const initial = toISO(new Date());
@@ -155,11 +177,11 @@ export default function PlanScreen() {
   const selectedMonthIndex = selectedDateInstance.getMonth();
   const selectedYear = selectedDateInstance.getFullYear();
   const selectedDateLabel = useMemo(() => {
-    const dayName = selectedDateInstance.toLocaleDateString(undefined, { weekday: 'long' });
-    const monthName = selectedDateInstance.toLocaleDateString(undefined, { month: 'long' });
+    const dayName = selectedDateInstance.toLocaleDateString(locale, { weekday: 'long' });
+    const monthName = selectedDateInstance.toLocaleDateString(locale, { month: 'long' });
     const dayNumber = selectedDateInstance.getDate();
     return `${dayName} ${dayNumber} ${monthName}`;
-  }, [selectedDateInstance]);
+  }, [locale, selectedDateInstance]);
   const selectedMonthKey = `${selectedYear}-${selectedMonthIndex}`;
   const monthOptions = useMemo(() => {
     const now = new Date();
@@ -170,12 +192,12 @@ export default function PlanScreen() {
       const optionDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
       return {
         key: `${optionDate.getFullYear()}-${optionDate.getMonth()}`,
-        label: optionDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+        label: optionDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
         year: optionDate.getFullYear(),
         month: optionDate.getMonth(),
       };
     }).filter((option) => !(option.year === 2025 && option.month === 9));
-  }, []);
+  }, [locale]);
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editorInitial, setEditorInitial] = useState<Partial<PlanBlock> | undefined>();
