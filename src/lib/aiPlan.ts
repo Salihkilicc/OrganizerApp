@@ -26,6 +26,7 @@ export type AiPlanRequest = {
   priorities?: string | null;
   feedback?: string | null;
   previousBlocks?: AiPlanRequestBlock[] | null;
+  previousPlanString?: string | null;
 };
 
 export type AiPlanResponse = {
@@ -163,6 +164,7 @@ export async function generatePlanFromAI(
     body: JSON.stringify({
       ...payload,
       previousBlocks: normalizeRequestBlocks(payload.previousBlocks),
+      previous_plan: payload.previousPlanString ?? undefined,
     }),
   });
 

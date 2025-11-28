@@ -16,8 +16,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlanBlock } from '@/store/usePlans';
 import { AiPlanBlock, AiPlanRequest, generatePlanFromAI } from '@/lib/aiPlan';
+import { usePlans } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { useI18n } from '@/i18n/useI18n';
+import LoadingOverlay from '@/components/LoadingOverlay';
 
 type AiPlanModalProps = {
   visible: boolean;
@@ -45,6 +47,17 @@ const formatMinutes = (value: number) => {
   const minutes = value % 60;
   return `${pad(hours)}:${pad(minutes)}`;
 };
+
+const serializePlanBlocks = (blocks: AiPlanBlock[]) =>
+  JSON.stringify(
+    blocks.map((block) => ({
+      title: block.title,
+      note: block.note ?? undefined,
+      start: formatMinutes(block.startMin),
+      end: formatMinutes(block.endMin),
+      category: block.category,
+    })),
+  );
 
 const DEFAULT_WORK_START = '09:00';
 const DEFAULT_WORK_END = '17:00';
@@ -95,6 +108,8 @@ export function AiPlanModal({
   const { palette } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const lastAiPlanString = usePlans((state) => state.lastAiPlanString ?? undefined);
+  const setLastAiPlanString = usePlans((state) => state.setLastAiPlanString);
   const [wakeTime, setWakeTime] = useState('07:30');
   const [sleepTime, setSleepTime] = useState('23:30');
   const [workStart, setWorkStart] = useState(DEFAULT_WORK_START);
@@ -104,7 +119,8 @@ export function AiPlanModal({
   const [habits, setHabits] = useState('');
   const [previewBlocks, setPreviewBlocks] = useState<AiPlanBlock[]>([]);
   const [stage, setStage] = useState<'form' | 'preview'>('form');
-  const [loading, setLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
 
@@ -118,16 +134,55 @@ export function AiPlanModal({
       workValidationError = t((d) => d.aiPlanner.workEndBeforeStart);
     }
   }
-  const generateDisabled = loading || (works && Boolean(workValidationError));
+  const isLoading = isGenerating || isRegenerating;
+  const generateDisabled = isLoading || (works && Boolean(workValidationError));
 
   const dateLabel = useMemo(() => formatDateLabel(date), [date]);
   const previewList = previewBlocks ?? [];
   const hasPreview = previewList.length > 0;
 
+<<<<<<< ours
+<<<<<<< ours
+  const enforceWorkWindow = useCallback(
+    (blocks: AiPlanBlock[]) => {
+      if (!works || workStartMinutes === undefined || workEndMinutes === undefined) return blocks;
+      const workTitle = t((d) => d.plan.categories.work);
+      const outsideWindow = blocks.filter((block) => {
+        const overlapsWork =
+          block.startMin < workEndMinutes && block.endMin > workStartMinutes;
+        return !overlapsWork;
+      });
+      const withWorkBlock: AiPlanBlock[] = [
+        ...outsideWindow,
+        {
+          title: workTitle,
+          note: undefined,
+          startMin: workStartMinutes,
+          endMin: workEndMinutes,
+          category: 'work',
+        },
+      ];
+      return withWorkBlock.sort((a, b) => a.startMin - b.startMin);
+    },
+    [t, workEndMinutes, workStartMinutes, works],
+  );
+
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+  const getPreviousPlanString = useCallback(() => {
+    if (lastAiPlanString?.trim()) return lastAiPlanString.trim();
+    if (previewBlocks.length) return serializePlanBlocks(previewBlocks);
+    if (previousBlocks && previousBlocks.length) return serializePlanBlocks(previousBlocks);
+    return undefined;
+  }, [lastAiPlanString, previewBlocks, previousBlocks]);
+
   const resetState = useCallback(() => {
     setStage('form');
     setPreviewBlocks([]);
-    setLoading(false);
+    setIsGenerating(false);
+    setIsRegenerating(false);
     setError(null);
     setFeedback('');
   }, []);
@@ -138,34 +193,39 @@ export function AiPlanModal({
     }
   }, [resetState, visible]);
 
-  const buildRequestPayload = useCallback((): AiPlanRequest => {
-    const normalizedFeedback = feedback.trim();
-    const normalizedPriorities = priorities.trim();
-    const normalizedHabits = habits.trim();
-    const hasWorkWindow = works && workStart.trim() && workEnd.trim();
-    return {
+  const buildRequestPayload = useCallback(
+    (options?: { includePreviousPlanString?: boolean }): AiPlanRequest => {
+      const normalizedFeedback = feedback.trim();
+      const normalizedPriorities = priorities.trim();
+      const normalizedHabits = habits.trim();
+      const hasWorkWindow = works && workStart.trim() && workEnd.trim();
+      return {
+        date,
+        wakeTime: wakeTime.trim(),
+        sleepTime: sleepTime.trim(),
+        workStart: hasWorkWindow ? workStart.trim() : undefined,
+        workEnd: hasWorkWindow ? workEnd.trim() : undefined,
+        priorities: normalizedPriorities || undefined,
+        habits: normalizedHabits || undefined,
+        feedback: normalizedFeedback || undefined,
+        previousBlocks: previousBlocks && previousBlocks.length > 0 ? previousBlocks : undefined,
+        previousPlanString: options?.includePreviousPlanString ? getPreviousPlanString() : undefined,
+      };
+    },
+    [
       date,
-      wakeTime: wakeTime.trim(),
-      sleepTime: sleepTime.trim(),
-      workStart: hasWorkWindow ? workStart.trim() : undefined,
-      workEnd: hasWorkWindow ? workEnd.trim() : undefined,
-      priorities: normalizedPriorities || undefined,
-      habits: normalizedHabits || undefined,
-      feedback: normalizedFeedback || undefined,
-      previousBlocks: previousBlocks && previousBlocks.length > 0 ? previousBlocks : undefined,
-    };
-  }, [
-    date,
-    feedback,
-    habits,
-    priorities,
-    wakeTime,
-    sleepTime,
-    workEnd,
-    workStart,
-    works,
-    previousBlocks,
-  ]);
+      feedback,
+      habits,
+      priorities,
+      wakeTime,
+      sleepTime,
+      workEnd,
+      workStart,
+      works,
+      previousBlocks,
+      getPreviousPlanString,
+    ],
+  );
 
   const handleGenerate = useCallback(async () => {
     if (works && workValidationError) {
@@ -175,13 +235,14 @@ export function AiPlanModal({
       setError(t((d) => d.aiPlanner.existingBlocksError));
       return;
     }
-    setLoading(true);
+    setIsGenerating(true);
     try {
       const payload = buildRequestPayload();
       console.log('[AiPlanModal] Request payload', payload);
       const { blocks } = await generatePlanFromAI(payload);
       console.log('[AiPlanModal] Received blocks', blocks);
       const blocksArray = Array.isArray(blocks) ? blocks : [];
+      setLastAiPlanString(serializePlanBlocks(blocksArray));
       setPreviewBlocks(blocksArray);
       if (blocksArray.length === 0) {
         setError(t((d) => d.aiPlanner.noBlocks));
@@ -194,15 +255,15 @@ export function AiPlanModal({
       setPreviewBlocks([]);
       setError(String(err));
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
-  }, [buildRequestPayload, hasExistingBlocks, workValidationError, works]);
+  }, [buildRequestPayload, hasExistingBlocks, setLastAiPlanString, t, workValidationError, works]);
 
   const handleRegenerate = useCallback(async () => {
     if (!date) return;
-    setLoading(true);
+    setIsRegenerating(true);
     try {
-      const payload = buildRequestPayload();
+      const payload = buildRequestPayload({ includePreviousPlanString: true });
       console.log('[AiPlanModal] Request payload (regenerate)', payload);
       const { blocks } = await generatePlanFromAI(payload);
       console.log('[AiPlanModal] Received blocks (regenerate)', blocks);
@@ -212,15 +273,16 @@ export function AiPlanModal({
         return;
       }
       setError(null);
+      setLastAiPlanString(serializePlanBlocks(blocks));
       setPreviewBlocks(blocks);
     } catch (err) {
       console.error('[AiPlanModal] Error regenerating plan', err);
       setPreviewBlocks([]);
       setError(String(err));
     } finally {
-      setLoading(false);
+      setIsRegenerating(false);
     }
-  }, [buildRequestPayload, date]);
+  }, [buildRequestPayload, date, setLastAiPlanString, t]);
 
   const handleApply = useCallback(() => {
     const planBlocks = previewBlocks.map((block) => buildPlanBlock(date, block));
@@ -246,6 +308,10 @@ export function AiPlanModal({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + 24}
         style={styles.flex}>
+        <LoadingOverlay
+          visible={isLoading}
+          label="Generating your plan…"
+        />
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={handleClose} />
           <View
@@ -432,11 +498,11 @@ export function AiPlanModal({
                     styles.primaryButton,
                     {
                       backgroundColor: palette.accent,
-                      opacity: loading ? 0.6 : generateDisabled ? 0.5 : pressed ? 0.85 : 1,
+                      opacity: isGenerating ? 0.6 : generateDisabled ? 0.5 : pressed ? 0.85 : 1,
                     },
                   ]}
                 >
-                  {loading ? (
+                  {isGenerating ? (
                     <ActivityIndicator color={palette.background} />
                   ) : (
                     <Text style={[styles.buttonLabel, { color: palette.background }]}>
@@ -493,13 +559,13 @@ export function AiPlanModal({
                       />
                       <Pressable
                         onPress={handleRegenerate}
-                        disabled={loading}
+                        disabled={isLoading}
                         style={({ pressed }) => [
                           styles.feedbackButton,
                           {
                             borderColor: palette.border,
                             backgroundColor: palette.card,
-                            opacity: loading ? 0.6 : pressed ? 0.8 : 1,
+                            opacity: isLoading ? 0.6 : pressed ? 0.8 : 1,
                           },
                         ]}
                       >

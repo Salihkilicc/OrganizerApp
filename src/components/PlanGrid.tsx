@@ -1,5 +1,13 @@
-import { memo, useMemo } from 'react';
-import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  GestureResponderEvent,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { useTheme } from '@/store/useTheme';
 import { isBeforeToday } from '@/store/usePlans';
@@ -27,6 +35,104 @@ type Props = {
 type BlockLayout = {
   column: number;
   totalColumns: number;
+};
+
+type DraggableBlockProps = {
+  block: PlanBlock;
+  style: any[];
+  textStyle: { color: string; textDecorationLine: 'none' | 'line-through' };
+  timeStyle: { color: string; textDecorationLine: 'none' | 'line-through' };
+  onEdit: () => void;
+  onMove: (id: string, newStartMin: number, newEndMin: number) => void;
+  pxPerMin: number;
+  snapStep: number;
+  dayStartMin: number;
+  dayEndMin: number;
+};
+
+const DraggableBlock = ({
+  block,
+  style,
+  textStyle,
+  timeStyle,
+  onEdit,
+  onMove,
+  pxPerMin,
+  snapStep,
+  dayStartMin,
+  dayEndMin,
+}: DraggableBlockProps) => {
+  const panY = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+  const [dragging, setDragging] = useState(false);
+  const duration = Math.max(1, block.endMin - block.startMin);
+  const maxStart = Math.max(dayStartMin, dayEndMin - duration);
+
+  const resetDrag = () => {
+    setDragging(false);
+    panY.setValue(0);
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: false,
+      friction: 7,
+      tension: 120,
+    }).start();
+  };
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 6,
+        onPanResponderGrant: () => {
+          setDragging(true);
+          Animated.spring(scale, {
+            toValue: 1.04,
+            useNativeDriver: false,
+            friction: 9,
+            tension: 140,
+          }).start();
+        },
+        onPanResponderMove: Animated.event([null, { dy: panY }], {
+          useNativeDriver: false,
+        }),
+        onPanResponderRelease: (_, gesture) => {
+          const deltaMinutes = Math.round(gesture.dy / pxPerMin / snapStep) * snapStep;
+          const nextStart = clamp(block.startMin + deltaMinutes, dayStartMin, maxStart);
+          const nextEnd = nextStart + duration;
+          if (nextStart !== block.startMin || nextEnd !== block.endMin) {
+            onMove(block.id, nextStart, nextEnd);
+          }
+          resetDrag();
+        },
+        onPanResponderTerminate: resetDrag,
+        onPanResponderTerminationRequest: () => true,
+        onShouldBlockNativeResponder: () => false,
+      }),
+    [block.endMin, block.id, block.startMin, dayStartMin, maxStart, onMove, panY, pxPerMin, snapStep],
+  );
+
+  const animatedStyle = useMemo(
+    () => ({
+      transform: [{ translateY: panY }, { scale }],
+      opacity: dragging ? 0.92 : 1,
+    }),
+    [dragging, panY, scale],
+  );
+
+  return (
+    <Animated.View {...responder.panHandlers} style={[...style, animatedStyle]}>
+      <Pressable onPress={onEdit} style={StyleSheet.absoluteFill} />
+      <View style={styles.textContainer} pointerEvents="none">
+        <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.blockTitle, textStyle]}>
+          {block.title}
+        </Text>
+        <Text style={[styles.blockTime, timeStyle]}>
+          {formatTime(block.startMin)} – {formatTime(block.endMin)}
+        </Text>
+      </View>
+    </Animated.View>
+  );
 };
 
 const categoryColors: Record<PlanCategory, { border: string; background: string }> = {
@@ -202,59 +308,79 @@ export const PlanGrid = memo(function PlanGrid({
               : isDone
               ? doneBorder
               : paletteColor.border;
-            const blockTextColor = isPastBlock
-              ? '#BBBBBB'
-              : isDone
-              ? doneTextColor
-              : palette.text;
-            const handlePress = () => {
-              if (isPastBlock) return;
-              onEdit(block.id);
-            };
-            return (
-              <Pressable
-                key={`${block.id}-${copyIndex}`}
-                disabled={isPastBlock}
-                onPress={handlePress}
-                style={[
-                  styles.block,
-                  {
-                    top: baseTop + copyOffset,
-                    height: baseHeight,
-                    left: `${leftPercent}%`,
-                    width: `${widthPercent}%`,
-                    backgroundColor: blockBackground,
-                    borderColor: blockBorder,
-                  },
-                ]}>
-                <View style={styles.textContainer} pointerEvents="none">
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={[
-                      styles.blockTitle,
-                      {
-                        color: blockTextColor,
-                        textDecorationLine,
-                      },
-                    ]}>
-                    {block.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.blockTime,
-                      {
-                        color: blockTextColor,
-                        textDecorationLine,
-                      },
-                    ]}>
-                    {formatTime(block.startMin)} – {formatTime(block.endMin)}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          });
-        })}
+          const blockTextColor = isPastBlock
+            ? '#BBBBBB'
+            : isDone
+            ? doneTextColor
+            : palette.text;
+          const handlePress = () => {
+            if (isPastBlock) return;
+            onEdit(block.id);
+          };
+          const textStyle = {
+            color: blockTextColor,
+            textDecorationLine,
+          } as const;
+          const timeStyle = {
+            color: blockTextColor,
+            textDecorationLine,
+          } as const;
+          const isInteractiveCopy = copyIndex === Math.floor(HOUR_COPIES / 2) && !isPastBlock;
+
+          return (
+            <View key={`${block.id}-${copyIndex}`} pointerEvents="box-none">
+              {isInteractiveCopy ? (
+                <DraggableBlock
+                  block={block}
+                  onEdit={handlePress}
+                  onMove={onMove}
+                  pxPerMin={touchPxPerMin}
+                  snapStep={snapStep}
+                  dayStartMin={startMin}
+                  dayEndMin={endMin}
+                  style={[
+                    styles.block,
+                    {
+                      top: baseTop + copyOffset,
+                      height: baseHeight,
+                      left: `${leftPercent}%`,
+                      width: `${widthPercent}%`,
+                      backgroundColor: blockBackground,
+                      borderColor: blockBorder,
+                    },
+                  ]}
+                  textStyle={textStyle}
+                  timeStyle={timeStyle}
+                />
+              ) : (
+                <Pressable
+                  disabled={isPastBlock}
+                  onPress={handlePress}
+                  style={[
+                    styles.block,
+                    {
+                      top: baseTop + copyOffset,
+                      height: baseHeight,
+                      left: `${leftPercent}%`,
+                      width: `${widthPercent}%`,
+                      backgroundColor: blockBackground,
+                      borderColor: blockBorder,
+                    },
+                  ]}>
+                  <View style={styles.textContainer} pointerEvents="none">
+                    <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.blockTitle, textStyle]}>
+                      {block.title}
+                    </Text>
+                    <Text style={[styles.blockTime, timeStyle]}>
+                      {formatTime(block.startMin)} – {formatTime(block.endMin)}
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+            </View>
+          );
+        });
+      })}
       </View>
     </View>
   );
