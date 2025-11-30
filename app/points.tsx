@@ -133,9 +133,6 @@ export default function PointsScreen() {
             </View>
           )}
         </View>
-        <Text style={[styles.avatarLabel, { color: palette.text }]} numberOfLines={1}>
-          {entry.label}
-        </Text>
         <Text
           style={[
             styles.avatarStatus,
@@ -376,7 +373,9 @@ export default function PointsScreen() {
             sectionOffsets.current.photos = event.nativeEvent.layout.y;
           }}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>Profile Photos</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>
+              {t((d) => d.points.profilePhotos)}
+            </Text>
             {avatarsLoading && <ActivityIndicator size="small" color={palette.accent} />}
           </View>
           <View style={styles.avatarGrid}>
@@ -598,11 +597,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 2,
   },
   avatarStatus: {
     fontSize: 12,

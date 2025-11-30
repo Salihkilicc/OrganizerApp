@@ -87,7 +87,7 @@ export default function PrivacyScreen() {
 
         <Text style={[styles.sectionHeading, { color: palette.text }]}>6. Contact Us</Text>
         <Text style={[styles.paragraph, { color: palette.text }]}>
-          If you have questions, email us at: support@planoraapp.com
+          If you have questions, email us at: planoraorganizer@gmail.com
         </Text>
       </ScrollView>
     </SafeAreaView>

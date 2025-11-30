@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -343,7 +344,26 @@ function StartupOverlay({
           },
         ]}>
         <Image source={require('../assets/images/icon.png')} style={styles.splashLogo} />
-        <Text style={[styles.splashTitle, { color: '#000000' }]}>Planora</Text>
+        <View style={styles.splashTitleWrapper}>
+          <Svg height={38} width={200}>
+            <Defs>
+              <LinearGradient id="titleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <Stop offset="0%" stopColor="#6a11cb" />
+                <Stop offset="100%" stopColor="#1a2a6c" />
+              </LinearGradient>
+            </Defs>
+            <SvgText
+              fill="url(#titleGradient)"
+              fontSize="26"
+              fontWeight="700"
+              letterSpacing="0.6"
+              x="50%"
+              y="70%"
+              textAnchor="middle">
+              Planora
+            </SvgText>
+          </Svg>
+        </View>
         <ActivityIndicator color={accentColor} style={styles.splashSpinner} />
       </View>
     </Animated.View>
@@ -371,11 +391,8 @@ const styles = StyleSheet.create({
     height: 120,
     resizeMode: 'contain',
   },
-  splashTitle: {
-    marginTop: 14,
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+  splashTitleWrapper: {
+    marginTop: 8,
   },
   splashSpinner: {
     marginTop: 12,

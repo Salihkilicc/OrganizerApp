@@ -466,7 +466,7 @@ export default function PlanScreen() {
                 },
               ]}>
               <View style={styles.aiButtonContent}>
-                <Ionicons name="sparkles" size={14} color={palette.background} />
+                <Ionicons name="sparkles" size={16} color={palette.background} />
                 <Text style={[styles.aiButtonText, { color: palette.background }]}>
                   {t((d) => d.plan.aiButton)}
                 </Text>
@@ -697,8 +697,8 @@ const styles = StyleSheet.create({
   aiButton: {
     borderRadius: 999,
     borderWidth: 1,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
     shadowOffset: { width: 0, height: 8 },
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   aiButtonText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.1,
   },

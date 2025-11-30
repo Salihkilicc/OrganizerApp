@@ -7,6 +7,7 @@ import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { getFrameDecoration } from '@/lib/frameStyles';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/i18n/useI18n';
+import { translations, type TranslationKeys } from '@/i18n/translations';
 import {
   Alert,
   Image,
@@ -34,17 +35,17 @@ import { supabase } from '@/lib/supabase';
 export default function ProfileScreen() {
   const palette = useTheme((state) => state.palette);
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const headerHeight = useHeaderHeight();
   const user = useAuth((state) => state.user);
   const setFromSession = useAuth((state) => state.setFromSession);
+  const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
   const profilePhoto =
     (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
     (user?.user_metadata as Record<string, string | undefined> | undefined)?.picture;
   const isGuest = useAuth((state) => state.isGuest);
   const totalPoints = usePoints((state) => state.total);
   const blocks = usePlans((state) => state.blocks);
-  const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
   const frameId = useProfileAppearance((state) => state.frameId);
   const frameDecoration = getFrameDecoration(frameId);
   const avatarFrameStyle = frameDecoration
@@ -61,10 +62,10 @@ export default function ProfileScreen() {
         borderWidth: 1,
         borderColor: palette.border,
       };
-  const avatarSource = profilePhoto
-    ? { uri: profilePhoto }
-    : selectedAvatar
-      ? AVATAR_IMAGES[selectedAvatar]
+  const avatarSource = selectedAvatar
+    ? AVATAR_IMAGES[selectedAvatar]
+    : profilePhoto
+      ? { uri: profilePhoto }
       : null;
 
   const fallbackName = isGuest
@@ -134,6 +135,8 @@ export default function ProfileScreen() {
 
   const hydrateShop = useShop((state) => state.hydrate);
   const shopItems = useShop((state) => state.items);
+  const badgeDetails =
+    (translations[lang] ?? translations.en).points.badgeDetails as TranslationKeys['points']['badgeDetails'];
   const shopBadges = useMemo(
     () => shopItems.filter((item) => item.category === 'badge'),
     [shopItems],
@@ -481,9 +484,6 @@ export default function ProfileScreen() {
           <Text style={[styles.achievementHeading, { color: palette.text }]}>
             {t((d) => d.profile.achievements)}
           </Text>
-          <Text style={[styles.achievementSubheading, { color: palette.text }]}>
-            {t((d) => d.profile.achievementsSubtitle)}
-          </Text>
         </View>
         <View style={styles.achievementGrid}>
           {shopBadges.map((badge) => {
@@ -516,15 +516,15 @@ export default function ProfileScreen() {
                       styles.achievementTitle,
                       { color: locked ? palette.text : palette.text },
                     ]}>
-                    {badge.title}
+                    {badgeDetails[badge.id]?.title ?? badge.title}
                   </Text>
-                  {badge.requirementDescription ? (
+                  {(badgeDetails[badge.id]?.description ?? badge.requirementDescription) ? (
                     <Text
                       style={[
                         styles.achievementSubtitle,
                         { color: locked ? palette.text + '99' : palette.text + 'CC' },
                       ]}>
-                      {badge.requirementDescription}
+                      {badgeDetails[badge.id]?.description ?? badge.requirementDescription}
                     </Text>
                   ) : null}
                 </View>
@@ -553,8 +553,8 @@ export default function ProfileScreen() {
 
       <Popup
         visible={avatarModalVisible}
-        title="Profile Photos"
-        description="You can unlock profile pictures from the Points Shop."
+        title={t((d) => d.points.profilePhotos)}
+        description={t((d) => d.points.profilePhotosDescription)}
         icon="🖼️"
         actionLabel={t((d) => d.today.close)}
         onClose={() => setAvatarModalVisible(false)}

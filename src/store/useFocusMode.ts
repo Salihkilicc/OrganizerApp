@@ -2,10 +2,11 @@ import { create } from 'zustand';
 
 import { todayDate, usePlans } from '@/store/usePlans';
 import { usePoints } from '@/store/usePoints';
-import { notifyFocusCompleted, notifyFocusStarted } from '@/lib/notifications';
+import { notifyFocusStarted } from '@/lib/notifications';
 
 const MINUTE_MS = 60 * 1000;
 const MAX_FOCUS_POINTS_PER_DAY = 90;
+const FOCUS_RESTART_SUPPRESSION_MS = 2000;
 
 type FocusStartOptions = {
   blockId?: string;
@@ -13,6 +14,7 @@ type FocusStartOptions = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+let suppressStartNotificationUntil = 0;
 
 export type FocusModeState = {
   active: boolean;
@@ -67,7 +69,10 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       linkedBlockId: options?.blockId ?? undefined,
       markDoneOnCompletion: options?.markDoneOnCompletion ?? false,
     });
-    void notifyFocusStarted();
+    if (Date.now() >= suppressStartNotificationUntil) {
+      void notifyFocusStarted();
+    }
+    suppressStartNotificationUntil = 0;
   },
   startFocusForBlock(blockId, durationMinutes) {
     if (!blockId) {
@@ -109,6 +114,7 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       linkedBlockId: undefined,
       markDoneOnCompletion: false,
     });
+    suppressStartNotificationUntil = Date.now() + FOCUS_RESTART_SUPPRESSION_MS;
 
     if (rewardMinutes > 0) {
       const today = todayDate();
@@ -128,9 +134,7 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       void usePlans.getState().update(blockIdToComplete, { done: true });
     }
 
-    if (options?.completed) {
-      void notifyFocusCompleted(awardedPoints);
-    }
+    // Skip completion notification on exit to avoid extra alerts.
   },
   addMinutes(extra) {
     if (!get().active) {

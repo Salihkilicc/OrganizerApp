@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/store/useTheme';
 import { useI18n } from '@/i18n/useI18n';
 
-const SUPPORT_EMAIL = 'support@planora.app';
+const SUPPORT_EMAIL = 'planoraorganizer@gmail.com';
 
 export default function SupportScreen() {
   const palette = useTheme((state) => state.palette);

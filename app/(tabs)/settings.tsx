@@ -56,9 +56,6 @@ export default function SettingsScreen() {
   const themeLabelSelector = themeLabelMap[themeKey] ?? (() => formatThemeLabel(themeKey));
   const router = useRouter();
   const user = useAuth((state) => state.user);
-  const profilePhoto =
-    (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
-    (user?.user_metadata as Record<string, string | undefined> | undefined)?.picture;
   const status = useAuth((state) => state.status);
   const signOut = useAuth((state) => state.signOut);
   const { t } = useI18n();
@@ -70,10 +67,13 @@ export default function SettingsScreen() {
   const waterReminderEnabled = useSettings((state) => state.waterReminderEnabled);
   const toggleWaterReminder = useSettings((state) => state.toggleWaterReminder);
   const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
-  const avatarSource = profilePhoto
-    ? { uri: profilePhoto }
-    : selectedAvatar
-      ? AVATAR_IMAGES[selectedAvatar]
+  const profilePhoto =
+    (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
+    (user?.user_metadata as Record<string, string | undefined> | undefined)?.picture;
+  const avatarSource = selectedAvatar
+    ? AVATAR_IMAGES[selectedAvatar]
+    : profilePhoto
+      ? { uri: profilePhoto }
       : null;
 
   const displayName =

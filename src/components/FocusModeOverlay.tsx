@@ -26,11 +26,19 @@ export function FocusModeOverlay({ visible, onClose }: FocusModeOverlayProps) {
   const { active, remainingMinutes, lastTickAt, startedAt, start, exit, addMinutes } =
     useFocusMode();
   const wasActiveRef = useRef(false);
+  const skipAutoStartRef = useRef(false);
   const [tickTime, setTickTime] = useState(() => Date.now());
   const { t } = useI18n();
 
   useEffect(() => {
-    if (visible && !active) {
+    if (!visible) {
+      skipAutoStartRef.current = false;
+      return;
+    }
+    if (skipAutoStartRef.current) {
+      return;
+    }
+    if (!active) {
       start(DEFAULT_MINUTES);
     }
   }, [active, start, visible]);
@@ -66,6 +74,7 @@ export function FocusModeOverlay({ visible, onClose }: FocusModeOverlayProps) {
   }, [visible]);
 
   const handleExit = () => {
+    skipAutoStartRef.current = true;
     exit();
     onClose();
   };
