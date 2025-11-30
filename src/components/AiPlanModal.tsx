@@ -108,6 +108,18 @@ export function AiPlanModal({
   const { palette } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const placeholderColor = `${palette.text}88`;
+  const inputTextColor = `${palette.text}dd`;
+  const sanitizeTimeInput = (value: string) => {
+    const filtered = value.replace(/[^0-9:]/g, '');
+    const colonIndex = filtered.indexOf(':');
+    if (colonIndex === -1) {
+      return filtered.slice(0, 4);
+    }
+    const before = filtered.slice(0, colonIndex).slice(0, 2);
+    const after = filtered.slice(colonIndex + 1).replace(/:/g, '').slice(0, 2);
+    return `${before}:${after}`;
+  };
   const lastAiPlanString = usePlans((state) => state.lastAiPlanString ?? undefined);
   const setLastAiPlanString = usePlans((state) => state.setLastAiPlanString);
   const [wakeTime, setWakeTime] = useState('07:30');
@@ -389,7 +401,7 @@ export function AiPlanModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       statusBarTranslucent
       onRequestClose={handleClose}
     >
@@ -409,6 +421,7 @@ export function AiPlanModal({
               {
                 backgroundColor: palette.card,
                 borderColor: palette.border,
+                shadowColor: palette.text,
                 paddingBottom: 16 + insets.bottom,
               },
             ]}>
@@ -430,13 +443,14 @@ export function AiPlanModal({
                 </Text>
                 <TextInput
                   value={wakeTime}
-                  onChangeText={setWakeTime}
+                  onChangeText={(value) => setWakeTime(sanitizeTimeInput(value))}
                   style={[
                     styles.input,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
                   ]}
                   placeholder="07:30"
-                  placeholderTextColor={palette.text}
+                  placeholderTextColor={placeholderColor}
+                  maxLength={5}
                 />
               </View>
               <View style={styles.field}>
@@ -445,13 +459,14 @@ export function AiPlanModal({
                 </Text>
                 <TextInput
                   value={sleepTime}
-                  onChangeText={setSleepTime}
+                  onChangeText={(value) => setSleepTime(sanitizeTimeInput(value))}
                   style={[
                     styles.input,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
                   ]}
                   placeholder="23:30"
-                  placeholderTextColor={palette.text}
+                  placeholderTextColor={placeholderColor}
+                  maxLength={5}
                 />
               </View>
               <View style={styles.field}>
@@ -475,13 +490,14 @@ export function AiPlanModal({
                         </Text>
                         <TextInput
                           value={workStart}
-                          onChangeText={setWorkStart}
+                          onChangeText={(value) => setWorkStart(sanitizeTimeInput(value))}
                           style={[
                             styles.input,
-                            { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                            { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
                           ]}
                           placeholder="09:00"
-                          placeholderTextColor={palette.text}
+                          placeholderTextColor={placeholderColor}
+                          maxLength={5}
                         />
                       </View>
                       <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
@@ -490,13 +506,14 @@ export function AiPlanModal({
                         </Text>
                         <TextInput
                           value={workEnd}
-                          onChangeText={setWorkEnd}
+                          onChangeText={(value) => setWorkEnd(sanitizeTimeInput(value))}
                           style={[
                             styles.input,
-                            { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                            { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
                           ]}
                           placeholder="17:00"
-                          placeholderTextColor={palette.text}
+                          placeholderTextColor={placeholderColor}
+                          maxLength={5}
                         />
                       </View>
                     </View>
@@ -518,10 +535,10 @@ export function AiPlanModal({
                   style={[
                     styles.input,
                     styles.multiline,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
                   ]}
                   placeholder={t((d) => d.aiPlanner.prioritiesPlaceholder)}
-                  placeholderTextColor={palette.text}
+                  placeholderTextColor={placeholderColor}
                   multiline
                   numberOfLines={3}
                 />
@@ -539,10 +556,10 @@ export function AiPlanModal({
                   style={[
                     styles.input,
                     styles.multiline,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
                   ]}
                   placeholder={t((d) => d.aiPlanner.habitsPlaceholder)}
-                  placeholderTextColor={palette.text}
+                  placeholderTextColor={placeholderColor}
                   multiline
                   numberOfLines={3}
                 />
@@ -560,10 +577,10 @@ export function AiPlanModal({
                   style={[
                     styles.input,
                     styles.multiline,
-                    { backgroundColor: palette.background, borderColor: palette.border, color: palette.text },
+                    { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
                   ]}
                   placeholder={t((d) => d.aiPlanner.notesPlaceholder)}
-                  placeholderTextColor={palette.text}
+                  placeholderTextColor={placeholderColor}
                   multiline
                   numberOfLines={3}
                 />
@@ -629,7 +646,16 @@ export function AiPlanModal({
                   </Text>
                 ) : (
                   previewList.map((block, index) => (
-                    <View key={`${block.startMin}-${block.title}-${index}`} style={styles.previewItem}>
+                    <View
+                      key={`${block.startMin}-${block.title}-${index}`}
+                      style={[
+                        styles.previewItem,
+                        {
+                          borderColor: palette.border,
+                          backgroundColor: palette.background,
+                          shadowColor: palette.text,
+                        },
+                      ]}>
                       <Text style={[styles.previewTime, { color: palette.text }]}>
                         {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
                       </Text>
@@ -644,13 +670,17 @@ export function AiPlanModal({
                       <Text style={[styles.feedbackLabel, { color: palette.text }]}>
                         {t((d) => d.aiPlanner.feedbackLabel)}
                       </Text>
-                      <TextInput
-                        style={[
-                          styles.feedbackInput,
-                          { borderColor: palette.border, color: palette.text },
-                        ]}
+                        <TextInput
+                          style={[
+                            styles.feedbackInput,
+                            {
+                              borderColor: palette.border,
+                              color: inputTextColor,
+                              backgroundColor: palette.background,
+                            },
+                          ]}
                         placeholder={t((d) => d.aiPlanner.feedbackPlaceholder)}
-                        placeholderTextColor={palette.text}
+                        placeholderTextColor={placeholderColor}
                         multiline
                         value={feedback}
                         onChangeText={setFeedback}
@@ -723,16 +753,21 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   sheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
     paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingTop: 18,
     paddingBottom: 24,
     maxHeight: '90%',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
   },
   title: {
     fontSize: 22,
@@ -777,9 +812,9 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   multiline: {
     minHeight: 72,
@@ -791,17 +826,17 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   primaryButton: {
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     minWidth: 140,
     alignItems: 'center',
     justifyContent: 'center',
   },
   outlineButton: {
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     minWidth: 120,
     alignItems: 'center',
@@ -826,11 +861,14 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   previewItem: {
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     padding: 12,
     marginBottom: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   previewTime: {
     fontSize: 12,
@@ -870,16 +908,16 @@ const styles = StyleSheet.create({
   },
   feedbackInput: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     minHeight: 80,
     textAlignVertical: 'top',
   },
   feedbackButton: {
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',

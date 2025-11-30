@@ -1093,16 +1093,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   completionToggle: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     borderWidth: 2,
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   completionCheck: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
   },
   blockCategoryIconText: {

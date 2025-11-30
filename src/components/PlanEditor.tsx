@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { useTheme } from '@/store/useTheme';
 import type { PlanBlock, PlanCategory } from '@/store/usePlans';
+import { PLAN_CATEGORY_COLORS } from '@/constants/categoryColors';
 import { useI18n } from '@/i18n/useI18n';
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -55,6 +57,9 @@ type Props = {
 };
 
 const MIN_DURATION = 30;
+const ANIMATION_DURATION = 220;
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
 const CATEGORY_OPTIONS: { value: PlanCategory }[] = [
   { value: 'focus' },
   { value: 'study' },
@@ -71,6 +76,10 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
   const { palette } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const placeholderColor = `${palette.text}66`;
+  const inputTextColor = `${palette.text}dd`;
+  const [modalVisible, setModalVisible] = useState(visible);
   const defaultStart = useMemo(() => initial?.startMin ?? 8 * 60, [initial]);
   const defaultEnd = useMemo(
     () => initial?.endMin ?? defaultStart + 60,
@@ -86,6 +95,30 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
   const [endHourText, setEndHourText] = useState(() => pad(Math.floor(defaultEnd / 60)));
   const [endMinuteText, setEndMinuteText] = useState(() => pad(defaultEnd % 60));
   const [category, setCategory] = useState<PlanCategory>(initial?.category ?? 'focus');
+  useEffect(() => {
+    if (visible) {
+      setModalVisible(true);
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    if (modalVisible) {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setModalVisible(false);
+        }
+      });
+    }
+  }, [visible, modalVisible, fadeAnim]);
   useEffect(() => {
     const nextStart = initial?.startMin ?? defaultStart;
     const nextEnd = initial?.endMin ?? defaultEnd;
@@ -216,13 +249,18 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
     onCancel();
   };
 
+  const shouldRender = modalVisible || visible;
+  if (!shouldRender) {
+    return null;
+  }
+
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={shouldRender} animationType="none" transparent>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}>
-        <ScrollView
-          style={styles.overlayScroll}
+        <AnimatedScrollView
+          style={[styles.overlayScroll, { opacity: fadeAnim }]}
           contentContainerStyle={[
             styles.overlayContent,
             { paddingBottom: 20 + insets.bottom },
@@ -238,14 +276,14 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 <TextInput
                   style={[
                     styles.input,
-                    {
-                      backgroundColor: palette.background,
-                      color: palette.text,
-                      borderColor: palette.border,
-                    },
-                  ]}
-                  placeholder={t((d) => d.plan.editor.titlePlaceholder)}
-                  placeholderTextColor={palette.text}
+                  {
+                    backgroundColor: palette.background,
+                    color: inputTextColor,
+                    borderColor: palette.border,
+                  },
+                ]}
+                placeholder={t((d) => d.plan.editor.titlePlaceholder)}
+                  placeholderTextColor={placeholderColor}
                   value={title}
                   onChangeText={setTitle}
                 />
@@ -361,6 +399,10 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                   {CATEGORY_OPTIONS.map((option) => {
                     const selected = option.value === category;
                     const label = t((d) => d.plan.categories[option.value]);
+                    const categoryColor = PLAN_CATEGORY_COLORS[option.value];
+                    const borderColor = categoryColor?.border ?? palette.border;
+                    const backgroundColor = selected ? categoryColor?.background ?? 'transparent' : 'transparent';
+                    const textColor = selected ? palette.background : borderColor;
                     return (
                       <Pressable
                         key={option.value}
@@ -368,15 +410,11 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                         style={[
                           styles.categoryChip,
                           {
-                            borderColor: palette.border,
-                            backgroundColor: selected ? palette.accent : 'transparent',
+                            borderColor,
+                            backgroundColor,
                           },
                         ]}>
-                        <Text
-                          style={[
-                            styles.categoryLabel,
-                            { color: selected ? palette.background : palette.text },
-                          ]}>
+                        <Text style={[styles.categoryLabel, { color: textColor }]}>
                           {label}
                         </Text>
                       </Pressable>
@@ -390,14 +428,14 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                   style={[
                     styles.input,
                     styles.noteInput,
-                    {
-                      backgroundColor: palette.background,
-                      color: palette.text,
-                      borderColor: palette.border,
-                    },
-                  ]}
-                  placeholder={t((d) => d.plan.editor.notePlaceholder)}
-                  placeholderTextColor={palette.text}
+                  {
+                    backgroundColor: palette.background,
+                    color: inputTextColor,
+                    borderColor: palette.border,
+                  },
+                ]}
+                placeholder={t((d) => d.plan.editor.notePlaceholder)}
+                  placeholderTextColor={placeholderColor}
                   multiline
                   textAlignVertical="top"
                   value={note}
@@ -444,7 +482,7 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
               )}
             </View>
           </View>
-        </ScrollView>
+        </AnimatedScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -461,7 +499,7 @@ const styles = StyleSheet.create({
   overlayContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+    padding: 18,
   },
   overlay: {
     flexGrow: 1,
@@ -474,22 +512,22 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 560,
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     borderWidth: 1,
     elevation: 6,
   },
   sectionGap: {
-    marginTop: 10,
+    marginTop: 8,
   },
   inputSection: {
     width: '100%',
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
   input: {
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#888',
-    padding: 12,
+    padding: 10,
     minHeight: 44,
   },
   noteInput: {
@@ -500,15 +538,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     borderWidth: 1,
     borderRadius: 12,
-    padding: 6,
+    padding: 4,
   },
   categoryChip: {
     borderRadius: 10,
     borderWidth: 1,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    marginRight: 8,
-    marginBottom: 8,
+    marginRight: 6,
+    marginBottom: 6,
   },
   categoryLabel: {
     fontSize: 13,
@@ -524,10 +562,10 @@ const styles = StyleSheet.create({
   timeInputContainer: {
     flex: 1,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
   },
   timeInputContainerRight: {
-    marginLeft: 12,
+    marginLeft: 10,
   },
   timeInputRow: {
     flexDirection: 'row',
@@ -552,19 +590,19 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 18,
   },
   actionButton: {
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 16,
+    marginHorizontal: 6,
   },
   actionGhost: {
     borderWidth: 1,
     borderColor: '#888',
-    marginRight: 8,
   },
   actionText: {
     fontWeight: '600',

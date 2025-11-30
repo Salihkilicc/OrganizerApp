@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useRevenueCatStore } from '../src/store/useRevenueCat';
 import {
   getMonthlyAndYearlyPackages,
+  isEntitledToPremium,
   purchasePackageAndGetCustomerInfo,
   restoreAndGetCustomerInfo,
 } from '../src/lib/revenuecat';
@@ -65,40 +66,51 @@ const PaywallScreen = () => {
     }
   }, [currentOffering, loading, refresh]);
 
+  const navigateToAiPlanner = () => {
+    router.replace('/(tabs)/plan');
+  };
+
   const handlePurchase = async () => {
     const pkg = selected === 'monthly' ? monthlyPackage : yearlyPackage;
-    
+
     console.log('🛒 [Paywall] Satın alma başlatılıyor. Seçilen Paket:', pkg?.identifier);
 
     if (!pkg) {
-    Alert.alert(t((d) => d.common.error), t((d) => d.paywall.errorNoPackage));
-    return;
-  }
-  try {
-    setProcessing(true);
-    await purchasePackageAndGetCustomerInfo(pkg);
-    Alert.alert(t((d) => d.paywall.badge), t((d) => d.paywall.thanks));
-  } catch (err: any) {
-    console.error('❌ [Paywall] Satın alma hatası:', err);
-    Alert.alert(t((d) => d.paywall.purchaseFailed), err?.message ?? t((d) => d.paywall.purchaseFailed));
-  } finally {
-    setProcessing(false);
-  }
+      Alert.alert(t((d) => d.common.error), t((d) => d.paywall.errorNoPackage));
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const info = await purchasePackageAndGetCustomerInfo(pkg);
+      Alert.alert(t((d) => d.paywall.badge), t((d) => d.paywall.thanks));
+      if (isEntitledToPremium(info)) {
+        navigateToAiPlanner();
+      }
+    } catch (err: any) {
+      console.error('❌ [Paywall] Satın alma hatası:', err);
+      Alert.alert(t((d) => d.paywall.purchaseFailed), err?.message ?? t((d) => d.paywall.purchaseFailed));
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleRestore = async () => {
-  try {
-    setProcessing(true);
-    console.log('♻️ [Paywall] Restore işlemi başladı');
-    await restoreAndGetCustomerInfo();
-    Alert.alert(t((d) => d.paywall.restore), t((d) => d.paywall.restoreSuccess));
-  } catch (err: any) {
-    console.error('❌ [Paywall] Restore hatası', err);
-    Alert.alert(t((d) => d.paywall.restoreFailed), err?.message ?? t((d) => d.paywall.restoreFailed));
-  } finally {
-    setProcessing(false);
-  }
-};
+    try {
+      setProcessing(true);
+      console.log('♻️ [Paywall] Restore işlemi başladı');
+      const info = await restoreAndGetCustomerInfo();
+      Alert.alert(t((d) => d.paywall.restore), t((d) => d.paywall.restoreSuccess));
+      if (isEntitledToPremium(info)) {
+        navigateToAiPlanner();
+      }
+    } catch (err: any) {
+      console.error('❌ [Paywall] Restore hatası', err);
+      Alert.alert(t((d) => d.paywall.restoreFailed), err?.message ?? t((d) => d.paywall.restoreFailed));
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const primary = (palette as any).primary ?? palette.accent;
   const selectedPackage = selected === 'monthly' ? monthlyPackage : yearlyPackage;
@@ -243,12 +255,12 @@ const PaywallScreen = () => {
         <Text style={styles.renewalNote}>{t((d) => d.paywall.renewalNote)}</Text>
 
         <View style={styles.footerLinks}>
-          <Text style={[styles.footerLink, { color: palette.text }]}>{t((d) => d.paywall.terms)}</Text>
-          <Text style={[styles.footerSeparator, { color: palette.text }]}>•</Text>
-          <Text style={[styles.footerLink, { color: palette.text }]}>{t((d) => d.paywall.privacy)}</Text>
-          <Text style={[styles.footerSeparator, { color: palette.text }]}>•</Text>
+          <Text style={styles.footerLink}>{t((d) => d.paywall.terms)}</Text>
+          <Text style={styles.footerSeparator}>•</Text>
+          <Text style={styles.footerLink}>{t((d) => d.paywall.privacy)}</Text>
+          <Text style={styles.footerSeparator}>•</Text>
           <TouchableOpacity onPress={handleRestore} disabled={processing}>
-            <Text style={[styles.footerLink, { color: palette.text }]}>{t((d) => d.paywall.restore)}</Text>
+            <Text style={styles.footerLink}>{t((d) => d.paywall.restore)}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -467,12 +479,12 @@ const styles = StyleSheet.create({
   footerLink: {
     fontSize: 12,
     textDecorationLine: 'underline',
-    color: '#F3F4FF',
+    color: '#FFFFFF',
     marginHorizontal: 4,
   },
   footerSeparator: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    color: '#FFFFFF',
     marginHorizontal: 2,
   },
 });

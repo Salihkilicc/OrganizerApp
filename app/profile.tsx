@@ -304,12 +304,6 @@ export default function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={headerHeight + 12}
         style={styles.flex}>
-        <ScrollView
-          contentContainerStyle={styles.container}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets>
         <View style={styles.backRow}>
           <Pressable
             onPress={() => router.back()}
@@ -323,8 +317,14 @@ export default function ProfileScreen() {
             <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
           </Pressable>
         </View>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarColumn}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets>
+          <View style={styles.headerRow}>
+            <View style={styles.avatarColumn}>
             <Pressable
               onPress={handleAvatarPress}
               style={[
@@ -338,16 +338,16 @@ export default function ProfileScreen() {
                 <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
               )}
             </Pressable>
-          </View>
-          <View style={styles.headerStats}>
+            </View>
+            <View style={styles.headerStats}>
             <Text style={[styles.headerStatValue, { color: palette.accent }]}>
               {t((d) => d.profile.totalPoints)}: {totalPoints} pts
             </Text>
             <Text style={[styles.headerStatSub, { color: palette.text }]}>
               {t((d) => d.profile.streak)}: {streakDays} {t((d) => d.profile.days)}
             </Text>
+            </View>
           </View>
-        </View>
 
         <View
           style={[
@@ -631,8 +631,14 @@ export default function ProfileScreen() {
 const SIZE_SCALE = 0.9;
 const scaleValue = (value: number) => value * SIZE_SCALE;
 const AVATAR_BASE_SIZE = 112;
-const AVATAR_SIZE = Math.round(AVATAR_BASE_SIZE * 1.5 * 0.9);
+const AVATAR_SIZE = Math.round(AVATAR_BASE_SIZE * 1.5 * 0.9 * 1.05);
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
+const SF_MEDIUM_FONT_FAMILY =
+  Platform.select({
+    ios: 'SF Pro Display',
+    web: '"SF Pro Display", "SF Pro Text", "-apple-system", "BlinkMacSystemFont", "Segoe UI", system-ui, sans-serif',
+    default: 'SF Pro Display',
+  }) ?? 'System';
 
 const styles = StyleSheet.create({
   safe: {
@@ -651,14 +657,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: scaleValue(6),
     marginTop: scaleValue(4),
+    marginLeft: scaleValue(10),
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: scaleValue(18),
+    alignItems: 'flex-end',
+    marginBottom: scaleValue(12),
   },
   avatarColumn: {
     marginRight: scaleValue(10),
+    marginTop: -scaleValue(6),
+    marginLeft: scaleValue(6),
   },
   backButton: {
     width: scaleValue(36),
@@ -675,14 +684,17 @@ const styles = StyleSheet.create({
   headerStats: {
     alignItems: 'flex-start',
     marginLeft: scaleValue(10),
+    marginBottom: scaleValue(6),
   },
   headerStatValue: {
     fontSize: scaleValue(13),
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: SF_MEDIUM_FONT_FAMILY,
   },
   headerStatSub: {
     fontSize: scaleValue(11),
-    fontWeight: '400',
+    fontWeight: '500',
+    fontFamily: SF_MEDIUM_FONT_FAMILY,
     marginTop: scaleValue(2),
   },
   avatar: {
