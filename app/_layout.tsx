@@ -200,7 +200,7 @@ export default function RootLayout() {
       void useWater.getState().init(null);
     }
 
-    void useAvatarStore.getState().loadFromSupabase();
+    void useAvatarStore.getState().loadFromSupabase(sessionUserId);
   }, [status, user?.id]);
 
   useEffect(() => {
