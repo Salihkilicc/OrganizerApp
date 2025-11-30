@@ -454,21 +454,26 @@ export default function PlanScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <Pressable
-              onPress={handleAiPlanPress}
-              style={({ pressed }) => [
-                styles.aiButton,
-                {
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}>
-              <View style={styles.aiButtonContent}>
-                <Text style={[styles.aiButtonText, { color: palette.text }]}>
-                  {t((d) => d.plan.aiButton)}
-                </Text>
-              </View>
-            </Pressable>
+            <View style={styles.aiButtonWrapper}>
+              <View style={[styles.aiSprinkle, { backgroundColor: palette.accent }]} />
+              <Pressable
+                onPress={handleAiPlanPress}
+                style={({ pressed }) => [
+                  styles.aiButton,
+                  {
+                    backgroundColor: palette.accent,
+                    opacity: pressed ? 0.85 : 1,
+                    shadowColor: palette.accent,
+                  },
+                ]}>
+                <View style={styles.aiButtonContent}>
+                  <Ionicons name="sparkles" size={16} color={palette.background} />
+                  <Text style={[styles.aiButtonText, { color: palette.background }]}>
+                    {t((d) => d.plan.aiButton)}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
           </View>
         </View>
         <DayStrip
@@ -662,12 +667,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: 4,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginRight: 18,
-    marginTop: 8,
-  },
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -693,26 +692,48 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     lineHeight: 22,
   },
-  aiButton: {
-    borderRadius: 999,
-    borderWidth: 0,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    marginLeft: -10,
-    marginTop: 4,
+  headerActions: {
+    alignItems: 'flex-end',
+    marginRight: 12,
+  },
+  aiButtonWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    paddingTop: 4,
+  },
+  aiSprinkle: {
+    position: 'absolute',
+    top: -6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
     elevation: 4,
+  },
+  aiButton: {
+    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
   },
   aiButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   aiButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.15,
   },
   modalOverlay: {
     flex: 1,

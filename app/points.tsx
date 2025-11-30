@@ -285,37 +285,43 @@ export default function PointsScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
-        <View style={styles.topBar}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              styles.backButton,
-              {
-                borderColor: palette.border,
-                backgroundColor: palette.card,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}>
-            <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
-          </Pressable>
-          <View>
-            <Text style={[styles.sectionHeadline, { color: palette.text }]}>
+      <ScrollView
+        ref={scrollRef}
+        stickyHeaderIndices={[0]}
+        contentContainerStyle={styles.container}>
+        <View
+          style={[
+            styles.topBar,
+            {
+              backgroundColor: palette.background,
+              borderBottomColor: palette.border,
+              shadowColor: palette.text,
+            },
+          ]}>
+          <View style={styles.leftHeaderRow}>
+            <Pressable
+              onPress={() => router.back()}
+              style={({ pressed }) => [
+                styles.backButton,
+                {
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}>
+              <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
+            </Pressable>
+            <Text style={[styles.sectionHeadline, { color: palette.text }]} numberOfLines={1}>
               {t((d) => d.points.title)}
             </Text>
           </View>
           <View style={styles.pointsContainer}>
-            <Text style={[styles.pointsLabel, { color: palette.text }]}>
-              {t((d) => d.points.totalPoints)}
-            </Text>
             <View
               style={[
                 styles.pointsBadge,
                 { backgroundColor: palette.accent, shadowColor: palette.text },
               ]}>
-              <Text style={[styles.pointsValue, { color: palette.background }]}>
-                {totalPoints}
-              </Text>
+              <Text style={[styles.pointsValue, { color: palette.background }]}>{totalPoints}</Text>
             </View>
           </View>
         </View>
@@ -387,14 +393,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    paddingVertical: 20,
+    paddingTop: 0,
+    paddingBottom: 20,
     paddingHorizontal: 16,
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 6,
+    marginTop: 0,
+    marginHorizontal: -16,
+    borderBottomWidth: 1,
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingHorizontal: 20,
+    zIndex: 5,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 3,
   },
   backButton: {
     width: 42,
@@ -408,13 +427,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
   },
+  leftHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flexShrink: 1,
+  },
   sectionHeadline: {
     fontSize: 20,
     fontWeight: '700',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
   pointsBadge: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 16,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 4 },
@@ -426,13 +457,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   pointsContainer: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    flexShrink: 0,
+    marginLeft: 12,
   },
   pointsLabel: {
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.5,
-    marginBottom: 4,
   },
   section: {
     marginBottom: 26,

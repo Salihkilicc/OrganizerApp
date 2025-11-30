@@ -70,7 +70,7 @@ export default function ProfileScreen() {
   const fallbackName = isGuest
     ? t((d) => d.common.guestUser)
     : user?.email?.split('@')[0] ?? t((d) => d.common.user);
-  const initialName = user?.user_metadata?.full_name ?? user?.name ?? fallbackName;
+  const initialName = user?.user_metadata?.full_name ?? fallbackName;
   const initialEmail = user?.email ?? '';
 
   const [fullName, setFullName] = useState(initialName);
@@ -160,7 +160,7 @@ export default function ProfileScreen() {
     setAvatarModalVisible(true);
   };
 
-  const storedName = (user?.user_metadata?.full_name ?? user?.name ?? '').trim();
+  const storedName = (user?.user_metadata?.full_name ?? '').trim();
   const storedEmail = user?.email ?? '';
   const pendingName = fullName.trim();
   const pendingEmail = email.trim();
@@ -310,6 +310,19 @@ export default function ProfileScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets>
+        <View style={styles.backRow}>
+          <Pressable
+            onPress={() => router.back()}
+            style={[
+              styles.backButton,
+              {
+                borderColor: palette.border,
+                backgroundColor: palette.card,
+              },
+            ]}>
+            <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
+          </Pressable>
+        </View>
         <View style={styles.headerRow}>
           <View style={styles.avatarColumn}>
             <Pressable
@@ -326,27 +339,13 @@ export default function ProfileScreen() {
               )}
             </Pressable>
           </View>
-          <View style={styles.headerRightColumn}>
-            <Pressable
-              onPress={() => router.back()}
-              style={[
-                styles.backButton,
-                styles.backButtonSpacing,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                },
-              ]}>
-              <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
-            </Pressable>
-            <View style={styles.headerStats}>
-              <Text style={[styles.headerStatValue, { color: palette.accent }]}>
-                {t((d) => d.profile.totalPoints)}: {totalPoints} pts
-              </Text>
-              <Text style={[styles.headerStatSub, { color: palette.text }]}>
-                {t((d) => d.profile.streak)}: {streakDays} {t((d) => d.profile.days)}
-              </Text>
-            </View>
+          <View style={styles.headerStats}>
+            <Text style={[styles.headerStatValue, { color: palette.accent }]}>
+              {t((d) => d.profile.totalPoints)}: {totalPoints} pts
+            </Text>
+            <Text style={[styles.headerStatSub, { color: palette.text }]}>
+              {t((d) => d.profile.streak)}: {streakDays} {t((d) => d.profile.days)}
+            </Text>
           </View>
         </View>
 
@@ -645,11 +644,16 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: scaleValue(16),
-    paddingBottom: scaleValue(32),
+    paddingBottom: scaleValue(34),
+  },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: scaleValue(6),
+    marginTop: scaleValue(4),
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: scaleValue(18),
   },
@@ -664,20 +668,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  backButtonSpacing: {
-    marginBottom: scaleValue(8),
-  },
   backIcon: {
     fontSize: scaleValue(20),
     fontWeight: '700',
   },
-  headerRightColumn: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
   headerStats: {
-    alignItems: 'flex-end',
-    marginBottom: scaleValue(6),
+    alignItems: 'flex-start',
+    marginLeft: scaleValue(10),
   },
   headerStatValue: {
     fontSize: scaleValue(13),
