@@ -71,13 +71,6 @@ export const useAuth = create<AuthState>((set) => {
 
   const initAuth = async () => {
     set({ status: 'checking' });
-    try {
-      const { data } = await supabase.auth.getSession();
-      setFromSession(data.session ?? null);
-    } catch (error) {
-      console.warn('[Auth] initAuth failed', error);
-      setFromSession(null);
-    }
   };
 
   const signInWithEmail = async (email: string, password: string) => {
