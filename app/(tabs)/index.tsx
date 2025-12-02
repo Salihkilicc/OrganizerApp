@@ -748,17 +748,19 @@ const styles = StyleSheet.create({
   avatarColumn: {
     flexDirection: 'column',
     alignItems: 'flex-start',
-    flexShrink: 1,
+    flexShrink: 0,
   },
   friendsStrip: {
     marginTop: 12,
     marginLeft: 4,
   },
   friendsButton: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 10,
     borderWidth: 1,
+    minWidth: 74,
+    alignItems: 'center',
   },
   friendsLabel: {
     fontSize: 9,
