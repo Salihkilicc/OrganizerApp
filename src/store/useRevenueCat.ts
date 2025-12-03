@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import Purchases, { type CustomerInfo, type PurchasesOffering } from 'react-native-purchases';
 
+import { useAuth } from '@/store/useAuth';
 import { usePremium } from '@/store/usePremium';
 import { getCurrentOfferings, isEntitledToPremium } from '@/lib/revenuecat';
 
@@ -10,14 +11,33 @@ type RevenueCatState = {
   loading: boolean;
   refresh: () => Promise<void>;
   setCustomerInfo: (info: CustomerInfo | null) => void;
+  reset: () => void;
 };
 
-export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
+const createInitialState = (): Pick<RevenueCatState, 'customerInfo' | 'currentOffering' | 'loading'> => ({
   customerInfo: null,
   currentOffering: null,
   loading: false,
+});
+
+export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
+  ...createInitialState(),
 
   setCustomerInfo(info) {
+    const authState = useAuth.getState();
+    const isGuest = !authState.user || authState.status !== 'authenticated' || authState.isGuest;
+    if (isGuest) {
+      set({ customerInfo: null });
+      usePremium.setState((state) => ({
+        ...state,
+        isPremium: false,
+        userId: undefined,
+        hydrated: true,
+        loading: false,
+      }));
+      return;
+    }
+
     set({ customerInfo: info });
     const entitled = isEntitledToPremium(info);
     // Keep premium state in sync with RevenueCat entitlement updates.
@@ -26,11 +46,24 @@ export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
       isPremium: entitled,
       hydrated: true,
       loading: false,
+      userId: authState.user?.id,
     }));
   },
 
   async refresh() {
     if (get().loading) {
+      return;
+    }
+    const authState = useAuth.getState();
+    if (!authState.user || authState.isGuest || authState.status !== 'authenticated') {
+      set({ ...createInitialState() });
+      usePremium.setState((state) => ({
+        ...state,
+        isPremium: false,
+        hydrated: true,
+        loading: false,
+        userId: undefined,
+      }));
       return;
     }
     set({ loading: true });
@@ -50,5 +83,9 @@ export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+
+  reset: () => {
+    set(createInitialState());
   },
 }));

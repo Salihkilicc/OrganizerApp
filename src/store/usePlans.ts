@@ -38,6 +38,7 @@ export type PlansStore = {
   hydrated: boolean;
   userId?: string;
   lastAiPlanString?: string | null;
+  reset: () => void;
   setLastAiPlanString: (value?: string | null) => void;
   load: () => Promise<void>;
   add: (b: Omit<PlanBlock, 'id'>) => Promise<string>;
@@ -194,6 +195,21 @@ const mergeBlocks = (loaded: PlanBlock[], existing: PlanBlock[]): PlanBlock[] =>
   return Array.from(merged.values());
 };
 
+const createInitialState = (): Pick<PlansStore, 'blocks' | 'hydrated' | 'userId' | 'lastAiPlanString'> => ({
+  blocks: [],
+  hydrated: false,
+  userId: undefined,
+  lastAiPlanString: undefined,
+});
+
+const clearPersistedPlans = async () => {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn('[usePlans/clearPersistedPlans]', error);
+  }
+};
+
 export const usePlans = create<PlansStore>((set, get) => {
   const refreshNotifications = (dates: string[]) => {
     const { notificationTypes, waterReminderEnabled } = useSettings.getState();
@@ -237,6 +253,9 @@ export const usePlans = create<PlansStore>((set, get) => {
   };
 
   const loadFromServer = async (userId: string) => {
+    if (!userId) {
+      return;
+    }
     try {
       const remoteBlocks = await fetchUserPlans(userId);
       set({
@@ -254,17 +273,22 @@ export const usePlans = create<PlansStore>((set, get) => {
     }
   };
 
+  const reset = () => {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
+    set(createInitialState());
+    void clearPersistedPlans();
+  };
+
   const resetToGuest = () => {
-    set({
-      userId: undefined,
-    });
+    reset();
   };
 
   const store: PlansStore = {
-    blocks: [],
-    hydrated: false,
-    userId: undefined,
-    lastAiPlanString: undefined,
+    ...createInitialState(),
+    reset,
 
     setLastAiPlanString: (value) => {
       set({ lastAiPlanString: value ?? null });

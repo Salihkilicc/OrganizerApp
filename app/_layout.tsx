@@ -36,6 +36,7 @@ import { initSupabaseAuthListener } from '@/lib/supabase';
 import { usePlans, todayDate } from '@/store/usePlans';
 import { useSettings } from '@/store/useSettings';
 import { useStreak } from '@/store/useStreak';
+import { resetUserScopedStores } from '@/store/resetUserScopedStores';
 
 // Force SF Pro typography globally so every Text component inherits it.
 const SF_PRO_FONT_FAMILY =
@@ -140,6 +141,29 @@ export default function RootLayout() {
     const cleanup = initSupabaseAuthListener(authState.setFromSession);
     return () => {
       cleanup();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = useAuth.subscribe(
+      (state, previousState) => {
+        const nextUserId = state.userId ?? null;
+        const movedToGuest =
+          previousState?.status !== 'guest' &&
+          (state.status === 'guest' || !nextUserId || state.isGuest);
+        if (movedToGuest) {
+          resetUserScopedStores();
+        }
+      },
+      (state) => ({
+        userId: state.user?.id ?? null,
+        status: state.status,
+        isGuest: state.isGuest,
+      }),
+    );
+
+    return () => {
+      unsubscribe();
     };
   }, []);
 

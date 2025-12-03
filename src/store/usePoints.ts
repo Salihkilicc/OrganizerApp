@@ -41,6 +41,16 @@ export type PointsState = {
   addPoints: (amount: number) => void;
 };
 
+const buildInitialState = (hydrated = true): Pick<PointsState, 'total' | 'daily' | 'maxTotal' | 'focusSessions' | 'completedPlans' | 'userId' | 'hydrated'> => ({
+  total: 0,
+  daily: buildDailyPoints(todayDate()),
+  maxTotal: 0,
+  focusSessions: 0,
+  completedPlans: 0,
+  userId: undefined,
+  hydrated,
+});
+
 export const usePoints = create<PointsState>((set, get) => {
   const applyPoints = (delta: number) => {
     if (!Number.isFinite(delta) || delta === 0) {
@@ -70,6 +80,9 @@ export const usePoints = create<PointsState>((set, get) => {
   };
 
   const loadFromServer = async (userId: string) => {
+    if (!userId) {
+      return;
+    }
     try {
       const row = await fetchOrCreateUserPoints(userId);
       set({
@@ -89,15 +102,7 @@ export const usePoints = create<PointsState>((set, get) => {
   };
 
   const resetToGuest = () => {
-    set({
-      userId: undefined,
-      total: 0,
-      maxTotal: 0,
-      daily: buildDailyPoints(todayDate()),
-      focusSessions: 0,
-      completedPlans: 0,
-      hydrated: true,
-    });
+    set(buildInitialState(true));
   };
 
   const resetDailyIfNeeded = (today: string) => {
@@ -158,14 +163,7 @@ export const usePoints = create<PointsState>((set, get) => {
   };
 
   const reset = () => {
-    set({
-      total: 0,
-      daily: buildDailyPoints(todayDate()),
-      maxTotal: 0,
-      focusSessions: 0,
-      completedPlans: 0,
-      hydrated: true,
-    });
+    set(buildInitialState());
   };
 
   const init = async (userId: string | null) => {
@@ -184,13 +182,7 @@ export const usePoints = create<PointsState>((set, get) => {
   };
 
   return {
-    total: 0,
-    daily: buildDailyPoints(todayDate()),
-    maxTotal: 0,
-    focusSessions: 0,
-    completedPlans: 0,
-    userId: undefined,
-    hydrated: false,
+    ...buildInitialState(),
     resetDailyIfNeeded,
     addPlanPoints,
     addFocusPoints,

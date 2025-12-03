@@ -13,70 +13,86 @@ type PremiumState = {
   hydrate: () => Promise<void>;
   loadFromServer: (userId: string) => Promise<void>;
   setPremium: (value: boolean) => Promise<void>;
+  reset: () => void;
   resetToGuest: () => void;
 };
 
-export const usePremium = create<PremiumState>((set, get) => ({
+const createInitialState = (): Pick<PremiumState, 'isPremium' | 'loading' | 'userId' | 'hydrated'> => ({
   isPremium: false,
-  loading: true,
+  loading: false,
   userId: undefined,
-  hydrated: false,
-  hydrate: async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      set({
-        isPremium: stored === 'true',
-        loading: false,
-        hydrated: true,
-      });
-    } catch (error) {
-      console.warn('[usePremium] hydrate failed', error);
-      set({
-        isPremium: false,
-        loading: false,
-        hydrated: true,
-      });
-    }
-  },
-  loadFromServer: async (userId: string) => {
-    try {
-      const isPremium = await fetchUserPremium(userId);
-      set({
-        isPremium,
-        userId,
-        loading: false,
-        hydrated: true,
-      });
-    } catch (error) {
-      console.warn('[usePremium] load failed', error);
-      set({
-        userId,
-        loading: false,
-        hydrated: true,
-      });
-    }
-  },
-  setPremium: async (value) => {
-    set({ isPremium: value });
-    const currentUserId = get().userId;
-    if (currentUserId) {
+  hydrated: true,
+});
+
+export const usePremium = create<PremiumState>((set, get) => {
+  const reset = () => {
+    set(createInitialState());
+    void AsyncStorage.removeItem(STORAGE_KEY).catch((error) => {
+      console.warn('[usePremium/reset]', error);
+    });
+  };
+
+  return {
+    ...createInitialState(),
+    hydrate: async () => {
+      set({ loading: true });
       try {
-        await saveUserPremium(currentUserId, value);
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        set({
+          isPremium: stored === 'true',
+          loading: false,
+          hydrated: true,
+        });
+      } catch (error) {
+        console.warn('[usePremium] hydrate failed', error);
+        set({
+          isPremium: false,
+          loading: false,
+          hydrated: true,
+        });
+      }
+    },
+    loadFromServer: async (userId: string) => {
+      if (!userId) {
+        return;
+      }
+      try {
+        const isPremium = await fetchUserPremium(userId);
+        set({
+          isPremium,
+          userId,
+          loading: false,
+          hydrated: true,
+        });
+      } catch (error) {
+        console.warn('[usePremium] load failed', error);
+        set({
+          userId,
+          loading: false,
+          hydrated: true,
+        });
+      }
+    },
+    setPremium: async (value) => {
+      set({ isPremium: value, hydrated: true, loading: false });
+      const currentUserId = get().userId;
+      if (currentUserId) {
+        try {
+          await saveUserPremium(currentUserId, value);
+        } catch (error) {
+          console.warn('[usePremium] persist failed', error);
+        }
+        return;
+      }
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, value ? 'true' : 'false');
       } catch (error) {
         console.warn('[usePremium] persist failed', error);
       }
-      return;
-    }
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, value ? 'true' : 'false');
-    } catch (error) {
-      console.warn('[usePremium] persist failed', error);
-    }
-  },
-  resetToGuest: () => {
-    set({
-      userId: undefined,
-      hydrated: true,
-    });
-  },
-}));
+    },
+    reset,
+    resetToGuest: () => {
+      reset();
+    },
+  };
+});

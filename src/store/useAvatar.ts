@@ -20,6 +20,7 @@ type AvatarState = {
   loadFromSupabase: () => Promise<void>;
   purchaseAvatar: (name: AvatarName) => Promise<void>;
   selectAvatar: (name: AvatarName) => Promise<void>;
+  reset: () => Promise<void>;
 };
 
 const STORAGE_KEY = 'avatars:v1';
@@ -64,6 +65,18 @@ const loadCached = async (): Promise<Pick<AvatarState, 'purchasedAvatars' | 'sel
 };
 
 export const useAvatarStore = create<AvatarState>((set, get) => {
+  const setDefaultAvatar = async () => {
+    const purchasedAvatars = [...FREE_AVATARS];
+    const selectedAvatar = DEFAULT_SELECTION;
+    set({
+      purchasedAvatars,
+      selectedAvatar,
+      loading: false,
+      hydrated: true,
+    });
+    await persistLocal(purchasedAvatars, selectedAvatar);
+  };
+
   const syncState = async (
     purchasedAvatars: AvatarName[],
     selectedAvatar: AvatarName | null,
@@ -163,5 +176,8 @@ export const useAvatarStore = create<AvatarState>((set, get) => {
     loadFromSupabase,
     purchaseAvatar,
     selectAvatar,
+    reset: async () => {
+      await setDefaultAvatar();
+    },
   };
 });

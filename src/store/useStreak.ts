@@ -14,6 +14,7 @@ export type StreakState = {
   lastActiveDate: string | null;
   initialize: () => Promise<void>;
   bump: (date: string) => Promise<void>;
+  reset: () => Promise<void>;
 };
 
 const parseLocalDate = (value: string): Date | null => {
@@ -65,9 +66,13 @@ const loadStoredStreak = async (set: (state: Partial<StreakState>) => void) => {
   }
 };
 
-export const useStreak = create<StreakState>((set, get) => ({
+const INITIAL_STATE: Pick<StreakState, 'streakDays' | 'lastActiveDate'> = {
   streakDays: 0,
   lastActiveDate: null,
+};
+
+export const useStreak = create<StreakState>((set, get) => ({
+  ...INITIAL_STATE,
 
   initialize: async () => {
     await loadStoredStreak(set);
@@ -87,5 +92,15 @@ export const useStreak = create<StreakState>((set, get) => ({
 
     set({ streakDays: nextStreak, lastActiveDate: date });
     await persistStreak({ streakDays: nextStreak, lastActiveDate: date });
+  },
+
+  reset: async () => {
+    set(INITIAL_STATE);
+    hasLoaded = false;
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn('[useStreak/reset]', error);
+    }
   },
 }));

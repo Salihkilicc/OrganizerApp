@@ -44,23 +44,35 @@ type WaterState = {
   drinkBottle: (index: number) => void;
   loadTodayFromServer: (userId: string) => Promise<void>;
   init: (userId: string | null) => Promise<void>;
+  reset: () => void;
   resetToGuest: () => void;
 };
 
 export const useWater = create<WaterState>()(
   persist(
     (set, get) => {
+      const buildInitialState = (
+        lastResetDate: string | null = todayDate(),
+      ): Pick<WaterState, 'water' | 'rewardedToday' | 'lastResetDate' | 'userId' | 'bottlesGoal'> => ({
+        water: createDefaultWaterState(),
+        rewardedToday: createDefaultRewardState(),
+        lastResetDate,
+        userId: undefined,
+        bottlesGoal: WATER_BOTTLE_COUNT,
+      });
+
+      const reset = () => {
+        set(buildInitialState());
+      };
+
       const resetToGuest = () => {
-        set({
-          userId: undefined,
-          water: createDefaultWaterState(),
-          rewardedToday: createDefaultRewardState(),
-          lastResetDate: todayDate(),
-          bottlesGoal: WATER_BOTTLE_COUNT,
-        });
+        reset();
       };
 
       const loadTodayFromServer = async (userId: string) => {
+        if (!userId) {
+          return;
+        }
         try {
           const today = todayDate();
           const row = await fetchOrCreateTodayWater(userId, today);
@@ -193,17 +205,14 @@ export const useWater = create<WaterState>()(
       };
 
       return {
-        water: createDefaultWaterState(),
-        rewardedToday: createDefaultRewardState(),
-        lastResetDate: null,
-        userId: undefined,
-        bottlesGoal: WATER_BOTTLE_COUNT,
+        ...buildInitialState(null),
         toggleWater,
         resetWater,
         ensureTodayInitialized,
         drinkBottle,
         loadTodayFromServer,
         init,
+        reset,
         resetToGuest,
       };
     },

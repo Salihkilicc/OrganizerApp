@@ -8,6 +8,7 @@ import { useWater } from '@/store/useWater';
 import { usePlans } from '@/store/usePlans';
 import { useSettings } from '@/store/useSettings';
 import { usePremium } from '@/store/usePremium';
+import { resetUserScopedStores } from '@/store/resetUserScopedStores';
 import type { Session, User } from '@supabase/supabase-js';
 
 export type AuthState = {
@@ -27,9 +28,13 @@ export type AuthState = {
   continueAsGuest: () => void;
 };
 
-export const useAuth = create<AuthState>((set) => {
+export const useAuth = create<AuthState>((set, get) => {
   const setFromSession = (session: Session | null) => {
+    const previousUserId = get().user?.id;
     if (session?.user) {
+      if (previousUserId && previousUserId !== session.user.id) {
+        resetUserScopedStores();
+      }
       set({
         user: session.user,
         session,
@@ -49,11 +54,8 @@ export const useAuth = create<AuthState>((set) => {
       status: 'guest',
       isGuest: false,
     });
-    usePoints.getState().resetToGuest();
-    useWater.getState().resetToGuest();
+    resetUserScopedStores();
     useSettings.getState().resetToGuest();
-    usePlans.getState().resetToGuest();
-    usePremium.getState().resetToGuest();
   };
 
   const markGuest = () => {
@@ -63,11 +65,8 @@ export const useAuth = create<AuthState>((set) => {
       status: 'guest',
       isGuest: true,
     });
-    usePoints.getState().resetToGuest();
-    useWater.getState().resetToGuest();
+    resetUserScopedStores();
     useSettings.getState().resetToGuest();
-    usePlans.getState().resetToGuest();
-    usePremium.getState().resetToGuest();
   };
 
   const initAuth = async () => {
