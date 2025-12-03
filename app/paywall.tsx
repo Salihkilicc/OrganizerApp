@@ -7,6 +7,7 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,6 +22,10 @@ import {
 import { useTheme } from '../src/store/useTheme';
 import { useI18n } from '@/i18n/useI18n';
 import { translations } from '@/i18n/translations';
+
+const PRIVACY_URL = 'https://salihkilicc.github.io/planora-privacy-policy/privacy.html';
+const TERMS_URL =
+  'https://raw.githubusercontent.com/Salihkilicc/planora-legal/refs/heads/main/terms-of-use.md';
 
 type SelectedPlan = 'monthly' | 'yearly';
 
@@ -68,6 +73,12 @@ const PaywallScreen = () => {
 
   const navigateToAiPlanner = () => {
     router.replace('/(tabs)/plan');
+  };
+
+  const handleOpenUrl = (url: string) => {
+    Linking.openURL(url).catch((error) =>
+      console.warn('[Paywall] Failed to open legal link', error),
+    );
   };
 
   const handlePurchase = async () => {
@@ -255,9 +266,13 @@ const PaywallScreen = () => {
         <Text style={styles.renewalNote}>{t((d) => d.paywall.renewalNote)}</Text>
 
         <View style={styles.footerLinks}>
-          <Text style={styles.footerLink}>{t((d) => d.paywall.terms)}</Text>
+          <TouchableOpacity onPress={() => handleOpenUrl(TERMS_URL)} disabled={processing}>
+            <Text style={styles.footerLink}>{t((d) => d.paywall.terms)}</Text>
+          </TouchableOpacity>
           <Text style={styles.footerSeparator}>•</Text>
-          <Text style={styles.footerLink}>{t((d) => d.paywall.privacy)}</Text>
+          <TouchableOpacity onPress={() => handleOpenUrl(PRIVACY_URL)} disabled={processing}>
+            <Text style={styles.footerLink}>{t((d) => d.paywall.privacy)}</Text>
+          </TouchableOpacity>
           <Text style={styles.footerSeparator}>•</Text>
           <TouchableOpacity onPress={handleRestore} disabled={processing}>
             <Text style={styles.footerLink}>{t((d) => d.paywall.restore)}</Text>

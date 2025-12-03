@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 
-import { signInWithGoogleNative } from '@/lib/auth';
+import { signInWithAppleNative, signInWithGoogleNative } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { usePoints } from '@/store/usePoints';
 import { useWater } from '@/store/useWater';
@@ -22,6 +22,7 @@ export type AuthState = {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
   continueAsGuest: () => void;
 };
@@ -134,6 +135,29 @@ export const useAuth = create<AuthState>((set) => {
     }
   };
 
+  const signInWithApple = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        const redirectTo =
+          typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+        console.log('[Auth] signInWithApple web redirect', redirectTo);
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'apple',
+          options: redirectTo ? { redirectTo } : undefined,
+        });
+        if (error) {
+          throw error;
+        }
+        return;
+      }
+
+      await signInWithAppleNative();
+    } catch (err) {
+      console.log('[Auth] signInWithApple failed', err);
+      throw err;
+    }
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -158,6 +182,7 @@ export const useAuth = create<AuthState>((set) => {
     signInWithEmail,
     signUp,
     signInWithGoogle,
+    signInWithApple,
     signOut,
     continueAsGuest,
   };

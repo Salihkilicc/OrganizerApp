@@ -1,7 +1,13 @@
 import * as AuthSession from 'expo-auth-session';
 
-export const getDevRedirect = () => AuthSession.makeRedirectUri({ useProxy: true });
+const redirectOptions = {
+  scheme: 'planora',
+  path: 'auth/callback',
+  preferLocalhost: false,
+};
 
-export const getProdRedirect = () => AuthSession.makeRedirectUri({ scheme: 'organizer' });
+export const getDevRedirect = () => AuthSession.makeRedirectUri(redirectOptions);
 
-export const getRedirect = () => (__DEV__ ? getDevRedirect() : getProdRedirect());
+export const getProdRedirect = () => AuthSession.makeRedirectUri(redirectOptions);
+
+export const getRedirect = () => AuthSession.makeRedirectUri(redirectOptions);

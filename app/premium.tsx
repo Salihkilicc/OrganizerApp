@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +16,6 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/store/useTheme';
 import { useRevenueCatStore } from '@/store/useRevenueCat';
 import { useI18n } from '@/i18n/useI18n';
-import type { TranslationKeys } from '@/i18n/translations';
 import {
   ENTITLEMENT_ID,
   getMonthlyAndYearlyPackages,
@@ -31,6 +30,9 @@ type PremiumFeature = {
   title: string;
   description: string;
 };
+
+const TERMS_URL = 'https://planora.app/terms';
+const PRIVACY_URL = 'https://planora.app/privacy';
 
 const premiumFeatures: PremiumFeature[] = [
   {
@@ -114,6 +116,11 @@ export default function PremiumScreen() {
   const setCustomerInfo = useRevenueCatStore((state) => state.setCustomerInfo);
   const [purchasingPackageId, setPurchasingPackageId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const handleOpenUrl = useCallback((url: string) => {
+    Linking.openURL(url).catch((error) =>
+      console.warn('[Premium] Failed to open legal link', error),
+    );
+  }, []);
 
   useEffect(() => {
     if (!customerInfo || !currentOffering) {
@@ -462,10 +469,25 @@ export default function PremiumScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.infoText, { color: palette.text, opacity: 0.7 }]}>
-          Satın alımlar iTunes hesabınıza yansıtılır; yenilemeler otomatik yapılır. Ayarlardan
-          istediğiniz zaman iptal edebilirsiniz.
-        </Text>
+        <View style={styles.legalContainer}>
+          <Text style={[styles.infoText, { color: palette.text, opacity: 0.7 }]}>
+            Planora Pro is an auto-renewable subscription. Monthly: $2.99/month. Yearly: $19.99/year.
+            Payment will be charged to your Apple ID account and your subscription will automatically
+            renew unless cancelled at least 24 hours before the end of the current period. You can
+            manage or cancel your subscription in your App Store account settings.
+          </Text>
+          <Text style={[styles.legalText, { color: palette.text, opacity: 0.7 }]}>
+            By subscribing you agree to our{' '}
+            <Text style={styles.legalLink} onPress={() => handleOpenUrl(TERMS_URL)}>
+              Terms of Use
+            </Text>{' '}
+            and{' '}
+            <Text style={styles.legalLink} onPress={() => handleOpenUrl(PRIVACY_URL)}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -596,6 +618,21 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     opacity: 0.7,
     marginBottom: 16,
+    textAlign: 'center',
+  },
+  legalContainer: {
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  legalText: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  legalLink: {
+    color: '#1975ff',
+    fontWeight: '700',
   },
   section: {
     borderWidth: 1,

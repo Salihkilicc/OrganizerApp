@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   GestureResponderEvent,
@@ -122,9 +122,11 @@ export default function TodayScreen() {
   const weekly = useWeather((state) => state.weekly);
   const weatherLoading = useWeather((state) => state.loading);
   const weatherError = useWeather((state) => state.error);
+  const locationPermissionRequired = weatherError === 'Location permission required';
   const fetchWeather = useWeather((state) => state.fetchWeather);
   const setError = useWeather((state) => state.setError);
   const [friendsVisible, setFriendsVisible] = useState(false);
+  const isMounted = useRef(true);
 
   const water = useWater((state) => state.water);
   const ensureTodayInitialized = useWater((state) => state.ensureTodayInitialized);
@@ -195,38 +197,42 @@ export default function TodayScreen() {
   );
   const formatCategoryLabel = (category: PlanBlock['category']) =>
     categoryLabels[category ?? 'other'] ?? categoryLabels.other;
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const loadWeatherForLocation = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (!isMounted.current) return;
+      if (status !== 'granted') {
+        setError('Location permission required');
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      if (!isMounted.current) return;
+      await fetchWeather(location.coords.latitude, location.coords.longitude);
+    } catch (err) {
+      console.error('[TodayScreen] Weather error', err);
+      if (isMounted.current) {
+        setError('Weather unavailable');
+      }
+    }
+  }, [fetchWeather, setError]);
+
+  const handleWeatherPress = useCallback(() => {
+    setWeatherModalVisible(true);
+    if (weatherLoading) return;
+    if (temperature !== null || weekly.length) return;
+    void loadWeatherForLocation();
+  }, [loadWeatherForLocation, temperature, weatherLoading, weekly.length]);
+
   useEffect(() => {
     initializeStreak();
   }, [initializeStreak]);
-
-  useEffect(() => {
-    let active = true;
-    const loadWeatherForLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (!active) return;
-        if (status !== 'granted') {
-          setError('Location off');
-          setWeatherModalVisible(false);
-          return;
-        }
-        const location = await Location.getCurrentPositionAsync({});
-        if (!active) return;
-        await fetchWeather(location.coords.latitude, location.coords.longitude);
-      } catch (err) {
-        console.error('[TodayScreen] Weather error', err);
-        if (active) {
-          setError('Weather unavailable');
-          setWeatherModalVisible(false);
-        }
-      }
-    };
-
-    void loadWeatherForLocation();
-    return () => {
-      active = false;
-    };
-  }, [fetchWeather, setError]);
 
   const today = todayDate();
   useEffect(() => {
@@ -412,7 +418,7 @@ export default function TodayScreen() {
               </View>
 
               <Pressable
-                onPress={() => setWeatherModalVisible(true)}
+                onPress={handleWeatherPress}
                 onTouchStart={(event) => event.stopPropagation()}
                 style={({ pressed }) => [
                   styles.weatherBubble,
@@ -434,8 +440,8 @@ export default function TodayScreen() {
                   {weatherLoading
                     ? '--°'
                     : weatherError
-                    ? weatherError === 'Location off'
-                      ? t((d) => d.today.locationOff)
+                    ? locationPermissionRequired
+                      ? 'Location permission required'
                       : t((d) => d.today.weatherUnavailable)
                     : temperature !== null
                     ? `${Math.round(temperature)}°`

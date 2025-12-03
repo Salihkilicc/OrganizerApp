@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Alert,
   Image,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -36,6 +37,9 @@ const themeLabelMap: Partial<Record<ThemeId, (dict: TranslationKeys) => string>>
   dark: (d) => d.settings.themeDark,
   ninja: (d) => d.settings.themeNinja,
 };
+
+const TERMS_URL = 'https://planora.app/terms';
+const PRIVACY_URL = 'https://planora.app/privacy';
 
 const SHOW_REFLECTION_NOTIFICATION_TOGGLE = false;
 
@@ -112,6 +116,12 @@ export default function SettingsScreen() {
           },
         },
       ],
+    );
+  };
+
+  const handleOpenExternalLink = (url: string) => {
+    Linking.openURL(url).catch((error) =>
+      console.warn('[Settings] Failed to open legal link', error),
     );
   };
 
@@ -389,7 +399,7 @@ export default function SettingsScreen() {
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
           <Pressable
-            onPress={() => router.push('/terms')}
+            onPress={() => handleOpenExternalLink(TERMS_URL)}
             style={({ pressed }) => [
               styles.sectionRow,
               styles.sectionShadow,
@@ -408,7 +418,7 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={18} color={palette.text} />
           </Pressable>
           <Pressable
-            onPress={() => router.push('/privacy')}
+            onPress={() => handleOpenExternalLink(PRIVACY_URL)}
             style={({ pressed }) => [
               styles.sectionRow,
               styles.sectionShadow,

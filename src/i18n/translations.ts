@@ -53,12 +53,16 @@ export type TranslationKeys = {
     orLoginWith: string;
     googleButton: string;
     googleLoading: string;
+    appleButton: string;
+    appleLoading: string;
     createAccount: string;
     continueAsGuest: string;
     missingCredentials: string;
     loginError: string;
     googleErrorTitle: string;
     googleErrorMessage: string;
+    appleErrorTitle: string;
+    appleErrorMessage: string;
     registerTitle: string;
     registerSubtitle: string;
     firstName: string;
@@ -490,12 +494,16 @@ const en: TranslationKeys = {
     orLoginWith: 'or login with',
     googleButton: 'Continue with Google',
     googleLoading: 'Signing in with Google…',
+    appleButton: 'Continue with Apple',
+    appleLoading: 'Signing in with Apple…',
     createAccount: 'Create account',
     continueAsGuest: 'Continue as guest',
     missingCredentials: 'Please enter an email and password.',
     loginError: 'An error occurred during login.',
     googleErrorTitle: 'Google sign-in failed',
     googleErrorMessage: 'Please try again.',
+    appleErrorTitle: 'Apple sign-in failed',
+    appleErrorMessage: 'Please try again.',
     registerTitle: 'Register',
     registerSubtitle: 'Create your profile and get started with Organizer.',
     firstName: 'First Name',
@@ -948,12 +956,16 @@ const tr: TranslationKeys = {
     orLoginWith: 'veya şununla giriş yap',
     googleButton: 'Google ile devam et',
     googleLoading: 'Google ile giriş yapılıyor…',
+    appleButton: 'Apple ile devam et',
+    appleLoading: 'Apple ile giriş yapılıyor…',
     createAccount: 'Hesap oluştur',
     continueAsGuest: 'Misafir olarak devam et',
     missingCredentials: 'Lütfen e-posta ve şifre girin.',
     loginError: 'Giriş sırasında bir hata oluştu.',
     googleErrorTitle: 'Google girişi başarısız',
     googleErrorMessage: 'Lütfen tekrar deneyin.',
+    appleErrorTitle: 'Apple girişi başarısız',
+    appleErrorMessage: 'Lütfen tekrar deneyin.',
     registerTitle: 'Kayıt ol',
     registerSubtitle: 'Profilini oluştur ve Organizer’ı kullanmaya başla.',
     firstName: 'İsim',

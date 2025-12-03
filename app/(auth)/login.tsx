@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '@/store/useAuth';
 import { useI18n } from '@/i18n/useI18n';
@@ -29,6 +30,7 @@ const palette = {
 export default function LoginScreen() {
   const router = useRouter();
   const signInWithGoogle = useAuth((state) => state.signInWithGoogle);
+  const signInWithApple = useAuth((state) => state.signInWithApple);
   const signInWithEmail = useAuth((state) => state.signInWithEmail);
   const continueAsGuest = useAuth((state) => state.continueAsGuest);
   const loading = useAuth((state) => state.loading);
@@ -37,8 +39,9 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorText, setErrorText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [oauthSubmitting, setOauthSubmitting] = useState<'google' | 'apple' | null>(null);
   const { t } = useI18n();
+  const showAppleButton = Platform.OS === 'ios';
 
   const handleLogin = async () => {
     setErrorText('');
@@ -55,13 +58,25 @@ export default function LoginScreen() {
 
   const handleGooglePress = async () => {
     try {
-      setSubmitting(true);
+      setOauthSubmitting('google');
       await signInWithGoogle();
     } catch (error: unknown) {
       console.log('[Login] Google sign-in error', error);
       Alert.alert(t((d) => d.auth.googleErrorTitle), t((d) => d.auth.googleErrorMessage));
     } finally {
-      setSubmitting(false);
+      setOauthSubmitting(null);
+    }
+  };
+
+  const handleApplePress = async () => {
+    try {
+      setOauthSubmitting('apple');
+      await signInWithApple();
+    } catch (error: unknown) {
+      console.log('[Login] Apple sign-in error', error);
+      Alert.alert(t((d) => d.auth.appleErrorTitle), t((d) => d.auth.appleErrorMessage));
+    } finally {
+      setOauthSubmitting(null);
     }
   };
 
@@ -144,14 +159,16 @@ export default function LoginScreen() {
             <Pressable
               style={styles.googleButton}
               onPress={handleGooglePress}
-              disabled={submitting}>
+              disabled={oauthSubmitting !== null}>
               <View style={styles.googleBadge}>
                 <Text style={styles.googleLetter}>G</Text>
               </View>
               <Text style={styles.googleText}>
-                {submitting ? t((d) => d.auth.googleLoading) : t((d) => d.auth.googleButton)}
+                {oauthSubmitting === 'google'
+                  ? t((d) => d.auth.googleLoading)
+                  : t((d) => d.auth.googleButton)}
               </Text>
-              {submitting ? (
+              {oauthSubmitting === 'google' ? (
                 <ActivityIndicator
                   style={{ marginLeft: 10 }}
                   size="small"
@@ -159,6 +176,23 @@ export default function LoginScreen() {
                 />
               ) : null}
             </Pressable>
+
+            {showAppleButton ? (
+              <Pressable
+                style={styles.appleButton}
+                onPress={handleApplePress}
+                disabled={oauthSubmitting !== null}>
+                <Ionicons name="logo-apple" size={18} color="#fff" style={{ marginRight: 10 }} />
+                <Text style={styles.appleText}>
+                  {oauthSubmitting === 'apple'
+                    ? t((d) => d.auth.appleLoading)
+                    : t((d) => d.auth.appleButton)}
+                </Text>
+                {oauthSubmitting === 'apple' ? (
+                  <ActivityIndicator style={{ marginLeft: 10 }} size="small" color="#fff" />
+                ) : null}
+              </Pressable>
+            ) : null}
           </View>
 
           <View style={styles.bottomRow}>
@@ -298,6 +332,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: palette.text,
+  },
+  appleButton: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#0a0a0a',
+    borderWidth: 1,
+    borderColor: '#0a0a0a',
+    alignSelf: 'center',
+    minWidth: 220,
+    transform: [{ scale: 1.05 }],
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  appleText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.2,
   },
   bottomRow: {
     marginTop: 28,
