@@ -8,6 +8,10 @@ WebBrowser.maybeCompleteAuthSession();
 
 const APP_SCHEME = 'planora';
 const REDIRECT_PATH = 'auth/callback';
+const APPLE_CLIENT_SECRET =
+  process.env.EXPO_PUBLIC_SUPABASE_APPLE_OAUTH_KEY ?? process.env.SUPABASE_APPLE_OAUTH_KEY;
+const APPLE_SCOPES = 'name email';
+const APPLE_QUERY_PARAMS = { response_mode: 'form_post' };
 
 export const makeAppRedirectUri = () =>
   AuthSession.makeRedirectUri({
@@ -77,16 +81,49 @@ export const handleOAuthRedirect = async (url: string) => {
   throw new Error('OAuth redirect did not include session data');
 };
 
+export const buildAppleOAuthOptions = (
+  redirectTo: string,
+  skipBrowserRedirect?: boolean,
+) => {
+  if (!APPLE_CLIENT_SECRET) {
+    console.error(
+      'Missing Apple client secret. Set EXPO_PUBLIC_SUPABASE_APPLE_OAUTH_KEY (or SUPABASE_APPLE_OAUTH_KEY) before building.'
+    );
+    throw new Error('Apple Sign-In is not configured.');
+  }
+
+  const options: {
+    redirectTo: string;
+    scopes: string;
+    queryParams: Record<string, string>;
+    clientSecret: string;
+    skipBrowserRedirect?: boolean;
+  } = {
+    redirectTo,
+    scopes: APPLE_SCOPES,
+    queryParams: APPLE_QUERY_PARAMS,
+    clientSecret: APPLE_CLIENT_SECRET,
+  };
+
+  if (typeof skipBrowserRedirect === 'boolean') {
+    options.skipBrowserRedirect = skipBrowserRedirect;
+  }
+
+  return options;
+};
+
 const startNativeOAuth = async (provider: 'google' | 'apple') => {
   const redirectUri = makeAppRedirectUri();
   console.log(`[Auth:${provider}] redirectUri`, redirectUri);
 
+  const options =
+    provider === 'apple'
+      ? buildAppleOAuthOptions(redirectUri, true)
+      : { redirectTo: redirectUri, skipBrowserRedirect: true };
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: {
-      redirectTo: redirectUri,
-      skipBrowserRedirect: true,
-    },
+    options,
   });
 
   if (error) {
@@ -115,7 +152,7 @@ const startNativeOAuth = async (provider: 'google' | 'apple') => {
   }
 
   if (result.type !== 'success' || !resultUrl) {
-    throw new Error(`${provider} auth was cancelled or failed`);
+    throw new Error(`${provider} auth did not complete`);
   }
 
   // Handle the redirect payload directly to avoid relying on additional navigation.

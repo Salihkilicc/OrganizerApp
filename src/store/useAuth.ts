@@ -1,7 +1,12 @@
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 
-import { signInWithAppleNative, signInWithGoogleNative } from '@/lib/auth';
+import {
+  buildAppleOAuthOptions,
+  makeAppRedirectUri,
+  signInWithAppleNative,
+  signInWithGoogleNative,
+} from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { usePoints } from '@/store/usePoints';
 import { useWater } from '@/store/useWater';
@@ -115,11 +120,13 @@ export const useAuth = create<AuthState>((set, get) => {
     try {
       if (Platform.OS === 'web') {
         const redirectTo =
-          typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+          typeof window !== 'undefined'
+            ? `${window.location.origin}/auth/callback`
+            : makeAppRedirectUri();
         console.log('[Auth] signInWithGoogle web redirect', redirectTo);
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
-          options: redirectTo ? { redirectTo } : undefined,
+          options: { redirectTo },
         });
         if (error) {
           throw error;
@@ -138,11 +145,13 @@ export const useAuth = create<AuthState>((set, get) => {
     try {
       if (Platform.OS === 'web') {
         const redirectTo =
-          typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
+          typeof window !== 'undefined'
+            ? `${window.location.origin}/auth/callback`
+            : makeAppRedirectUri();
         console.log('[Auth] signInWithApple web redirect', redirectTo);
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'apple',
-          options: redirectTo ? { redirectTo } : undefined,
+          options: buildAppleOAuthOptions(redirectTo),
         });
         if (error) {
           throw error;

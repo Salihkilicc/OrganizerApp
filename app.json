@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.salihkilic.planora",
-      "buildNumber": "11",
+      "buildNumber": "13",
       "usesAppleSignIn": true,
       "splash": {
         "image": "./assets/splash.png",

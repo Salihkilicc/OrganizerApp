@@ -1,16 +1,13 @@
 {
   "build": {
     "production": {
-      "ios": {
-        
-        "distribution": "store"
+      "distribution": "store",
+      "env": {
+        "EXPO_NO_CAPABILITY_SYNC": "1"
       }
     },
     "development": {
-      "ios": {
-        
-        "distribution": "internal"
-      }
+      "distribution": "internal"
     }
   },
   "submit": {
@@ -22,4 +19,3 @@
     }
   }
 }
-
