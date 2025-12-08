@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { NotificationTypes } from '@/lib/account';
 import type { PlanBlock } from '@/store/usePlans';
 import { useSettings } from '@/store/useSettings';
+import { translate } from '@/i18n/useI18n';
 
 export enum NotificationKind {
   NEXT_UP = 'NEXT_UP',
@@ -243,13 +244,13 @@ const scheduleNextUpForBlock = async (
   if (block.date !== todayDate()) return;
   const scheduleAt = buildDateFromMinutes(date, block.startMin - NEXT_UP_LEAD_MINUTES);
   if (!isFutureDate(scheduleAt)) return;
-  const label = block.title || 'Next up';
+  const label = block.title || translate((d) => d.notifications.nextUpTitle, { title: '' });
   await scheduleNotification({
     id,
     date: scheduleAt,
     kind: NotificationKind.NEXT_UP,
-    title: `Next up: ${label}`,
-    body: `Starts at ${formatMinutes(block.startMin)}`,
+    title: translate((d) => d.notifications.nextUpTitle, { title: label }),
+    body: translate((d) => d.notifications.nextUpBody, { time: formatMinutes(block.startMin) }),
   });
 };
 
@@ -271,8 +272,10 @@ const scheduleMissedReminder = async (
     id,
     date: trigger,
     kind: NotificationKind.MISSED_PLAN,
-    title: 'Did you complete it?',
-    body: block.title ? `Did you complete "${block.title}"?` : undefined,
+    title: translate((d) => d.notifications.missedTitle),
+    body: block.title
+      ? translate((d) => d.notifications.missedBody, { title: block.title })
+      : undefined,
   });
 };
 
@@ -291,10 +294,8 @@ const scheduleMiddayMilestone = async (
     id,
     date: trigger,
     kind: NotificationKind.MIDDAY_MILESTONE,
-    title: 'Midday milestone',
-    body: `Nice! You’ve already completed ${completedCount} plan${
-      completedCount === 1 ? '' : 's'
-    } today.`,
+    title: translate((d) => d.notifications.middayTitle),
+    body: translate((d) => d.notifications.middayBody, { count: completedCount }),
   });
 };
 
@@ -311,8 +312,8 @@ const scheduleStreakRescue = async (ctx: DayScheduleContext, completedCount: num
     id,
     date: trigger,
     kind: NotificationKind.STREAK_RESCUE,
-    title: 'Streak rescue',
-    body: 'Your streak is about to break, mark at least one plan as done to save it.',
+    title: translate((d) => d.notifications.streakTitle),
+    body: translate((d) => d.notifications.streakBody),
   });
 };
 
@@ -331,8 +332,8 @@ const scheduleReflection = async (ctx: DayScheduleContext) => {
     id,
     date: trigger,
     kind: NotificationKind.REFLECTION,
-    title: 'Take 30 seconds to reflect',
-    body: 'Close your day in Planora with a quick check-in.',
+    title: translate((d) => d.notifications.reflectionTitle),
+    body: translate((d) => d.notifications.reflectionBody),
   });
 };
 
@@ -351,8 +352,8 @@ const scheduleWaterReminders = async (ctx: DayScheduleContext) => {
       id: ids[index],
       date: trigger,
       kind: NotificationKind.WATER_REMINDER,
-      title: 'Time for a glass of water 💧',
-      body: 'Tap in the app to log it.',
+      title: translate((d) => d.notifications.waterTitle),
+      body: translate((d) => d.notifications.waterBody),
     });
   }).filter(Boolean) as Promise<string | null>[];
   await Promise.all(promises);
@@ -416,8 +417,12 @@ export const scheduleWeeklySummary = async (
     id,
     date: trigger,
     kind: NotificationKind.WEEKLY_SUMMARY,
-    title: 'Weekly summary',
-    body: `Weekly summary: ${completedPlans} plans completed • ${focusHours} focus hours • ${streakDays}-day streak`,
+    title: translate((d) => d.notifications.weeklyTitle),
+    body: translate((d) => d.notifications.weeklyBody, {
+      plans: completedPlans,
+      hours: focusHours,
+      streak: streakDays,
+    }),
   });
 };
 
@@ -428,8 +433,8 @@ export const notifyFocusStarted = async () => {
   if (!settings.enableFocusNotifications) return;
   await sendImmediate(
     NotificationKind.FOCUS_START,
-    'Focus started',
-    'We will stay quiet until you finish. Turn this off in Settings > Notifications.',
+    translate((d) => d.notifications.focusStartTitle),
+    translate((d) => d.notifications.focusStartBody),
   );
 };
 

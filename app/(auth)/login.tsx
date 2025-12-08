@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -18,6 +19,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '@/store/useAuth';
 import { useI18n } from '@/i18n/useI18n';
+import { availableLanguages, getLanguageName } from '@/i18n/useI18n';
+import { useLanguage } from '@/store/useLanguage';
+import { useSettings } from '@/store/useSettings';
 
 const palette = {
   text: '#111826',
@@ -42,6 +46,9 @@ export default function LoginScreen() {
   const [oauthSubmitting, setOauthSubmitting] = useState<'google' | 'apple' | null>(null);
   const { t } = useI18n();
   const showAppleButton = Platform.OS === 'ios';
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const currentLanguage = useLanguage((state) => state.language);
+  const setLanguage = useSettings((state) => state.setLanguage);
 
   const handleLogin = async () => {
     setErrorText('');
@@ -98,6 +105,19 @@ export default function LoginScreen() {
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
+          <View style={styles.topBar}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.languageButton,
+                { opacity: pressed ? 0.85 : 1 },
+              ]}
+              onPress={() => setLanguageModalVisible(true)}>
+              <Ionicons name="language-outline" size={20} color="#fff" />
+              <Text style={styles.languageText}>{getLanguageName(currentLanguage)}</Text>
+              <Ionicons name="chevron-down" size={18} color="#f3f5f9" />
+            </Pressable>
+          </View>
+
           <Text style={styles.title}>{t((d) => d.auth.loginTitle)}</Text>
           <Text style={styles.subtitle}>{t((d) => d.auth.loginSubtitle)}</Text>
 
@@ -207,6 +227,54 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setLanguageModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setLanguageModalVisible(false)} />
+          <View style={styles.selectorModal}>
+            <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
+            <Text style={styles.selectorModalTitle}>{t((d) => d.settings.languageTitle)}</Text>
+            <ScrollView
+              style={styles.selectorModalList}
+              contentContainerStyle={styles.selectorModalListContent}
+              showsVerticalScrollIndicator={false}>
+              {availableLanguages.map((option) => {
+                const isActive = option.code === currentLanguage;
+                return (
+                  <Pressable
+                    key={option.code}
+                    onPress={() => {
+                      setLanguage(option.code);
+                      setLanguageModalVisible(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.selectorItem,
+                      {
+                        borderColor: palette.border,
+                        backgroundColor: isActive ? palette.accent : '#fff',
+                        opacity: pressed ? 0.9 : 1,
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.selectorItemText,
+                        { color: isActive ? '#fff' : palette.text },
+                      ]}>
+                      {option.name}
+                    </Text>
+                    {isActive && <Text style={styles.selectorItemCheck}>✓</Text>}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -225,6 +293,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 40,
     paddingBottom: 32,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.accent,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignSelf: 'flex-end',
+    backgroundColor: palette.accent,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    transform: [{ scale: 1.1 }],
+  },
+  languageText: {
+    marginLeft: 8,
+    marginRight: 6,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
   title: {
     fontSize: 32,
@@ -393,5 +489,62 @@ const styles = StyleSheet.create({
     color: palette.text,
     fontWeight: '600',
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  selectorModal: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 24,
+    backgroundColor: '#fff',
+  },
+  selectorModalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  selectorModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+    color: palette.text,
+  },
+  selectorModalList: {
+    maxHeight: 320,
+  },
+  selectorModalListContent: {
+    paddingBottom: 12,
+  },
+  selectorItem: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  selectorItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  selectorItemCheck: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

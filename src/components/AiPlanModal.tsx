@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,6 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlanBlock } from '@/store/usePlans';
 import { AiPlanBlock, AiPlanRequest, generatePlanFromAI } from '@/lib/aiPlan';
+import { checkAiLimit, type AiLimitResult } from '@/lib/aiUsage';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/store/useAuth';
+import { usePremium } from '@/store/usePremium';
 import { usePlans } from '@/store/usePlans';
 import { useTheme } from '@/store/useTheme';
 import { useI18n } from '@/i18n/useI18n';
@@ -108,6 +113,12 @@ export function AiPlanModal({
   const { palette } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const user = useAuth((state) => state.user);
+  const status = useAuth((state) => state.status);
+  const isGuest = useAuth((state) => state.isGuest);
+  const isPremium = usePremium((state) => state.isPremium);
+  const isAuthenticatedUser = status === 'authenticated' && !!user && !isGuest;
+  const isGuestUser = !isAuthenticatedUser;
   const placeholderColor = `${palette.text}88`;
   const inputTextColor = `${palette.text}dd`;
   const sanitizeTimeInput = (value: string) => {
@@ -135,6 +146,10 @@ export function AiPlanModal({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
+  const [aiLimitRemaining, setAiLimitRemaining] = useState<AiLimitResult['remaining'] | null>(null);
+  const [aiLimitAllowed, setAiLimitAllowed] = useState(true);
+  const [aiLimitReason, setAiLimitReason] = useState<AiLimitResult['reason']>();
+  const [aiLimitLoading, setAiLimitLoading] = useState(false);
 
   const workStartMinutes = works ? parseTimeString(workStart) : undefined;
   const workEndMinutes = works ? parseTimeString(workEnd) : undefined;
@@ -147,7 +162,9 @@ export function AiPlanModal({
     }
   }
   const isLoading = isGenerating || isRegenerating;
-  const generateDisabled = isLoading || (works && Boolean(workValidationError));
+  const aiBlocked = isGuestUser || !aiLimitAllowed;
+  const generateDisabled = isLoading || aiBlocked || aiLimitLoading || (works && Boolean(workValidationError));
+  const regenerateDisabled = isLoading || aiBlocked || aiLimitLoading;
 
   const dateLabel = useMemo(() => formatDateLabel(date), [date]);
   const previewList = previewBlocks ?? [];
@@ -160,6 +177,77 @@ export function AiPlanModal({
     }),
     [t],
   );
+
+  const updateLimitState = useCallback(
+    (result: AiLimitResult) => {
+      setAiLimitAllowed(result.allowed);
+      setAiLimitRemaining(result.remaining ?? null);
+      setAiLimitReason(result.reason);
+    },
+    [],
+  );
+
+  const refreshAiLimit = useCallback(async () => {
+    if (!visible) {
+      return;
+    }
+    if (isGuestUser) {
+      updateLimitState({ allowed: false, reason: 'guest' });
+      return;
+    }
+    if (isPremium) {
+      updateLimitState({ allowed: true, remaining: '∞' });
+      return;
+    }
+    setAiLimitLoading(true);
+    try {
+      const result = await checkAiLimit(supabase, isPremium);
+      updateLimitState(result);
+    } catch (refreshError) {
+      console.warn('[AiPlanModal] Failed to refresh AI limit', refreshError);
+      updateLimitState({ allowed: false, reason: 'error' });
+    } finally {
+      setAiLimitLoading(false);
+    }
+  }, [isGuestUser, isPremium, updateLimitState, visible]);
+
+  useEffect(() => {
+    void refreshAiLimit();
+  }, [refreshAiLimit]);
+
+  const ensureAiAllowed = useCallback(async () => {
+    try {
+      const result = await checkAiLimit(supabase, isPremium);
+      updateLimitState(result);
+      if (!result.allowed) {
+        const message =
+          result.reason === 'limit_reached'
+            ? 'You have reached your 30 AI generations for this month.'
+            : result.reason === 'guest'
+              ? 'Please log in to use AI Planner.'
+              : 'Unable to verify AI usage. Please try again.';
+        Alert.alert('AI limit', message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn('[AiPlanModal] checkAiLimit failed', err);
+      Alert.alert('AI limit', 'Unable to verify AI usage. Please try again.');
+      return false;
+    }
+  }, [isPremium, updateLimitState]);
+
+  const incrementUsage = useCallback(async () => {
+    const { error: incrementError } = await supabase.rpc('increment_ai_usage');
+    if (incrementError) {
+      console.warn('[AiPlanModal] Failed to increment AI usage', incrementError);
+      return;
+    }
+    if (!isPremium) {
+      setAiLimitRemaining((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev));
+      void refreshAiLimit();
+    }
+  }, [isPremium, refreshAiLimit]);
 
   const parseDurationFromText = useCallback((text: string): number | null => {
     const hoursMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:saat|hour|hr|h)\b/);
@@ -322,6 +410,14 @@ export function AiPlanModal({
       setError(t((d) => d.aiPlanner.existingBlocksError));
       return;
     }
+    if (isGuestUser) {
+      Alert.alert('AI Planner', 'Please log in to use AI Planner.');
+      return;
+    }
+    const allowed = await ensureAiAllowed();
+    if (!allowed) {
+      return;
+    }
     setIsGenerating(true);
     try {
       const payload = buildRequestPayload();
@@ -339,6 +435,7 @@ export function AiPlanModal({
         setError(null);
       }
       setStage('preview');
+      await incrementUsage();
     } catch (err) {
       console.error('[AiPlanModal] Error generating plan', err);
       setPreviewBlocks([]);
@@ -351,6 +448,9 @@ export function AiPlanModal({
     buildRequestPayload,
     enforceWorkWindow,
     hasExistingBlocks,
+    incrementUsage,
+    isGuestUser,
+    ensureAiAllowed,
     setLastAiPlanString,
     t,
     workValidationError,
@@ -359,6 +459,14 @@ export function AiPlanModal({
 
   const handleRegenerate = useCallback(async () => {
     if (!date) return;
+    if (isGuestUser) {
+      Alert.alert('AI Planner', 'Please log in to use AI Planner.');
+      return;
+    }
+    const allowed = await ensureAiAllowed();
+    if (!allowed) {
+      return;
+    }
     setIsRegenerating(true);
     try {
       const payload = buildRequestPayload({ includePreviousPlanString: true });
@@ -368,6 +476,7 @@ export function AiPlanModal({
       const blocksArray = Array.isArray(blocks) ? blocks : [];
       const feedbackAdjusted = adjustBlocksWithFeedback(blocksArray);
       const workAdjusted = enforceWorkWindow(feedbackAdjusted);
+      await incrementUsage();
       if (workAdjusted.length === 0) {
         setError(t((d) => d.aiPlanner.noBetterPlan));
         setPreviewBlocks([]);
@@ -383,7 +492,17 @@ export function AiPlanModal({
     } finally {
       setIsRegenerating(false);
     }
-  }, [adjustBlocksWithFeedback, buildRequestPayload, date, enforceWorkWindow, setLastAiPlanString, t]);
+  }, [
+    adjustBlocksWithFeedback,
+    buildRequestPayload,
+    date,
+    enforceWorkWindow,
+    incrementUsage,
+    isGuestUser,
+    ensureAiAllowed,
+    setLastAiPlanString,
+    t,
+  ]);
 
   const handleApply = useCallback(() => {
     const planBlocks = previewBlocks.map((block) => buildPlanBlock(date, block));
@@ -396,6 +515,15 @@ export function AiPlanModal({
     resetState();
     onClose();
   }, [onClose, resetState]);
+
+  const isLimitReached = aiLimitReason === 'limit_reached';
+  const aiUsageText = isGuestUser
+    ? 'Please log in to use AI Planner'
+    : isPremium
+      ? 'Unlimited AI generation'
+      : `Remaining: ${aiLimitRemaining ?? (aiLimitLoading ? '…' : '0')} / 30`;
+  const aiUsageColor = isLimitReached || isGuestUser ? palette.accent : palette.text;
+  const showLimitSpinner = aiLimitLoading && !isPremium && !isGuestUser;
 
   return (
     <Modal
@@ -588,6 +716,12 @@ export function AiPlanModal({
                   {helperTexts.feedbackExamples}
                 </Text>
               </View>
+              <View style={styles.limitRow}>
+                {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
+                <Text style={[styles.limitText, { color: aiUsageColor }]}>
+                  {aiUsageText}
+                </Text>
+              </View>
               {error ? (
                 <Text style={[styles.errorText, { color: palette.accent }]}>{error}</Text>
               ) : null}
@@ -632,6 +766,12 @@ export function AiPlanModal({
                 <Text style={[styles.previewTitle, { color: palette.text }]}>
                   {t((d) => d.aiPlanner.suggestedBlocks)}
                 </Text>
+                <View style={styles.limitRow}>
+                  {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
+                  <Text style={[styles.limitText, { color: aiUsageColor }]}>
+                    {aiUsageText}
+                  </Text>
+                </View>
                 <ScrollView
                   style={styles.previewList}
                   contentContainerStyle={[
@@ -687,13 +827,13 @@ export function AiPlanModal({
                       />
                       <Pressable
                         onPress={handleRegenerate}
-                        disabled={isLoading}
+                        disabled={regenerateDisabled}
                         style={({ pressed }) => [
                           styles.feedbackButton,
                           {
                             borderColor: palette.border,
                             backgroundColor: palette.card,
-                            opacity: isLoading ? 0.6 : pressed ? 0.8 : 1,
+                            opacity: regenerateDisabled ? 0.5 : pressed ? 0.8 : 1,
                           },
                         ]}
                       >
@@ -926,6 +1066,17 @@ const styles = StyleSheet.create({
   feedbackButtonText: {
     fontWeight: '600',
     fontSize: 14,
+  },
+  limitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  limitText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
 

@@ -160,7 +160,7 @@ export default function ProfileScreen() {
     : null;
 
   const handleAvatarPress = () => {
-    setAvatarModalVisible(true);
+    router.push('/points');
   };
 
   const storedName = (user?.user_metadata?.full_name ?? '').trim();

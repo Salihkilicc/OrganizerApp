@@ -422,6 +422,24 @@ export type TranslationKeys = {
     restoreSuccess: string;
     restoreFailed: string;
   };
+  notifications: {
+    nextUpTitle: string;
+    nextUpBody: string;
+    missedTitle: string;
+    missedBody: string;
+    middayTitle: string;
+    middayBody: string;
+    streakTitle: string;
+    streakBody: string;
+    reflectionTitle: string;
+    reflectionBody: string;
+    waterTitle: string;
+    waterBody: string;
+    weeklyTitle: string;
+    weeklyBody: string;
+    focusStartTitle: string;
+    focusStartBody: string;
+  };
 };
 
 const languageNames: Record<SupportedLanguage, string> = {
@@ -905,6 +923,26 @@ const en: TranslationKeys = {
     restoreSuccess: 'Previous purchases restored.',
     restoreFailed: 'Restore failed. Please try again.',
   },
+  notifications: {
+    nextUpTitle: 'Next up: {{title}}',
+    nextUpBody: 'Starts at {{time}}',
+    missedTitle: 'Did you complete it?',
+    missedBody: 'Did you complete "{{title}}"?',
+    middayTitle: 'Midday milestone',
+    middayBody: 'Nice! You’ve already completed {{count}} plans today.',
+    streakTitle: 'Streak rescue',
+    streakBody: 'Your streak is about to break, mark at least one plan as done to save it.',
+    reflectionTitle: 'Take 30 seconds to reflect',
+    reflectionBody: 'Close your day in Planora with a quick check-in.',
+    waterTitle: 'Time for a glass of water 💧',
+    waterBody: 'Tap in the app to log it.',
+    weeklyTitle: 'Weekly summary',
+    weeklyBody:
+      'Weekly summary: {{plans}} plans completed • {{hours}} focus hours • {{streak}}-day streak',
+    focusStartTitle: 'Focus started',
+    focusStartBody:
+      'We will stay quiet until you finish. Turn this off in Settings > Notifications.',
+  },
 };
 
 const tr: TranslationKeys = {
@@ -1373,6 +1411,25 @@ const tr: TranslationKeys = {
     restoreSuccess: 'Önceki satın alımlar geri yüklendi.',
     restoreFailed: 'Geri yükleme başarısız. Lütfen tekrar dene.',
   },
+  notifications: {
+    nextUpTitle: 'Sıradaki: {{title}}',
+    nextUpBody: '{{time}}’da başlıyor',
+    missedTitle: 'Tamamladın mı?',
+    missedBody: '"{{title}}" görevini tamamladın mı?',
+    middayTitle: 'Günün yarısında',
+    middayBody: 'Harika! Bugün {{count}} plan tamamladın.',
+    streakTitle: 'Seriyi kurtar',
+    streakBody: 'Serin bozulmak üzere, en az bir planı tamamlanmış olarak işaretle.',
+    reflectionTitle: '30 saniye ayır ve düşün',
+    reflectionBody: 'Planora’da günü hızlıca kapat.',
+    waterTitle: 'Bir bardak su zamanı 💧',
+    waterBody: 'Kaydetmek için uygulamaya dokun.',
+    weeklyTitle: 'Haftalık özet',
+    weeklyBody:
+      'Haftalık özet: {{plans}} plan tamamlandı • {{hours}} fokus saati • {{streak}} günlük seri',
+    focusStartTitle: 'Fokus başladı',
+    focusStartBody: 'Bitirene kadar sessizdeyiz. Ayarlar > Bildirimler’den kapatabilirsin.',
+  },
 };
 
 const cloneFromEnglish = (): TranslationKeys =>
@@ -1433,6 +1490,7 @@ const applyOverrides = (overrides: DeepPartial<TranslationKeys>): TranslationKey
     },
     legal: { ...base.legal, ...overrides.legal },
     paywall: { ...base.paywall, ...overrides.paywall },
+    notifications: { ...base.notifications, ...overrides.notifications },
   };
 };
 
@@ -5285,6 +5343,87 @@ const nl = applyOverrides({
   },
 });
 
+const ko = applyOverrides({
+  plan: {
+    copyDaysLabel: '일자 복사',
+    deletePlansLabel: '계획 삭제',
+  },
+  notifications: {
+    nextUpTitle: 'Next up: {{title}}',
+    nextUpBody: 'Starts at {{time}}',
+    missedTitle: 'Did you complete it?',
+    missedBody: 'Did you complete "{{title}}"?',
+    middayTitle: 'Midday milestone',
+    middayBody: 'Nice! You’ve already completed {{count}} plans today.',
+    streakTitle: 'Streak rescue',
+    streakBody: 'Your streak is about to break, mark at least one plan as done to save it.',
+    reflectionTitle: 'Take 30 seconds to reflect',
+    reflectionBody: 'Close your day in Planora with a quick check-in.',
+    waterTitle: 'Time for a glass of water 💧',
+    waterBody: 'Tap in the app to log it.',
+    weeklyTitle: 'Weekly summary',
+    weeklyBody:
+      'Weekly summary: {{plans}} plans completed • {{hours}} focus hours • {{streak}}-day streak',
+    focusStartTitle: 'Focus started',
+    focusStartBody:
+      'We will stay quiet until you finish. Turn this off in Settings > Notifications.',
+  },
+});
+
+const hi = applyOverrides({
+  plan: {
+    copyDaysLabel: 'दिन कॉपी करें',
+    deletePlansLabel: 'योजनाएँ हटाएँ',
+  },
+  notifications: {
+    nextUpTitle: 'Next up: {{title}}',
+    nextUpBody: 'Starts at {{time}}',
+    missedTitle: 'Did you complete it?',
+    missedBody: 'Did you complete "{{title}}"?',
+    middayTitle: 'Midday milestone',
+    middayBody: 'Nice! You’ve already completed {{count}} plans today.',
+    streakTitle: 'Streak rescue',
+    streakBody: 'Your streak is about to break, mark at least one plan as done to save it.',
+    reflectionTitle: 'Take 30 seconds to reflect',
+    reflectionBody: 'Close your day in Planora with a quick check-in.',
+    waterTitle: 'Time for a glass of water 💧',
+    waterBody: 'Tap in the app to log it.',
+    weeklyTitle: 'Weekly summary',
+    weeklyBody:
+      'Weekly summary: {{plans}} plans completed • {{hours}} focus hours • {{streak}}-day streak',
+    focusStartTitle: 'Focus started',
+    focusStartBody:
+      'We will stay quiet until you finish. Turn this off in Settings > Notifications.',
+  },
+});
+
+const sv = applyOverrides({
+  plan: {
+    copyDaysLabel: 'Kopiera dagar',
+    deletePlansLabel: 'Ta bort planer',
+  },
+  notifications: {
+    nextUpTitle: 'Next up: {{title}}',
+    nextUpBody: 'Starts at {{time}}',
+    missedTitle: 'Did you complete it?',
+    missedBody: 'Did you complete "{{title}}"?',
+    middayTitle: 'Midday milestone',
+    middayBody: 'Nice! You’ve already completed {{count}} plans today.',
+    streakTitle: 'Streak rescue',
+    streakBody: 'Your streak is about to break, mark at least one plan as done to save it.',
+    reflectionTitle: 'Take 30 seconds to reflect',
+    reflectionBody: 'Close your day in Planora with a quick check-in.',
+    waterTitle: 'Time for a glass of water 💧',
+    waterBody: 'Tap in the app to log it.',
+    weeklyTitle: 'Weekly summary',
+    weeklyBody:
+      'Weekly summary: {{plans}} plans completed • {{hours}} focus hours • {{streak}}-day streak',
+    focusStartTitle: 'Focus started',
+    focusStartBody:
+      'We will stay quiet until you finish. Turn this off in Settings > Notifications.',
+  },
+});
+
 const pl = applyOverrides({
   common: {
     ok: 'OK',
@@ -5566,10 +5705,10 @@ export const translations: Record<SupportedLanguage, TranslationKeys> = {
   ar,
   zh,
   ja,
-  ko: cloneFromEnglish(),
-  hi: cloneFromEnglish(),
+  ko,
+  hi,
   nl,
-  sv: cloneFromEnglish(),
+  sv,
   pl,
 };
 

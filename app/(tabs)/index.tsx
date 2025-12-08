@@ -30,6 +30,8 @@ import { useAvatarStore } from '@/store/useAvatar';
 import { AVATAR_IMAGES } from '@/constants/avatars';
 import * as Location from 'expo-location';
 import { Popup } from '@/components/Popup';
+import { SvgXml } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (totalMinutes: number) => {
@@ -63,33 +65,17 @@ const getCategoryIcon = (category: PlanBlock['category']) => {
 };
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
-const BOTTLE_RIDGE_OFFSETS = [10, 22, 34, 46];
 const BUTTON_CORNER_RADIUS = 20;
-const WaterBottleIcon = ({ color, filled }: { color: string; filled: boolean }) => {
-  const fillOpacity = filled ? 0.8 : 0;
-  return (
-    <View style={styles.bottleWrapper}>
-      <View style={[styles.bottleBody, { borderColor: color }]}>
-        <View style={[styles.bottleFill, { backgroundColor: color, opacity: fillOpacity }]} />
-        {BOTTLE_RIDGE_OFFSETS.map((offset) => (
-          <View
-            key={offset}
-            style={[
-              styles.bottleRidge,
-              {
-                bottom: `${offset}%`,
-                opacity: filled ? 1 : 0.25,
-                backgroundColor: color,
-              },
-            ]}
-          />
-        ))}
-        <View style={[styles.bottleNeck, { backgroundColor: color }]} />
-        <View style={[styles.bottleCap, { backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-};
+const bottleSvg = `
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <path fill="currentColor" d="m87.102 100.758h-46.191c-1.669 0-3.033 1.35-3.033 3.019v15.388c0 4.87 3.965 8.835 8.835 8.835h34.588c4.87 0 8.835-3.965 8.835-8.835v-15.388c-.001-1.669-1.364-3.019-3.034-3.019zm-3.839-19.283h-38.539c-3.784 0-6.859 3.074-6.859 6.859 0 3.771 3.061 6.845 6.832 6.859h38.595c3.756-.014 6.817-3.089 6.817-6.859-.001-3.784-3.076-6.859-6.846-6.859zm0-19.27h-38.539c-3.784 0-6.859 3.074-6.859 6.845 0 3.784 3.074 6.859 6.859 6.859h38.539c3.771 0 6.845-3.074 6.845-6.859 0-3.77-3.075-6.845-6.845-6.845zm.82-32.083-8.78-12.41h-22.621l-8.765 12.424c-3.951 5.579-6.038 12.146-6.038 18.978v4.494c0 1.669 1.363 3.019 3.033 3.019h46.191c1.669 0 3.033-1.35 3.033-3.019v-4.48c-.001-6.846-2.101-13.414-6.053-19.006zm-12.758-30.122h-14.65c-1.46 0-2.643 1.183-2.643 2.643v9.488h19.937v-9.488c0-1.46-1.183-2.643-2.644-2.643z"/>
+</svg>
+`;
+const WaterBottleIcon = ({ color }: { color: string }) => (
+  <View style={styles.bottleWrapper}>
+    <SvgXml xml={bottleSvg} width={38} height={56} color={color} />
+  </View>
+);
 const createBottleScaleValues = () =>
   Array.from({ length: WATER_BOTTLE_COUNT }, () => new Animated.Value(1));
 
@@ -450,24 +436,32 @@ export default function TodayScreen() {
               </Pressable>
 
               <Pressable
-                onPress={() => router.push('/points')}
-                style={({ pressed }) => [
-                  styles.statBlock,
-                  styles.pointsPressable,
-                  styles.buttonShadow,
-                  pressed && styles.pointsPressed,
-                ]}>
-                <Text style={[styles.statLabel, { color: palette.text }]}>
-                  {t((d) => d.today.points)}
+              onPress={() => router.push('/points')}
+              style={({ pressed }) => [
+                styles.statBlock,
+                styles.pointsPressable,
+                styles.buttonShadow,
+                {
+                  backgroundColor: palette.accent,
+                  borderColor: palette.border,
+                  opacity: pressed ? 0.85 : 1,
+                },
+                pressed && styles.pointsPressed,
+              ]}>
+                <Text style={[styles.statLabel, { color: palette.background, marginBottom: 2 }]}>
+                  Shop
                 </Text>
-                <View
-                  style={[
-                    styles.pointsBadge,
-                    { backgroundColor: palette.accent, shadowColor: palette.text },
-                  ]}>
-                  <Text style={[styles.pointsValue, { color: palette.background }]}>
-                    {points}
-                  </Text>
+                <View style={styles.pointsNumberRow}>
+                  <Ionicons name="storefront-outline" size={21} color={palette.background} />
+                  <View
+                    style={[
+                      styles.pointsBadge,
+                      { backgroundColor: palette.background, shadowColor: palette.text },
+                    ]}>
+                    <Text style={[styles.pointsValue, { color: palette.accent }]}>
+                      {points}
+                    </Text>
+                  </View>
                 </View>
               </Pressable>
             </View>
@@ -547,22 +541,32 @@ export default function TodayScreen() {
         </View>
 
         <View style={styles.planWaterRow}>
-          {bottleStates.map((isFull, index) => (
-            <AnimatedTouchableOpacity
-              key={`water-${index}`}
-              onPress={() => handleWaterPress(index, isFull)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              style={[
-                styles.waterButton,
-                {
-                  transform: [{ scale: bottleScales[index] }],
-                  opacity: isFull ? 1 : 0.25,
-                },
-              ]}>
-              <WaterBottleIcon color={palette.tint} filled={isFull} />
-            </AnimatedTouchableOpacity>
-          ))}
+          <View style={styles.waterLabelStack}>
+            <Text style={[styles.waterLabel, { color: '#1f7bff' }]}>
+              {t((d) => d.today.waterDaily)}
+            </Text>
+            <Text style={[styles.waterLabel, { color: '#1f7bff' }]}>
+              {t((d) => d.today.waterWaters)}
+            </Text>
+          </View>
+          <View style={styles.waterBottleRow}>
+            {bottleStates.map((isFull, index) => (
+              <AnimatedTouchableOpacity
+                key={`water-${index}`}
+                onPress={() => handleWaterPress(index, isFull)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                style={[
+                  styles.waterButton,
+                  {
+                    transform: [{ scale: bottleScales[index] }],
+                    opacity: isFull ? 1 : 0.25,
+                  },
+                ]}>
+                <WaterBottleIcon color={palette.tint} filled={isFull} />
+              </AnimatedTouchableOpacity>
+            ))}
+          </View>
         </View>
         <View style={styles.planCardContainer}>
           <View
@@ -804,9 +808,12 @@ const styles = StyleSheet.create({
   },
   pointsPressable: {
     borderRadius: BUTTON_CORNER_RADIUS,
-    paddingVertical: 2,
-    alignItems: 'flex-start',
-    marginLeft: 12,
+    paddingVertical: 3.4,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    flexDirection: 'column',
+    gap: 4,
+    marginLeft: 6,
     marginTop: -2,
   },
   pointsPressed: {
@@ -889,14 +896,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pointsBadge: {
-    marginTop: 4,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    marginTop: 3,
+    borderRadius: 16,
+    paddingHorizontal: 9,
+    paddingVertical: 2.5,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
+  },
+  pointsNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   pointsValue: {
     fontSize: 16,
@@ -1024,42 +1036,25 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  bottleFill: {
-    position: 'absolute',
-    left: 3,
-    right: 3,
-    bottom: 6,
-    borderRadius: 10,
-    height: '72%',
-  },
-  bottleRidge: {
-    position: 'absolute',
-    alignSelf: 'center',
-    width: '66%',
-    height: 3,
-    borderRadius: 999,
-  },
-  bottleNeck: {
-    position: 'absolute',
-    top: -4,
-    alignSelf: 'center',
-    width: 22,
-    height: 12,
-    borderRadius: 6,
-  },
-  bottleCap: {
-    position: 'absolute',
-    top: -10,
-    alignSelf: 'center',
-    width: 26,
-    height: 8,
-    borderRadius: 4,
-  },
   planWaterRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'flex-start',
     marginBottom: 12,
+  },
+  waterLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  waterBottleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    marginLeft: 12,
+  },
+  waterLabelStack: {
+    alignItems: 'flex-start',
   },
   planEmptyState: {
     marginTop: 8,
