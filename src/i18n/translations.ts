@@ -114,6 +114,8 @@ export type TranslationKeys = {
     planStatsEmpty: string;
     openPlanner: string;
     startFocus: string;
+    waterDaily: string;
+    waterWaters: string;
     summary: {
       noPlans: string;
       withPlans: string;
@@ -556,6 +558,8 @@ const en: TranslationKeys = {
     planStatsEmpty: 'No plans yet.',
     openPlanner: 'Open planner',
     startFocus: 'Start focus',
+    waterDaily: 'Daily',
+    waterWaters: 'waters',
     summary: {
       noPlans: 'No plans yet - your day is wide open.',
       withPlans: '{{total}} plan{{plural}} • {{completed}} completed • {{hours}} hours',
@@ -1018,6 +1022,8 @@ const tr: TranslationKeys = {
     planStatsEmpty: 'Henüz plan yok.',
     openPlanner: 'Planlayıcıyı aç',
     startFocus: 'Fokusa başla',
+    waterDaily: 'Günlük',
+    waterWaters: 'su',
     summary: {
       noPlans: 'Bugün için plan yok - günün geniş ve sakin.',
       withPlans: '{{total}} plan{{plural}} • {{completed}} tamamlandı • {{hours}} saat',
@@ -1532,6 +1538,8 @@ const de = applyOverrides({
     planStatsEmpty: 'Noch keine Pläne.',
     openPlanner: 'Planer öffnen',
     startFocus: 'Fokus starten',
+    waterDaily: 'Täglich',
+    waterWaters: 'Wasser',
     summary: {
       noPlans: 'Keine Pläne – dein Tag ist frei.',
       withPlans: '{{total}} Pläne • {{completed}} erledigt • {{hours}} Stunden',
@@ -1938,6 +1946,8 @@ const fr = applyOverrides({
     planStatsEmpty: 'Pas encore de plan.',
     openPlanner: 'Ouvrir le planificateur',
     startFocus: 'Commencer le focus',
+    waterDaily: 'Quotidien',
+    waterWaters: 'eau',
     summary: {
       noPlans: 'Aucun plan - journée libre.',
       withPlans: '{{total}} plans • {{completed}} terminés • {{hours}} heures',
@@ -2344,6 +2354,8 @@ const es = applyOverrides({
     planStatsEmpty: 'Sin planes aún.',
     openPlanner: 'Abrir planificador',
     startFocus: 'Iniciar foco',
+    waterDaily: 'Diario',
+    waterWaters: 'agua',
     summary: {
       noPlans: 'Sin planes: día libre.',
       withPlans: '{{total}} planes • {{completed}} completados • {{hours}} horas',
@@ -2737,6 +2749,8 @@ const it = applyOverrides({
     planStatsEmpty: 'Nessun piano.',
     openPlanner: 'Apri planner',
     startFocus: 'Inizia focus',
+    waterDaily: 'Quotidiano',
+    waterWaters: 'acqua',
     summary: {
       noPlans: 'Nessun piano - giornata libera.',
       withPlans: '{{total}} piani • {{completed}} completati • {{hours}} ore',
@@ -3131,6 +3145,8 @@ const pt = applyOverrides({
     planStatsEmpty: 'Nenhum plano ainda.',
     openPlanner: 'Abrir planejador',
     startFocus: 'Iniciar foco',
+    waterDaily: 'Diário',
+    waterWaters: 'água',
     summary: {
       noPlans: 'Sem planos - dia livre.',
       withPlans: '{{total}} planos • {{completed}} concluídos • {{hours}} horas',
@@ -3525,6 +3541,8 @@ const ru = applyOverrides({
     planStatsEmpty: 'Планов нет.',
     openPlanner: 'Открыть планировщик',
     startFocus: 'Начать фокус',
+    waterDaily: 'Ежедневно',
+    waterWaters: 'вода',
     summary: {
       noPlans: 'Нет планов — день свободен.',
       withPlans: '{{total}} планов • {{completed}} завершено • {{hours}} часов',
@@ -3918,6 +3936,8 @@ const ar = applyOverrides({
     planStatsEmpty: 'لا توجد خطط بعد.',
     openPlanner: 'فتح المخطط',
     startFocus: 'ابدأ التركيز',
+    waterDaily: 'يومي',
+    waterWaters: 'ماء',
     summary: {
       noPlans: 'لا خطط - يومك فارغ.',
       withPlans: '{{total}} خطط • {{completed}} مكتملة • {{hours}} ساعات',
@@ -4310,6 +4330,8 @@ const zh = applyOverrides({
     planStatsEmpty: '暂无计划。',
     openPlanner: '打开计划器',
     startFocus: '开始专注',
+    waterDaily: '每日',
+    waterWaters: '饮水',
     summary: {
       noPlans: '没有计划，你的时间自由。',
       withPlans: '{{total}} 个计划 • {{completed}} 已完成 • {{hours}} 小时',
@@ -4702,6 +4724,8 @@ const ja = applyOverrides({
     planStatsEmpty: 'まだ計画がありません。',
     openPlanner: 'プランナーを開く',
     startFocus: 'フォーカス開始',
+    waterDaily: '毎日',
+    waterWaters: '水分',
     summary: {
       noPlans: '計画なし — 自由な一日。',
       withPlans: '{{total}} 件 • {{completed}} 完了 • {{hours}} 時間',
@@ -5094,6 +5118,8 @@ const nl = applyOverrides({
     planStatsEmpty: 'Nog geen plannen.',
     openPlanner: 'Planner openen',
     startFocus: 'Start focus',
+    waterDaily: 'Dagelijks',
+    waterWaters: 'water',
     summary: {
       noPlans: 'Geen plannen — dag is vrij.',
       withPlans: '{{total}} plannen • {{completed}} afgerond • {{hours}} uur',
@@ -5361,6 +5387,8 @@ const pl = applyOverrides({
     planStatsEmpty: 'Brak planów.',
     openPlanner: 'Otwórz planer',
     startFocus: 'Rozpocznij fokus',
+    waterDaily: 'Codziennie',
+    waterWaters: 'woda',
     summary: {
       noPlans: 'Brak planów — wolny dzień.',
       withPlans: '{{total}} planów • {{completed}} ukończone • {{hours}} godzin',

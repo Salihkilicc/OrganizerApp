@@ -552,7 +552,10 @@ export default function PlanScreen() {
                 },
               ]}
             >
-              <Ionicons name="copy-outline" size={18} color={palette.accent} />
+              <View style={styles.summaryIconContent}>
+                <Ionicons name="copy-outline" size={20} color={palette.accent} />
+                <Text style={[styles.summaryIconLabel, { color: palette.text }]}>Copy days</Text>
+              </View>
             </Pressable>
             <Pressable
               onPress={handleClearDayPlans}
@@ -565,7 +568,10 @@ export default function PlanScreen() {
                 },
               ]}
             >
-              <Ionicons name="trash-outline" size={18} color={palette.text} />
+              <View style={styles.summaryIconContent}>
+                <Ionicons name="trash-outline" size={20} color={palette.text} />
+                <Text style={[styles.summaryIconLabel, { color: palette.text }]}>Delete plans</Text>
+              </View>
             </Pressable>
           </View>
         </View>
@@ -800,10 +806,19 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     padding: 2,
     borderRadius: 6,
+    alignItems: 'center',
   },
   summaryActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  summaryIconContent: {
+    alignItems: 'center',
+  },
+  summaryIconLabel: {
+    fontSize: 10,
+    lineHeight: 12,
+    marginTop: 2,
   },
   fab: {
     position: 'absolute',

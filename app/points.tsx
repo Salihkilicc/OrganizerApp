@@ -324,10 +324,14 @@ export default function PointsScreen() {
         </View>
 
         <View style={styles.navDotsRow}>
-          {[1, 2, 3].map((num) => (
+          {[
+            { key: 'themes', label: t((d) => d.points.themes) },
+            { key: 'frames', label: t((d) => d.points.frames) },
+            { key: 'photos', label: t((d) => d.points.profilePhotos) },
+          ].map((item) => (
             <Pressable
-              key={num}
-              onPress={() => jumpTo(num === 1 ? 'themes' : num === 2 ? 'frames' : 'photos')}
+              key={item.key}
+              onPress={() => jumpTo(item.key as keyof typeof sectionOffsets.current)}
               style={({ pressed }) => [
                 styles.navDot,
                 {
@@ -336,7 +340,9 @@ export default function PointsScreen() {
                   opacity: pressed ? 0.9 : 1,
                 },
               ]}>
-              <Text style={[styles.navDotText, { color: palette.text }]}>{num}</Text>
+              <Text style={[styles.navDotText, { color: palette.text }]} numberOfLines={1}>
+                {item.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -483,20 +489,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 16,
+    flexWrap: 'wrap',
   },
   navDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderWidth: 1,
+    borderRadius: 18,
+    minWidth: 96,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   navDotText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   sectionGrid: {
     flexDirection: 'row',
