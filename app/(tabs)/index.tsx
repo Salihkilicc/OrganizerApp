@@ -390,6 +390,22 @@ export default function TodayScreen() {
 
           <View style={styles.headerStats}>
             <View style={styles.statsInline}>
+              <Pressable
+                onPress={handleWeatherPress}
+                onTouchStart={(event) => event.stopPropagation()}
+                style={({ pressed }) => [
+                  styles.weatherIconButton,
+                  pressed && styles.weatherIconPressed,
+                ]}>
+                <Text
+                  style={[
+                    styles.weatherBubbleIcon,
+                    { color: weatherError ? palette.accent : palette.text },
+                  ]}>
+                  {weatherLoading ? '' : weatherError ? '❗' : icon ?? '🌡️'}
+                </Text>
+              </Pressable>
+
               <View style={[styles.statBlock, styles.streakBlock]}>
                 <Text style={[styles.statLabel, { color: palette.text }]}>
                   {t((d) => d.today.streak)}
@@ -402,38 +418,6 @@ export default function TodayScreen() {
                   {t((d) => d.today.streakValue, { count: streakDays })}
                 </Text>
               </View>
-
-              <Pressable
-                onPress={handleWeatherPress}
-                onTouchStart={(event) => event.stopPropagation()}
-                style={({ pressed }) => [
-                  styles.weatherBubble,
-                  styles.buttonShadow,
-                  {
-                    borderColor: palette.border,
-                    backgroundColor: palette.card,
-                  },
-                  pressed && styles.weatherBubblePressed,
-                ]}>
-                <Text
-                  style={[
-                    styles.weatherBubbleIcon,
-                    { color: weatherError ? palette.accent : palette.text },
-                  ]}>
-                  {weatherLoading ? '' : weatherError ? '❗' : icon ?? '🌡️'}
-                </Text>
-                <Text style={[styles.weatherBubbleTemp, { color: palette.text }]}>
-                  {weatherLoading
-                    ? '--°'
-                    : weatherError
-                    ? locationPermissionRequired
-                      ? 'Location permission required'
-                      : t((d) => d.today.weatherUnavailable)
-                    : temperature !== null
-                    ? `${Math.round(temperature)}°`
-                    : '--°'}
-                </Text>
-              </Pressable>
 
               <Pressable
               onPress={() => router.push('/points')}
@@ -796,7 +780,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   streakBlock: {
-    marginLeft: 12,
+    marginLeft: 8,
     marginRight: 12,
   },
   buttonShadow: {
@@ -819,26 +803,18 @@ const styles = StyleSheet.create({
   pointsPressed: {
     opacity: 0.75,
   },
-  weatherBubble: {
-    marginLeft: 12,
-    borderRadius: BUTTON_CORNER_RADIUS,
-    borderWidth: 1,
-    paddingHorizontal: 12,
+  weatherIconButton: {
+    paddingHorizontal: 6,
     paddingVertical: 6,
-    alignItems: 'center',
-    minWidth: 72,
+    marginLeft: 4,
+    marginRight: 4,
   },
-  weatherBubblePressed: {
+  weatherIconPressed: {
     opacity: 0.75,
+    transform: [{ scale: 0.96 }],
   },
   weatherBubbleIcon: {
-    fontSize: 18,
-    marginBottom: 2,
-  },
-  weatherBubbleTemp: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontSize: 20,
   },
   weeklyCard: {
     borderRadius: 18,
