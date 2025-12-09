@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-import { fetchUserPremium, saveUserPremium } from '@/lib/account';
+import { fetchUserPremiumStatus, saveUserPremiumStatus } from '@/lib/account';
 
 const STORAGE_KEY = 'premium:isPremium';
 
@@ -10,18 +10,25 @@ type PremiumState = {
   loading: boolean;
   userId?: string;
   hydrated: boolean;
+  manualActive: boolean;
+  expiresAt: string | null;
   hydrate: () => Promise<void>;
   loadFromServer: (userId: string) => Promise<void>;
-  setPremium: (value: boolean) => Promise<void>;
+  setPremium: (value: boolean, expiresAt?: string | null) => Promise<void>;
   reset: () => void;
   resetToGuest: () => void;
 };
 
-const createInitialState = (): Pick<PremiumState, 'isPremium' | 'loading' | 'userId' | 'hydrated'> => ({
+const createInitialState = (): Pick<
+  PremiumState,
+  'isPremium' | 'loading' | 'userId' | 'hydrated' | 'manualActive' | 'expiresAt'
+> => ({
   isPremium: false,
   loading: false,
   userId: undefined,
   hydrated: true,
+  manualActive: false,
+  expiresAt: null,
 });
 
 export const usePremium = create<PremiumState>((set, get) => {
@@ -38,10 +45,29 @@ export const usePremium = create<PremiumState>((set, get) => {
       set({ loading: true });
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored) as {
+            manualActive?: boolean;
+            expiresAt?: string | null;
+          };
+          const manualActive = parsed?.manualActive ?? false;
+          const expiresAt = parsed?.expiresAt ?? null;
+          const manualValid = manualActive && (!expiresAt || new Date(expiresAt).getTime() > Date.now());
+          set({
+            isPremium: manualValid,
+            manualActive,
+            expiresAt,
+            loading: false,
+            hydrated: true,
+          });
+          return;
+        }
         set({
-          isPremium: stored === 'true',
+          isPremium: false,
           loading: false,
           hydrated: true,
+          manualActive: false,
+          expiresAt: null,
         });
       } catch (error) {
         console.warn('[usePremium] hydrate failed', error);
@@ -49,6 +75,8 @@ export const usePremium = create<PremiumState>((set, get) => {
           isPremium: false,
           loading: false,
           hydrated: true,
+          manualActive: false,
+          expiresAt: null,
         });
       }
     },
@@ -57,9 +85,13 @@ export const usePremium = create<PremiumState>((set, get) => {
         return;
       }
       try {
-        const isPremium = await fetchUserPremium(userId);
+        const status = await fetchUserPremiumStatus(userId);
+        const manualValid =
+          status.manualActive && (!status.expiresAt || new Date(status.expiresAt).getTime() > Date.now());
         set({
-          isPremium,
+          isPremium: manualValid,
+          manualActive: status.manualActive,
+          expiresAt: status.expiresAt,
           userId,
           loading: false,
           hydrated: true,
@@ -70,22 +102,37 @@ export const usePremium = create<PremiumState>((set, get) => {
           userId,
           loading: false,
           hydrated: true,
+          manualActive: false,
+          expiresAt: null,
         });
       }
     },
-    setPremium: async (value) => {
-      set({ isPremium: value, hydrated: true, loading: false });
+    setPremium: async (value, expiresAt = null) => {
+      const manualValid = value && (!expiresAt || new Date(expiresAt).getTime() > Date.now());
+      set({
+        isPremium: manualValid,
+        manualActive: value,
+        expiresAt,
+        hydrated: true,
+        loading: false,
+      });
       const currentUserId = get().userId;
       if (currentUserId) {
         try {
-          await saveUserPremium(currentUserId, value);
+          await saveUserPremiumStatus(currentUserId, {
+            manualActive: value,
+            expiresAt,
+          });
         } catch (error) {
           console.warn('[usePremium] persist failed', error);
         }
         return;
       }
       try {
-        await AsyncStorage.setItem(STORAGE_KEY, value ? 'true' : 'false');
+        await AsyncStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ manualActive: value, expiresAt }),
+        );
       } catch (error) {
         console.warn('[usePremium] persist failed', error);
       }

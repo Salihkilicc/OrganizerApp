@@ -310,6 +310,9 @@ export type TranslationKeys = {
     badges: string;
     totalPoints: string;
     streak: string;
+    strength: string;
+    intelligence: string;
+    knowledge: string;
     mostActiveCategory: string;
     totalFocusTime: string;
     saveName: string;
@@ -336,6 +339,8 @@ export type TranslationKeys = {
     saveNameMessage: string;
     mostActiveNone: string;
     totalFocusMinutesLabel: string;
+    statInfoTitle: string;
+    statInfoDescription: string;
   };
   settings: {
     title: string;
@@ -809,6 +814,9 @@ const en: TranslationKeys = {
     badges: 'Badges',
     totalPoints: 'Total points',
     streak: 'Streak',
+    strength: 'Strength',
+    intelligence: 'Intelligence',
+    knowledge: 'Knowledge',
     mostActiveCategory: 'Most active category',
     totalFocusTime: 'Total focus time',
     saveName: 'Save profile',
@@ -835,6 +843,9 @@ const en: TranslationKeys = {
     saveNameMessage: 'Profile details updated successfully.',
     mostActiveNone: 'None yet',
     totalFocusMinutesLabel: '{{minutes}} min',
+    statInfoTitle: 'How stats grow',
+    statInfoDescription:
+      'Every 5 completed plans add +1% to the linked attribute: Gym → Strength, Focus/Study → Intelligence, everything else → Knowledge.',
   },
   settings: {
     title: 'Settings',
@@ -1294,6 +1305,9 @@ const tr: TranslationKeys = {
     badges: 'Rozetler',
     totalPoints: 'Toplam puan',
     streak: 'Seri',
+    strength: 'Güç',
+    intelligence: 'Zeka',
+    knowledge: 'Bilgi',
     mostActiveCategory: 'En aktif kategori',
     totalFocusTime: 'Toplam fokus süresi',
     saveName: 'Profili kaydet',
@@ -1320,6 +1334,9 @@ const tr: TranslationKeys = {
     saveNameMessage: 'Profil bilgilerin kaydedildi.',
     mostActiveNone: 'Henüz yok',
     totalFocusMinutesLabel: '{{minutes}} dk',
+    statInfoTitle: 'İstatistikler nasıl artar',
+    statInfoDescription:
+      'Tamamlanan her 5 plan ilgili değere +%1 ekler: Spor → Güç, Odak/Çalışma → Zeka, diğerleri → Bilgi.',
   },
   settings: {
     title: 'Ayarlar',
@@ -1784,6 +1801,9 @@ const de = applyOverrides({
     badges: 'Abzeichen',
     totalPoints: 'Gesamtpunkte',
     streak: 'Serie',
+    strength: 'Stärke',
+    intelligence: 'Intelligenz',
+    knowledge: 'Wissen',
     mostActiveCategory: 'Aktivste Kategorie',
     totalFocusTime: 'Gesamt Fokuszeit',
     saveName: 'Profil speichern',
@@ -1810,6 +1830,9 @@ const de = applyOverrides({
     saveNameMessage: 'Profildaten wurden aktualisiert.',
     mostActiveNone: 'Noch keine',
     totalFocusMinutesLabel: '{{minutes}} Min',
+    statInfoTitle: 'So wachsen die Werte',
+    statInfoDescription:
+      'Alle 5 erledigten Pläne geben +1 % auf den passenden Wert: Gym → Stärke, Fokus/Studium → Intelligenz, alles andere → Wissen.',
   },
   settings: {
     title: 'Einstellungen',
@@ -2192,6 +2215,9 @@ const fr = applyOverrides({
     badges: 'Badges',
     totalPoints: 'Points totaux',
     streak: 'Série',
+    strength: 'Force',
+    intelligence: 'Intelligence',
+    knowledge: 'Connaissances',
     mostActiveCategory: 'Catégorie la plus active',
     totalFocusTime: 'Temps de focus total',
     saveName: 'Enregistrer le profil',
@@ -2218,6 +2244,9 @@ const fr = applyOverrides({
     saveNameMessage: 'Profil enregistré avec succès.',
     mostActiveNone: 'Aucune',
     totalFocusMinutesLabel: '{{minutes}} min',
+    statInfoTitle: 'Comment évoluent les stats',
+    statInfoDescription:
+      'Chaque 5 plans terminés ajoutent +1 % à l’attribut lié : Sport → Force, Focus/Étude → Intelligence, le reste → Connaissances.',
   },
   settings: {
     title: 'Réglages',
@@ -2639,6 +2668,9 @@ const es = applyOverrides({
     badges: 'Insignias',
     totalPoints: 'Puntos totales',
     streak: 'Racha',
+    strength: 'Fuerza',
+    intelligence: 'Inteligencia',
+    knowledge: 'Conocimiento',
     mostActiveCategory: 'Categoría más activa',
     totalFocusTime: 'Tiempo total de foco',
     saveName: 'Guardar perfil',
@@ -2665,6 +2697,9 @@ const es = applyOverrides({
     saveNameMessage: 'Detalles del perfil guardados correctamente.',
     mostActiveNone: 'Ninguna',
     totalFocusMinutesLabel: '{{minutes}} min',
+    statInfoTitle: 'Cómo crecen las estadísticas',
+    statInfoDescription:
+      'Cada 5 planes completados suman +1 % al atributo vinculado: Gimnasio → Fuerza, Enfoque/Estudio → Inteligencia, lo demás → Conocimiento.',
   },
   legal: {
     privacyTitle: 'Política de privacidad',
@@ -3034,6 +3069,9 @@ const it = applyOverrides({
     badges: 'Badge',
     totalPoints: 'Punti totali',
     streak: 'Serie',
+    strength: 'Forza',
+    intelligence: 'Intelligenza',
+    knowledge: 'Conoscenza',
     mostActiveCategory: 'Categoria più attiva',
     totalFocusTime: 'Tempo focus totale',
     saveName: 'Salva profilo',
@@ -3060,6 +3098,9 @@ const it = applyOverrides({
     saveNameMessage: 'Profilo salvato con successo.',
     mostActiveNone: 'Nessuna',
     totalFocusMinutesLabel: '{{minutes}} min',
+    statInfoTitle: 'Come crescono le statistiche',
+    statInfoDescription:
+      'Ogni 5 piani completati aggiungono +1% all’attributo collegato: Palestra → Forza, Focus/Studio → Intelligenza, tutto il resto → Conoscenza.',
   },
   legal: {
     privacyTitle: 'Informativa sulla privacy',
@@ -3430,6 +3471,9 @@ const pt = applyOverrides({
     badges: 'Emblemas',
     totalPoints: 'Pontos totais',
     streak: 'Sequência',
+    strength: 'Força',
+    intelligence: 'Inteligência',
+    knowledge: 'Conhecimento',
     mostActiveCategory: 'Categoria mais ativa',
     totalFocusTime: 'Tempo total de foco',
     saveName: 'Salvar perfil',
@@ -3456,6 +3500,9 @@ const pt = applyOverrides({
     saveNameMessage: 'Detalhes do perfil salvos com sucesso.',
     mostActiveNone: 'Nenhuma',
     totalFocusMinutesLabel: '{{minutes}} min',
+    statInfoTitle: 'Como os atributos crescem',
+    statInfoDescription:
+      'A cada 5 planos concluídos, +1% no atributo correspondente: Academia → Força, Foco/Estudo → Inteligência, o restante → Conhecimento.',
   },
   legal: {
     privacyTitle: 'Política de privacidade',
@@ -3826,6 +3873,9 @@ const ru = applyOverrides({
     badges: 'Бейджи',
     totalPoints: 'Всего баллов',
     streak: 'Серия',
+    strength: 'Сила',
+    intelligence: 'Интеллект',
+    knowledge: 'Знания',
     mostActiveCategory: 'Самая активная категория',
     totalFocusTime: 'Общее время фокуса',
     saveName: 'Сохранить профиль',
@@ -3852,6 +3902,9 @@ const ru = applyOverrides({
     saveNameMessage: 'Данные профиля сохранены.',
     mostActiveNone: 'Пока нет',
     totalFocusMinutesLabel: '{{minutes}} мин',
+    statInfoTitle: 'Как растут статы',
+    statInfoDescription:
+      'Каждые 5 завершенных планов дают +1% в связанный атрибут: Зал → Сила, Фокус/Учёба → Интеллект, остальное → Знания.',
   },
   legal: {
     privacyTitle: 'Политика конфиденциальности',
@@ -4221,6 +4274,9 @@ const ar = applyOverrides({
     badges: 'الشارات',
     totalPoints: 'إجمالي النقاط',
     streak: 'سلسلة',
+    strength: 'القوة',
+    intelligence: 'الذكاء',
+    knowledge: 'المعرفة',
     mostActiveCategory: 'الفئة الأكثر نشاطًا',
     totalFocusTime: 'إجمالي وقت التركيز',
     saveName: 'حفظ الملف الشخصي',
@@ -4247,6 +4303,9 @@ const ar = applyOverrides({
     saveNameMessage: 'تم حفظ تفاصيل الملف بنجاح.',
     mostActiveNone: 'لا يوجد بعد',
     totalFocusMinutesLabel: '{{minutes}} د',
+    statInfoTitle: 'كيف تنمو الإحصائيات',
+    statInfoDescription:
+      'كل 5 خطط مكتملة تضيف ‎+1٪‎ إلى السمة المرتبطة: النادي الرياضي → القوة، التركيز/الدراسة → الذكاء، البقية → المعرفة.',
   },
   legal: {
     privacyTitle: 'سياسة الخصوصية',
@@ -4615,6 +4674,9 @@ const zh = applyOverrides({
     badges: '徽章',
     totalPoints: '总积分',
     streak: '连击',
+    strength: '力量',
+    intelligence: '智力',
+    knowledge: '知识',
     mostActiveCategory: '最活跃类别',
     totalFocusTime: '总专注时间',
     saveName: '保存个人资料',
@@ -4641,6 +4703,9 @@ const zh = applyOverrides({
     saveNameMessage: '个人资料已成功保存。',
     mostActiveNone: '暂无',
     totalFocusMinutesLabel: '{{minutes}} 分钟',
+    statInfoTitle: '属性如何增长',
+    statInfoDescription:
+      '每完成 5 个计划，关联属性会增加 +1%：健身 → 力量，专注/学习 → 智力，其他 → 知识。',
   },
   legal: {
     privacyTitle: '隐私政策',
@@ -5009,6 +5074,9 @@ const ja = applyOverrides({
     badges: 'バッジ',
     totalPoints: '総ポイント',
     streak: '連続',
+    strength: '筋力',
+    intelligence: '知性',
+    knowledge: '知識',
     mostActiveCategory: '最も多いカテゴリ',
     totalFocusTime: '合計フォーカス時間',
     saveName: 'プロフィールを保存',
@@ -5035,6 +5103,9 @@ const ja = applyOverrides({
     saveNameMessage: 'プロフィールを正常に保存しました。',
     mostActiveNone: 'まだありません',
     totalFocusMinutesLabel: '{{minutes}} 分',
+    statInfoTitle: 'ステータスの増え方',
+    statInfoDescription:
+      '完了したプラン5件ごとに関連ステータスが+1%: ジム → 筋力、フォーカス/勉強 → 知性、その他 → 知識。',
   },
   legal: {
     privacyTitle: 'プライバシーポリシー',
@@ -5618,6 +5689,14 @@ const pl = applyOverrides({
     habitsHelper: 'Oddzielaj nawyki przecinkami lub nowymi liniami (np. woda, medytacja)',
     feedbackExamples: 'Przykłady: "wydłuż o 1 godzinę", "siłownia wieczorem", "bieg rano"',
     existingBlocksError: 'Na ten dzień nie powinno być planów',
+  },
+  profile: {
+    strength: 'Siła',
+    intelligence: 'Inteligencja',
+    knowledge: 'Wiedza',
+    statInfoTitle: 'Jak rosną statystyki',
+    statInfoDescription:
+      'Każde 5 ukończonych planów daje +1% w powiązanym atrybucie: Siłownia → Siła, Fokus/Nauka → Inteligencja, pozostałe → Wiedza.',
   },
   settings: {
     title: 'Ustawienia',

@@ -15,15 +15,15 @@ type ThemeState = {
 const STORAGE_KEY = 'app_theme';
 
 export const useTheme = create<ThemeState>((set) => ({
-  themeKey: 'ninja' as ThemeId,
-  palette: themes.ninja,
+  themeKey: 'classic' as ThemeId,
+  palette: themes.classic,
   setTheme: async (key) => {
     await AsyncStorage.setItem(STORAGE_KEY, key);
     set({ themeKey: key, palette: themes[key] });
   },
   load: async () => {
     const stored = (await AsyncStorage.getItem(STORAGE_KEY)) as ThemeId | null;
-    const nextKey: ThemeId = stored && stored in themes ? stored : 'ninja';
+    const nextKey: ThemeId = stored && stored in themes ? stored : 'classic';
     set({ themeKey: nextKey, palette: themes[nextKey] });
   },
 }));

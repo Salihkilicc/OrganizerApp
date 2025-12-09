@@ -50,12 +50,12 @@ type ShopState = {
 
 const SHOP_STORAGE_KEY = 'shop:v1';
 
-const DEFAULT_OWNED_IDS: string[] = ['theme-classic', 'theme-ninja'];
+const DEFAULT_OWNED_IDS: string[] = ['theme-classic'];
 
 const DEFAULT_EQUIPPED: Record<ShopItemCategory, string | null> = {
   badge: null,
   frame: null,
-  theme: 'theme-ninja',
+  theme: 'theme-classic',
 };
 
 const DEFAULT_NOTIFIED_ACHIEVEMENTS: string[] = [];
@@ -151,7 +151,7 @@ const THEME_ITEMS: ShopItemDefinition[] = [
     category: 'theme',
     title: 'Ninja Dark',
     subtitle: 'Stealth black theme for pros',
-    cost: 600,
+    cost: 100,
     unlockType: 'points',
   },
 ];

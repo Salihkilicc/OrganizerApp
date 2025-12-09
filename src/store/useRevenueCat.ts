@@ -34,16 +34,22 @@ export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
         userId: undefined,
         hydrated: true,
         loading: false,
+        manualActive: false,
+        expiresAt: null,
       }));
       return;
     }
 
     set({ customerInfo: info });
     const entitled = isEntitledToPremium(info);
-    // Keep premium state in sync with RevenueCat entitlement updates.
+    const premiumState = usePremium.getState();
+    const manualValid =
+      premiumState.manualActive &&
+      (!premiumState.expiresAt || new Date(premiumState.expiresAt).getTime() > Date.now());
+    // Keep premium state in sync, but allow manual Supabase grants to coexist.
     usePremium.setState((state) => ({
       ...state,
-      isPremium: entitled,
+      isPremium: manualValid || entitled,
       hydrated: true,
       loading: false,
       userId: authState.user?.id,
@@ -63,6 +69,8 @@ export const useRevenueCatStore = create<RevenueCatState>((set, get) => ({
         hydrated: true,
         loading: false,
         userId: undefined,
+        manualActive: false,
+        expiresAt: null,
       }));
       return;
     }

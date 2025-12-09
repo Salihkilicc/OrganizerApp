@@ -145,33 +145,65 @@ export const saveUserPlans = async (userId: string, blocks: PlanBlock[]): Promis
   return Array.isArray(data?.blocks) ? data.blocks : blocks;
 };
 
-export const fetchUserPremium = async (userId: string): Promise<boolean> => {
+export type PremiumStatus = {
+  manualActive: boolean;
+  expiresAt: string | null;
+};
+
+const isValidPremium = (status: PremiumStatus): boolean => {
+  if (!status.manualActive) return false;
+  if (!status.expiresAt) return true;
+  return new Date(status.expiresAt).getTime() > Date.now();
+};
+
+export const fetchUserPremiumStatus = async (userId: string): Promise<PremiumStatus> => {
   const { data, error } = await supabase
     .from('user_premium')
-    .select('is_premium')
+    .select('manual_active, expires_at')
     .eq('id', userId)
     .maybeSingle();
   if (error) {
     throw error;
   }
-  return data?.is_premium ?? false;
+  return {
+    manualActive: data?.manual_active ?? false,
+    expiresAt: data?.expires_at ?? null,
+  };
 };
 
-export const saveUserPremium = async (userId: string, isPremium: boolean): Promise<boolean> => {
+export const saveUserPremiumStatus = async (
+  userId: string,
+  status: PremiumStatus,
+): Promise<PremiumStatus> => {
   const { data, error } = await supabase
     .from('user_premium')
     .upsert(
       {
         id: userId,
-        is_premium: isPremium,
+        manual_active: status.manualActive,
+        expires_at: status.expiresAt,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'id' },
     )
-    .select('is_premium')
+    .select('manual_active, expires_at')
     .single();
   if (error) {
     throw error;
   }
-  return data?.is_premium ?? isPremium;
+  return {
+    manualActive: data?.manual_active ?? status.manualActive,
+    expiresAt: data?.expires_at ?? status.expiresAt,
+  };
+};
+
+// Backwards compatibility helpers
+export const fetchUserPremium = async (userId: string): Promise<boolean> => {
+  const status = await fetchUserPremiumStatus(userId);
+  return isValidPremium(status);
+};
+
+export const saveUserPremium = async (userId: string, isPremium: boolean): Promise<boolean> => {
+  const result = await saveUserPremiumStatus(userId, { manualActive: isPremium, expiresAt: null });
+  return isValidPremium(result);
 };

@@ -84,6 +84,7 @@ export default function ProfileScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [statInfoVisible, setStatInfoVisible] = useState(false);
 
   useEffect(() => {
     setFullName(initialName);
@@ -158,6 +159,54 @@ export default function ProfileScreen() {
   const mostActiveCategoryLabel = mostActiveCategory
     ? categoryLabels[mostActiveCategory] ?? categoryLabels.other
     : null;
+
+  const profileStats = useMemo(
+    () => {
+      const counters = {
+        strength: 0,
+        intelligence: 0,
+        knowledge: 0,
+      };
+
+      blocks.forEach((block) => {
+        if (!block.done) return;
+        if (block.category === 'gym') {
+          counters.strength += 1;
+        } else if (block.category === 'focus' || block.category === 'study') {
+          counters.intelligence += 1;
+        } else {
+          counters.knowledge += 1;
+        }
+      });
+
+      const computeValue = (count: number) =>
+        Math.min(
+          PROFILE_STAT_MAX,
+          Math.max(PROFILE_STAT_BASE, PROFILE_STAT_BASE + Math.floor(count / 5)),
+        );
+
+      return {
+        strength: computeValue(counters.strength),
+        intelligence: computeValue(counters.intelligence),
+        knowledge: computeValue(counters.knowledge),
+      };
+    },
+    [blocks],
+  );
+  const statLabels = useMemo(
+    () => ({
+      strength: t((d) => d.profile.strength),
+      intelligence: t((d) => d.profile.intelligence),
+      knowledge: t((d) => d.profile.knowledge),
+    }),
+    [t],
+  );
+  const statOrder = ['strength', 'intelligence', 'knowledge'] as const;
+  const statIcons = {
+    strength: 'barbell-outline',
+    intelligence: 'bulb-outline',
+    knowledge: 'book-outline',
+  } as const;
 
   const handleAvatarPress = () => {
     router.push('/points');
@@ -328,226 +377,278 @@ export default function ProfileScreen() {
           automaticallyAdjustKeyboardInsets>
           <View style={styles.headerRow}>
             <View style={styles.avatarColumn}>
-            <Pressable
-              onPress={handleAvatarPress}
-              style={[
-                styles.avatar,
-                { backgroundColor: avatarSource ? palette.background : palette.accent },
-                avatarFrameStyle,
-              ]}>
-              {avatarSource ? (
-                <Image source={avatarSource} style={styles.avatarImage} />
-              ) : (
-                <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
-              )}
-            </Pressable>
+              <Pressable
+                onPress={handleAvatarPress}
+                style={[
+                  styles.avatar,
+                  { backgroundColor: avatarSource ? palette.background : palette.accent },
+                  avatarFrameStyle,
+                ]}>
+                {avatarSource ? (
+                  <Image source={avatarSource} style={styles.avatarImage} />
+                ) : (
+                  <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+                )}
+              </Pressable>
             </View>
-            <View style={styles.headerStats}>
-            <Text style={[styles.headerStatValue, { color: palette.accent }]}>
-              {t((d) => d.profile.totalPoints)}: {totalPoints} pts
-            </Text>
-            <Text style={[styles.headerStatSub, { color: palette.text }]}>
-              {t((d) => d.profile.streak)}: {streakDays} {t((d) => d.profile.days)}
-            </Text>
+            <View style={styles.headerRight}>
+              <View style={styles.headerStats}>
+                <Text style={[styles.headerStatValue, { color: palette.accent }]}>
+                  {t((d) => d.profile.totalPoints)}: {totalPoints} pts
+                </Text>
+                <Text style={[styles.headerStatSub, { color: palette.text }]}>
+                  {t((d) => d.profile.streak)}: {streakDays} {t((d) => d.profile.days)}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setStatInfoVisible(true)}
+                style={({ pressed }) => [
+                  styles.profileStatsCard,
+                  styles.profileStatsInline,
+                  { backgroundColor: palette.card, borderColor: palette.border },
+                  pressed ? styles.profileStatsPressed : null,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t((d) => d.profile.statInfoTitle)}>
+                {statOrder.map((key, index, arr) => (
+                  <View
+                    key={key}
+                    style={[styles.profileStat, index === arr.length - 1 ? styles.profileStatLast : null]}>
+                    <View style={styles.profileStatHeader}>
+                      <View style={styles.profileStatLabelRow}>
+                        <Ionicons
+                          name={statIcons[key]}
+                          size={scaleValue(14)}
+                          color={palette.accent}
+                          style={styles.profileStatIcon}
+                        />
+                        <Text style={[styles.profileStatLabel, { color: palette.text }]}>{statLabels[key]}</Text>
+                      </View>
+                      <Text style={[styles.profileStatValue, { color: palette.text }]}>
+                        {profileStats[key]}%
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.profileStatBar,
+                        { borderColor: palette.border, backgroundColor: palette.background },
+                      ]}>
+                      <View
+                        style={[
+                          styles.profileStatFill,
+                          { width: `${profileStats[key]}%`, backgroundColor: palette.accent },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </Pressable>
             </View>
           </View>
 
-        <View
-          style={[
-            styles.sectionStack,
-            { borderColor: palette.border, backgroundColor: palette.card },
-          ]}>
-          <View style={[styles.sectionStackRow, styles.sectionStackColumn]}>
-            <Text style={[styles.fieldLabel, { color: palette.text }]}>
-              {t((d) => d.profile.name)}
-            </Text>
-            <TextInput
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder={t((d) => d.profile.name)}
-              placeholderTextColor={palette.text + '99'}
-              editable={canEditProfile}
-              style={[
-                styles.textInput,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.background,
-                  color: palette.text,
-                },
-              ]}
-            />
-          </View>
-
           <View
             style={[
-              styles.sectionStackRow,
-              styles.sectionStackColumn,
-              { borderTopWidth: 1, borderColor: palette.border },
-            ]}>
-            <Text style={[styles.fieldLabel, { color: palette.text }]}>
-              {t((d) => d.profile.email)}
-            </Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t((d) => d.profile.email)}
-              placeholderTextColor={palette.text + '99'}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
-              editable={canEditProfile}
-              style={[
-                styles.textInput,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.background,
-                  color: palette.text,
-                },
-              ]}
-            />
-          </View>
-
-          {statusMessage ? (
-            <Text
-              style={[
-                styles.statusMessage,
-                {
-                  color: statusMessage.type === 'error' ? '#ef4444' : palette.accent,
-                },
-              ]}>
-              {statusMessage.text}
-            </Text>
-          ) : null}
-
-          <View style={[styles.sectionStackRow, styles.saveRow]}>
-            <Button
-              title={savingProfile ? t((d) => d.common.loading) : t((d) => d.profile.saveName)}
-              onPress={handleSaveProfile}
-              loading={savingProfile}
-              disabled={!hasProfileChanges || savingProfile || !canEditProfile}
-            />
-          </View>
-
-          <Pressable
-            onPress={() => setPasswordModalVisible(true)}
-            disabled={!canEditProfile}
-            style={({ pressed }) => [
-              styles.sectionStackRow,
-              styles.sectionStackLastRow,
-              {
-                borderTopWidth: 1,
-                borderColor: palette.border,
-                backgroundColor: palette.card,
-                opacity: !canEditProfile ? 0.5 : pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Text style={[styles.passwordText, { color: palette.text }]}>
-              {t((d) => d.profile.changePassword)}
-            </Text>
-            <Text style={[styles.passwordText, { color: palette.accent }]}>›</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            {t((d) => d.profile.stats)}
-          </Text>
-        </View>
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statsCard,
-              { borderColor: palette.border, backgroundColor: palette.card, marginRight: scaleValue(10) },
-            ]}>
-            <Text style={[styles.statsLabel, { color: palette.text }]}>
-              {t((d) => d.profile.mostActiveCategory)}
-            </Text>
-            <Text style={[styles.statsValue, { color: palette.text }]}>
-              {mostActiveCategoryLabel ?? t((d) => d.profile.mostActiveNone)}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.statsCard,
+              styles.sectionStack,
               { borderColor: palette.border, backgroundColor: palette.card },
             ]}>
-            <Text style={[styles.statsLabel, { color: palette.text }]}>
-              {t((d) => d.profile.totalFocusTime)}
-            </Text>
-            <Text style={[styles.statsValue, { color: palette.text }]}>
-              {t((d) => d.profile.totalFocusMinutesLabel, { minutes: totalFocusMinutes })}
-            </Text>
-          </View>
-        </View>
-
-        <View style={[styles.sectionHeader, styles.achievementHeader]}>
-          <Text style={[styles.achievementHeading, { color: palette.text }]}>
-            {t((d) => d.profile.achievements)}
-          </Text>
-        </View>
-        <View style={styles.achievementGrid}>
-          {shopBadges.map((badge) => {
-            const locked = !badge.owned;
-            return (
-              <View
-                key={badge.id}
+            <View style={[styles.sectionStackRow, styles.sectionStackColumn]}>
+              <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                {t((d) => d.profile.name)}
+              </Text>
+              <TextInput
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder={t((d) => d.profile.name)}
+                placeholderTextColor={palette.text + '99'}
+                editable={canEditProfile}
                 style={[
-                  styles.achievementCard,
+                  styles.textInput,
                   {
                     borderColor: palette.border,
-                    backgroundColor: palette.card,
-                    opacity: locked ? 0.75 : 1,
+                    backgroundColor: palette.background,
+                    color: palette.text,
+                  },
+                ]}
+              />
+            </View>
+
+            <View
+              style={[
+                styles.sectionStackRow,
+                styles.sectionStackColumn,
+                { borderTopWidth: 1, borderColor: palette.border },
+              ]}>
+              <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                {t((d) => d.profile.email)}
+              </Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t((d) => d.profile.email)}
+                placeholderTextColor={palette.text + '99'}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+                editable={canEditProfile}
+                style={[
+                  styles.textInput,
+                  {
+                    borderColor: palette.border,
+                    backgroundColor: palette.background,
+                    color: palette.text,
+                  },
+                ]}
+              />
+            </View>
+
+            {statusMessage ? (
+              <Text
+                style={[
+                  styles.statusMessage,
+                  {
+                    color: statusMessage.type === 'error' ? '#ef4444' : palette.accent,
                   },
                 ]}>
+                {statusMessage.text}
+              </Text>
+            ) : null}
+
+            <View style={[styles.sectionStackRow, styles.saveRow]}>
+              <Button
+                title={savingProfile ? t((d) => d.common.loading) : t((d) => d.profile.saveName)}
+                onPress={handleSaveProfile}
+                loading={savingProfile}
+                disabled={!hasProfileChanges || savingProfile || !canEditProfile}
+              />
+            </View>
+
+            <Pressable
+              onPress={() => setPasswordModalVisible(true)}
+              disabled={!canEditProfile}
+              style={({ pressed }) => [
+                styles.sectionStackRow,
+                styles.sectionStackLastRow,
+                {
+                  borderTopWidth: 1,
+                  borderColor: palette.border,
+                  backgroundColor: palette.card,
+                  opacity: !canEditProfile ? 0.5 : pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Text style={[styles.passwordText, { color: palette.text }]}>
+                {t((d) => d.profile.changePassword)}
+              </Text>
+              <Text style={[styles.passwordText, { color: palette.accent }]}>›</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>
+              {t((d) => d.profile.stats)}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => setStatInfoVisible(true)}
+            style={({ pressed }) => [
+              styles.statsRow,
+              pressed ? styles.statsRowPressed : null,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t((d) => d.profile.statInfoTitle)}>
+            <View
+              style={[
+                styles.statsCard,
+                { borderColor: palette.border, backgroundColor: palette.card, marginRight: scaleValue(10) },
+              ]}>
+              <Text style={[styles.statsLabel, { color: palette.text }]}>
+                {t((d) => d.profile.mostActiveCategory)}
+              </Text>
+              <Text style={[styles.statsValue, { color: palette.text }]}>
+                {mostActiveCategoryLabel ?? t((d) => d.profile.mostActiveNone)}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.statsCard,
+                { borderColor: palette.border, backgroundColor: palette.card },
+              ]}>
+              <Text style={[styles.statsLabel, { color: palette.text }]}>
+                {t((d) => d.profile.totalFocusTime)}
+              </Text>
+              <Text style={[styles.statsValue, { color: palette.text }]}>
+                {t((d) => d.profile.totalFocusMinutesLabel, { minutes: totalFocusMinutes })}
+              </Text>
+            </View>
+          </Pressable>
+
+          <View style={[styles.sectionHeader, styles.achievementHeader]}>
+            <Text style={[styles.achievementHeading, { color: palette.text }]}>
+              {t((d) => d.profile.achievements)}
+            </Text>
+          </View>
+          <View style={styles.achievementGrid}>
+            {shopBadges.map((badge) => {
+              const locked = !badge.owned;
+              return (
                 <View
+                  key={badge.id}
                   style={[
-                    styles.achievementIcon,
-                    { borderColor: palette.border, backgroundColor: palette.background },
-                  ]}>
-                  <Ionicons
-                    name={locked ? 'lock-closed' : 'trophy'}
-                    size={16}
-                    color={locked ? palette.border : palette.accent}
-                  />
-                </View>
-                <View style={styles.achievementBody}>
-                  <Text
-                    style={[
-                      styles.achievementTitle,
-                      { color: locked ? palette.text : palette.text },
-                    ]}>
-                    {badgeDetails[badge.id]?.title ?? badge.title}
-                  </Text>
-                  {(badgeDetails[badge.id]?.description ?? badge.requirementDescription) ? (
-                    <Text
-                      style={[
-                        styles.achievementSubtitle,
-                        { color: locked ? palette.text + '99' : palette.text + 'CC' },
-                      ]}>
-                      {badgeDetails[badge.id]?.description ?? badge.requirementDescription}
-                    </Text>
-                  ) : null}
-                </View>
-                <View
-                  style={[
-                    styles.achievementStatus,
+                    styles.achievementCard,
                     {
-                      borderColor: locked ? palette.border : palette.accent,
-                      backgroundColor: locked ? palette.background : palette.accent,
+                      borderColor: palette.border,
+                      backgroundColor: palette.card,
+                      opacity: locked ? 0.75 : 1,
                     },
                   ]}>
-                  <Text
+                  <View
                     style={[
-                      styles.achievementStatusText,
-                      { color: locked ? palette.text : palette.background },
+                      styles.achievementIcon,
+                      { borderColor: palette.border, backgroundColor: palette.background },
                     ]}>
-                    {locked ? t((d) => d.profile.achievementLocked) : t((d) => d.profile.achievementUnlocked)}
-                  </Text>
+                    <Ionicons
+                      name={locked ? 'lock-closed' : 'trophy'}
+                      size={16}
+                      color={locked ? palette.border : palette.accent}
+                    />
+                  </View>
+                  <View style={styles.achievementBody}>
+                    <Text
+                      style={[
+                        styles.achievementTitle,
+                        { color: locked ? palette.text : palette.text },
+                      ]}>
+                      {badgeDetails[badge.id]?.title ?? badge.title}
+                    </Text>
+                    {(badgeDetails[badge.id]?.description ?? badge.requirementDescription) ? (
+                      <Text
+                        style={[
+                          styles.achievementSubtitle,
+                          { color: locked ? palette.text + '99' : palette.text + 'CC' },
+                        ]}>
+                        {badgeDetails[badge.id]?.description ?? badge.requirementDescription}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View
+                    style={[
+                      styles.achievementStatus,
+                      {
+                        borderColor: locked ? palette.border : palette.accent,
+                        backgroundColor: locked ? palette.background : palette.accent,
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.achievementStatusText,
+                        { color: locked ? palette.text : palette.background },
+                      ]}>
+                      {locked ? t((d) => d.profile.achievementLocked) : t((d) => d.profile.achievementUnlocked)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -558,6 +659,15 @@ export default function ProfileScreen() {
         icon="🖼️"
         actionLabel={t((d) => d.today.close)}
         onClose={() => setAvatarModalVisible(false)}
+      />
+
+      <Popup
+        visible={statInfoVisible}
+        title={t((d) => d.profile.statInfoTitle)}
+        description={t((d) => d.profile.statInfoDescription)}
+        icon="ℹ️"
+        actionLabel={t((d) => d.today.close)}
+        onClose={() => setStatInfoVisible(false)}
       />
 
       <Modal
@@ -633,6 +743,8 @@ const scaleValue = (value: number) => value * SIZE_SCALE;
 const AVATAR_BASE_SIZE = 112;
 const AVATAR_SIZE = Math.round(AVATAR_BASE_SIZE * 1.5 * 0.9 * 1.05);
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
+const PROFILE_STAT_BASE = 20;
+const PROFILE_STAT_MAX = 100;
 const SF_MEDIUM_FONT_FAMILY =
   Platform.select({
     ios: 'SF Pro Display',
@@ -661,12 +773,16 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     marginBottom: scaleValue(12),
   },
   avatarColumn: {
     marginRight: scaleValue(10),
     marginTop: -scaleValue(6),
+    marginLeft: scaleValue(6),
+  },
+  headerRight: {
+    flex: 1,
     marginLeft: scaleValue(6),
   },
   backButton: {
@@ -712,6 +828,56 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
+  },
+  profileStatsCard: {
+    marginTop: scaleValue(12),
+    padding: scaleValue(10),
+    borderWidth: 1,
+    borderRadius: scaleValue(14),
+    width: AVATAR_SIZE,
+  },
+  profileStatsInline: {
+    alignSelf: 'flex-start',
+  },
+  profileStatsPressed: {
+    opacity: 0.94,
+  },
+  profileStat: {
+    marginBottom: scaleValue(8),
+  },
+  profileStatLast: {
+    marginBottom: 0,
+  },
+  profileStatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  profileStatLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileStatIcon: {
+    marginRight: scaleValue(6),
+  },
+  profileStatLabel: {
+    fontSize: scaleValue(12),
+    fontWeight: '700',
+  },
+  profileStatValue: {
+    fontSize: scaleValue(12),
+    fontWeight: '700',
+  },
+  profileStatBar: {
+    height: scaleValue(8),
+    borderRadius: scaleValue(999),
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginTop: scaleValue(4),
+  },
+  profileStatFill: {
+    height: '100%',
+    borderRadius: scaleValue(999),
   },
   sectionStack: {
     borderWidth: 1,
@@ -804,6 +970,9 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  statsRowPressed: {
+    opacity: 0.96,
   },
   statsCard: {
     flex: 1,
