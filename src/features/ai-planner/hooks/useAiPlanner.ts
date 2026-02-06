@@ -389,7 +389,7 @@ export function useAiPlanner({
         ],
     );
 
-    const handleGenerate = useCallback(async () => {
+    const handleGenerate = useCallback(async (skipChecks = false) => {
         if (works && workValidationError) {
             return;
         }
@@ -397,14 +397,18 @@ export function useAiPlanner({
             setError(t((d) => d.aiPlanner.existingBlocksError));
             return;
         }
-        if (isGuestUser) {
-            Alert.alert('AI Planner', 'Please log in to use AI Planner.');
-            return;
+
+        if (!skipChecks) {
+            if (isGuestUser) {
+                Alert.alert('AI Planner', 'Please log in to use AI Planner.');
+                return;
+            }
+            const allowed = await ensureAiAllowed();
+            if (!allowed) {
+                return;
+            }
         }
-        const allowed = await ensureAiAllowed();
-        if (!allowed) {
-            return;
-        }
+
         setIsGenerating(true);
         try {
             const payload = buildRequestPayload();
@@ -422,6 +426,11 @@ export function useAiPlanner({
                 setError(null);
             }
             setStage('preview');
+            // Only increment usage if checks were NOT skipped (meaning normal usage)
+            // OR if checks WERE skipped (checking ad), we still might want to track usage?
+            // User requirement: "one-time access". 
+            // Incrementing usage here is fine as it tracks consumption, but we shouldn't block.
+            // However, typical ad reward flow might not count against the limit if the limit is 0.
             await incrementUsage();
         } catch (err) {
             console.error('[useAiPlanner] Error generating plan', err);
@@ -444,16 +453,20 @@ export function useAiPlanner({
         works,
     ]);
 
-    const handleRegenerate = useCallback(async () => {
+    const handleRegenerate = useCallback(async (skipChecks = false) => {
         if (!date) return;
-        if (isGuestUser) {
-            Alert.alert('AI Planner', 'Please log in to use AI Planner.');
-            return;
+
+        if (!skipChecks) {
+            if (isGuestUser) {
+                Alert.alert('AI Planner', 'Please log in to use AI Planner.');
+                return;
+            }
+            const allowed = await ensureAiAllowed();
+            if (!allowed) {
+                return;
+            }
         }
-        const allowed = await ensureAiAllowed();
-        if (!allowed) {
-            return;
-        }
+
         setIsRegenerating(true);
         try {
             const payload = buildRequestPayload({ includePreviousPlanString: true });

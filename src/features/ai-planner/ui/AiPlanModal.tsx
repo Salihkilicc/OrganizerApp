@@ -1,3 +1,5 @@
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,8 +13,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { TestIds, useRewardedAd } from 'react-native-google-mobile-ads';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AiLimitOverlay } from '@/components/AiLimitOverlay';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/store/useTheme';
@@ -20,11 +24,50 @@ import { useAiPlanner, type UseAiPlannerProps } from '../hooks/useAiPlanner';
 
 export type AiPlanModalProps = UseAiPlannerProps;
 
+// TODO: Replace with production Ad Unit ID
+const AD_UNIT_ID = TestIds.REWARDED;
+
 export function AiPlanModal(props: AiPlanModalProps) {
   const { visible } = props;
   const { palette } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [showLimitOverlay, setShowLimitOverlay] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'generate' | 'regenerate' | null>(null);
+
+  const { isLoaded, isEarnedReward, load, show } = useRewardedAd(AD_UNIT_ID, {
+    requestNonPersonalizedAdsOnly: true,
+  });
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    // If ad is closed and reward earned, trigger the pending action
+    if (isEarnedReward) {
+      setShowLimitOverlay(false);
+
+      if (pendingAction === 'generate') {
+        handleGenerate(true); // skipChecks = true
+      } else if (pendingAction === 'regenerate') {
+        handleRegenerate(true); // skipChecks = true
+      }
+
+      setPendingAction(null);
+    }
+  }, [isEarnedReward, pendingAction]); // removed handleGenerate/handleRegenerate from deps to avoid cycles if they change ref
+
+  const handleWatchAd = useCallback(() => {
+    if (isLoaded) {
+      show();
+    } else {
+      console.log('Ad not loaded yet, loading now...');
+      load();
+      // Optionally show an alert or just wait - simpler for now just to try load
+    }
+  }, [isLoaded, load, show]);
 
   const {
     // State
@@ -74,6 +117,35 @@ export function AiPlanModal(props: AiPlanModalProps) {
     handleClose,
     formatMinutes,
   } = useAiPlanner(props);
+
+  const onGeneratePress = () => {
+    if (isLimitReached) {
+      setPendingAction('generate');
+      setShowLimitOverlay(true);
+      return;
+    }
+    handleGenerate();
+  };
+
+  const onRegeneratePress = () => {
+    if (!isPremium) {
+      setPendingAction('regenerate');
+      setShowLimitOverlay(true);
+      return;
+    }
+    handleRegenerate();
+  };
+
+  const onOverlayClose = () => {
+    setShowLimitOverlay(false);
+    setPendingAction(null);
+  };
+
+  const onGoPremium = () => {
+    setShowLimitOverlay(false);
+    setPendingAction(null);
+    router.push('/paywall'); // Assuming /paywall is the correct route
+  };
 
   // Constants used in JSX
   const placeholderColor = `${palette.text}88`;
@@ -301,7 +373,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                     </Text>
                   </Pressable>
                   <Pressable
-                    onPress={handleGenerate}
+                    onPress={onGeneratePress}
                     disabled={generateDisabled}
                     style={({ pressed }) => [
                       styles.primaryButton,
@@ -386,7 +458,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                       onChangeText={setFeedback}
                     />
                     <Pressable
-                      onPress={handleRegenerate}
+                      onPress={onRegeneratePress}
                       disabled={regenerateDisabled}
                       style={({ pressed }) => [
                         styles.feedbackButton,
@@ -439,6 +511,12 @@ export function AiPlanModal(props: AiPlanModalProps) {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <AiLimitOverlay
+        visible={showLimitOverlay}
+        onClose={onOverlayClose}
+        onWatchAd={handleWatchAd}
+        onGoPremium={onGoPremium}
+      />
     </Modal>
   );
 }
