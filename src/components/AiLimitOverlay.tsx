@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import {
     Animated,
-    Modal,
     Pressable,
     StyleSheet,
     Text,
@@ -54,13 +53,7 @@ export function AiLimitOverlay({
     if (!visible) return null;
 
     return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="none" // we handle animation manually
-            onRequestClose={onClose}
-            statusBarTranslucent
-        >
+        <View style={styles.overlayContainer} pointerEvents="box-none">
             <View style={StyleSheet.absoluteFill}>
                 {/* Semi-transparent background */}
                 <Animated.View
@@ -154,11 +147,18 @@ export function AiLimitOverlay({
                     </Animated.View>
                 </View>
             </View>
-        </Modal>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    overlayContainer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 9999,
+        elevation: 9999,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
     },

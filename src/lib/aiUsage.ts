@@ -92,12 +92,48 @@ export const checkAiLimit = async (
 
   const usedCount = usage?.used_count ?? 0;
 
-  if (usedCount >= 30) {
+  // Logic: Negative used_count represents credits.
+  // 0 or positive means no credits (since we want initial 0 to be blocked).
+  // -1 = 1 credit, -2 = 2 credits, etc.
+
+  if (usedCount >= 0) {
     return { allowed: false, reason: 'limit_reached', remaining: 0 };
   }
 
   return {
     allowed: true,
-    remaining: Math.max(0, 30 - usedCount),
+    remaining: Math.abs(usedCount),
   };
+};
+
+export const addAiCredit = async (supabase: SupabaseClient): Promise<boolean> => {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return false;
+
+  // 1. Get current usage
+  const { data: usage } = await supabase
+    .from('ai_usage')
+    .select('used_count')
+    .eq('user_id', userId)
+    .single();
+
+  const currentUsed = usage?.used_count ?? 0;
+
+  // 2. Check max credits (Max 3 credits -> Min used_count = -3)
+  if (currentUsed <= -3) {
+    return false; // Max credits reached
+  }
+
+  // 3. Add credit (Decrement used_count)
+  const { error } = await supabase
+    .from('ai_usage')
+    .update({ used_count: currentUsed - 1 })
+    .eq('user_id', userId);
+
+  if (error) {
+    console.warn('[addAiCredit] Failed', error);
+    return false;
+  }
+  return true;
 };

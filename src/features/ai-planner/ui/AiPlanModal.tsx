@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,10 +12,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { TestIds, useRewardedAd } from 'react-native-google-mobile-ads';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AiLimitOverlay } from '@/components/AiLimitOverlay';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/store/useTheme';
@@ -24,8 +21,7 @@ import { useAiPlanner, type UseAiPlannerProps } from '../hooks/useAiPlanner';
 
 export type AiPlanModalProps = UseAiPlannerProps;
 
-// TODO: Replace with production Ad Unit ID
-const AD_UNIT_ID = TestIds.REWARDED;
+
 
 export function AiPlanModal(props: AiPlanModalProps) {
   const { visible } = props;
@@ -33,41 +29,6 @@ export function AiPlanModal(props: AiPlanModalProps) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [showLimitOverlay, setShowLimitOverlay] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'generate' | 'regenerate' | null>(null);
-
-  const { isLoaded, isEarnedReward, load, show } = useRewardedAd(AD_UNIT_ID, {
-    requestNonPersonalizedAdsOnly: true,
-  });
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    // If ad is closed and reward earned, trigger the pending action
-    if (isEarnedReward) {
-      setShowLimitOverlay(false);
-
-      if (pendingAction === 'generate') {
-        handleGenerate(true); // skipChecks = true
-      } else if (pendingAction === 'regenerate') {
-        handleRegenerate(true); // skipChecks = true
-      }
-
-      setPendingAction(null);
-    }
-  }, [isEarnedReward, pendingAction]); // removed handleGenerate/handleRegenerate from deps to avoid cycles if they change ref
-
-  const handleWatchAd = useCallback(() => {
-    if (isLoaded) {
-      show();
-    } else {
-      console.log('Ad not loaded yet, loading now...');
-      load();
-      // Optionally show an alert or just wait - simpler for now just to try load
-    }
-  }, [isLoaded, load, show]);
 
   const {
     // State
@@ -118,33 +79,12 @@ export function AiPlanModal(props: AiPlanModalProps) {
     formatMinutes,
   } = useAiPlanner(props);
 
-  const onGeneratePress = () => {
-    if (isLimitReached) {
-      setPendingAction('generate');
-      setShowLimitOverlay(true);
-      return;
-    }
-    handleGenerate();
+  const onGeneratePress = async () => {
+    await handleGenerate();
   };
 
-  const onRegeneratePress = () => {
-    if (!isPremium) {
-      setPendingAction('regenerate');
-      setShowLimitOverlay(true);
-      return;
-    }
-    handleRegenerate();
-  };
-
-  const onOverlayClose = () => {
-    setShowLimitOverlay(false);
-    setPendingAction(null);
-  };
-
-  const onGoPremium = () => {
-    setShowLimitOverlay(false);
-    setPendingAction(null);
-    router.push('/paywall'); // Assuming /paywall is the correct route
+  const onRegeneratePress = async () => {
+    await handleRegenerate();
   };
 
   // Constants used in JSX
@@ -152,9 +92,6 @@ export function AiPlanModal(props: AiPlanModalProps) {
   const inputTextColor = `${palette.text}dd`;
 
   // Note: aiUsageColor was not returned by hook, need to derive it or check if I missed it.
-  // Checking usage color derived logic:
-  // Original: const aiUsageColor = isLimitReached || isGuestUser ? palette.accent : palette.text;
-  // Hook does not return this because it depends on palette.
   const derivedAiUsageColor = isLimitReached || isGuestUser ? palette.accent : palette.text;
 
   return (
@@ -511,12 +448,6 @@ export function AiPlanModal(props: AiPlanModalProps) {
           </View>
         </View>
       </KeyboardAvoidingView>
-      <AiLimitOverlay
-        visible={showLimitOverlay}
-        onClose={onOverlayClose}
-        onWatchAd={handleWatchAd}
-        onGoPremium={onGoPremium}
-      />
     </Modal>
   );
 }

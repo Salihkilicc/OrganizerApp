@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 
 import { useI18n } from '@/i18n/useI18n';
 import { AiPlanBlock, AiPlanRequest, generatePlanFromAI } from '@/lib/aiPlan';
@@ -148,9 +147,13 @@ export function useAiPlanner({
         }
     }
     const isLoading = isGenerating || isRegenerating;
-    const aiBlocked = isGuestUser || !aiLimitAllowed;
-    const generateDisabled = isLoading || aiBlocked || aiLimitLoading || (works && Boolean(workValidationError));
-    const regenerateDisabled = isLoading || aiBlocked || aiLimitLoading;
+    const aiBlocked = isGuestUser || !aiLimitAllowed; // Keep this variable if needed for logic, but don't use it to disable buttons.
+
+    // FIX: Button stays active even if blocked, so we can show the Overlay on click.
+    const generateDisabled = isLoading || aiLimitLoading || (works && Boolean(workValidationError));
+
+    // FIX: Button stays active for regenerate too.
+    const regenerateDisabled = isLoading || aiLimitLoading;
 
     const dateLabel = useMemo(() => formatDateLabel(date), [date]);
     const previewList = previewBlocks ?? [];
@@ -177,6 +180,7 @@ export function useAiPlanner({
         if (!visible) {
             return;
         }
+
         if (isGuestUser) {
             updateLimitState({ allowed: false, reason: 'guest' });
             return;
@@ -206,19 +210,11 @@ export function useAiPlanner({
             const result = await checkAiLimit(supabase, isPremium);
             updateLimitState(result);
             if (!result.allowed) {
-                const message =
-                    result.reason === 'limit_reached'
-                        ? 'You have reached your 30 AI generations for this month.'
-                        : result.reason === 'guest'
-                            ? 'Please log in to use AI Planner.'
-                            : 'Unable to verify AI usage. Please try again.';
-                Alert.alert('AI limit', message);
                 return false;
             }
             return true;
         } catch (err) {
             console.warn('[useAiPlanner] checkAiLimit failed', err);
-            Alert.alert('AI limit', 'Unable to verify AI usage. Please try again.');
             return false;
         }
     }, [isPremium, updateLimitState]);
@@ -389,23 +385,22 @@ export function useAiPlanner({
         ],
     );
 
-    const handleGenerate = useCallback(async (skipChecks = false) => {
+    const handleGenerate = useCallback(async (skipChecks = false): Promise<boolean> => {
         if (works && workValidationError) {
-            return;
+            return true; // invalid but not blocked
         }
         if (hasExistingBlocks) {
             setError(t((d) => d.aiPlanner.existingBlocksError));
-            return;
+            return true; // invalid but not blocked
         }
 
         if (!skipChecks) {
             if (isGuestUser) {
-                Alert.alert('AI Planner', 'Please log in to use AI Planner.');
-                return;
+                return false;
             }
             const allowed = await ensureAiAllowed();
             if (!allowed) {
-                return;
+                return false;
             }
         }
 
@@ -432,10 +427,12 @@ export function useAiPlanner({
             // Incrementing usage here is fine as it tracks consumption, but we shouldn't block.
             // However, typical ad reward flow might not count against the limit if the limit is 0.
             await incrementUsage();
+            return true;
         } catch (err) {
             console.error('[useAiPlanner] Error generating plan', err);
             setPreviewBlocks([]);
             setError(String(err));
+            return true; // error/invalid but not blocked by limit
         } finally {
             setIsGenerating(false);
         }
@@ -453,17 +450,16 @@ export function useAiPlanner({
         works,
     ]);
 
-    const handleRegenerate = useCallback(async (skipChecks = false) => {
-        if (!date) return;
+    const handleRegenerate = useCallback(async (skipChecks = false): Promise<boolean> => {
+        if (!date) return true;
 
         if (!skipChecks) {
             if (isGuestUser) {
-                Alert.alert('AI Planner', 'Please log in to use AI Planner.');
-                return;
+                return false;
             }
             const allowed = await ensureAiAllowed();
             if (!allowed) {
-                return;
+                return false;
             }
         }
 
@@ -480,15 +476,17 @@ export function useAiPlanner({
             if (workAdjusted.length === 0) {
                 setError(t((d) => d.aiPlanner.noBetterPlan));
                 setPreviewBlocks([]);
-                return;
+                return true; // It ran successfully, just no better plan
             }
             setError(null);
             setLastAiPlanString(serializePlanBlocks(workAdjusted));
             setPreviewBlocks(workAdjusted);
+            return true;
         } catch (err) {
             console.error('[useAiPlanner] Error regenerating plan', err);
             setPreviewBlocks([]);
             setError(String(err));
+            return true;
         } finally {
             setIsRegenerating(false);
         }
@@ -521,7 +519,7 @@ export function useAiPlanner({
         ? 'Please log in to use AI Planner'
         : isPremium
             ? 'Unlimited AI generation'
-            : `Remaining: ${aiLimitRemaining ?? (aiLimitLoading ? '…' : '0')} / 30`;
+            : `Remaining: ${aiLimitRemaining ?? (aiLimitLoading ? '…' : '0')} / 3`;
     const showLimitSpinner = aiLimitLoading && !isPremium && !isGuestUser;
 
     return {

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiLimitOverlay } from '@/components/AiLimitOverlay';
 import { CopyDayModal } from '@/components/CopyDayModal';
 import { DayStrip } from '@/components/DayStrip';
 import { FocusModeOverlay } from '@/components/FocusModeOverlay';
@@ -21,6 +22,9 @@ import { PlanGrid } from '@/components/PlanGrid';
 import { AiPlanModal } from '@/features/ai-planner';
 import { useI18n } from '@/i18n/useI18n';
 import { AiPlanBlock } from '@/lib/aiPlan';
+import { addAiCredit, checkAiLimit } from '@/lib/aiUsage';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/store/useAuth';
 import type { SupportedLanguage } from '@/store/useLanguage';
 import {
   isAfterToday,
@@ -37,6 +41,9 @@ import { useTheme } from '@/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { TestIds, useRewardedAd } from 'react-native-google-mobile-ads';
+
+const AD_UNIT_ID = TestIds.REWARDED;
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -117,6 +124,34 @@ export default function PlanScreen() {
   );
   const [aiVisible, setAiVisible] = useState(false);
   const [aiDate, setAiDate] = useState(selectedDate);
+  const [showLimitOverlay, setShowLimitOverlay] = useState(false);
+  const [limitOverlayReason, setLimitOverlayReason] = useState<'limit_reached' | 'guest'>('limit_reached');
+  const [isCheckingLimit, setIsCheckingLimit] = useState(false);
+
+  const { isLoaded, isEarnedReward, load, show } = useRewardedAd(AD_UNIT_ID, {
+    requestNonPersonalizedAdsOnly: true,
+  });
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (isEarnedReward) {
+      // Add credit then open modal
+      addAiCredit(supabase).then(() => {
+        setShowLimitOverlay(false);
+        setAiVisible(true);
+      });
+    }
+  }, [isEarnedReward]);
+
+  // Reset when modal closes
+  const handleAiModalClose = useCallback(() => {
+    setAiVisible(false);
+    // Reload ad for next time
+    load();
+  }, [load]);
   const loadPlans = usePlans((state) => state.load);
   const addPlan = usePlans((state) => state.add);
   const addMany = usePlans((state) => state.addMany);
@@ -132,6 +167,7 @@ export default function PlanScreen() {
   const isFuture = isAfterToday(selectedDate);
   const isEditableDay = isToday || isFuture;
   const totalPoints = usePoints((state) => state.total);
+  const isGuest = useAuth((state) => state.isGuest);
   const dailyBlocks = useMemo(
     () => blocks.filter((block) => block.date === selectedDate),
     [blocks, selectedDate],
@@ -316,14 +352,54 @@ export default function PlanScreen() {
     [setEditorInitial, setEditorVisible, setEditingId],
   );
 
-  const handleAiPlanPress = useCallback(() => {
-    if (!isPremium) {
-      router.push('/paywall');
+  const handleOverlayClose = useCallback(() => setShowLimitOverlay(false), []);
+  const handleWatchAd = useCallback(() => {
+    if (isLoaded) {
+      show();
+    } else {
+      Alert.alert(t((d) => d.common.loading), 'Loading Ad...');
+      load();
+    }
+  }, [isLoaded, load, show, t]);
+
+  const handleGoPremium = useCallback(() => {
+    setShowLimitOverlay(false);
+    router.push('/paywall');
+  }, [router]);
+
+  const handleAiPlanPress = useCallback(async () => {
+    if (isPremium) {
+      setAiDate(selectedDate);
+      setAiVisible(true);
       return;
     }
-    setAiDate(selectedDate);
-    setAiVisible(true);
-  }, [isPremium, router, selectedDate, setAiDate, setAiVisible]);
+
+    if (isGuest) {
+      setLimitOverlayReason('guest');
+      setShowLimitOverlay(true);
+      return;
+    }
+
+    if (isCheckingLimit) return;
+    setIsCheckingLimit(true);
+    try {
+      const result = await checkAiLimit(supabase, false);
+      if (result.allowed) {
+        setAiDate(selectedDate);
+        setAiVisible(true);
+      } else {
+        setLimitOverlayReason('limit_reached');
+        setShowLimitOverlay(true);
+      }
+    } catch (err) {
+      console.warn('Failed to check AI limit', err);
+      // Fallback behavior on error: allow open (modal will re-check)
+      setAiDate(selectedDate);
+      setAiVisible(true);
+    } finally {
+      setIsCheckingLimit(false);
+    }
+  }, [isPremium, isGuest, isCheckingLimit, selectedDate, setAiVisible]);
 
   const handleOpenCopyModal = useCallback(() => {
     if (blockCount === 0) return;
@@ -378,7 +454,7 @@ export default function PlanScreen() {
     [addMany, setAiVisible],
   );
 
-  const closeAiModal = useCallback(() => setAiVisible(false), [setAiVisible]);
+  /* replaced by handleAiModalClose */
 
   const handleMove = useCallback(
     (id: string, newStartMin: number, newEndMin: number) => {
@@ -607,7 +683,7 @@ export default function PlanScreen() {
         <AiPlanModal
           visible={aiVisible}
           date={aiDate}
-          onClose={closeAiModal}
+          onClose={handleAiModalClose}
           onApply={handleAiApply}
           hasExistingBlocks={hasManualBlocks}
           previousBlocks={previousAiPlanBlocks}
@@ -642,6 +718,12 @@ export default function PlanScreen() {
         />
         <FocusModeOverlay visible={focusVisible} onClose={closeFocusMode} />
       </SafeAreaView>
+      <AiLimitOverlay
+        visible={showLimitOverlay}
+        onClose={handleOverlayClose}
+        onWatchAd={handleWatchAd}
+        onGoPremium={handleGoPremium}
+      />
     </GestureHandlerRootView>
   );
 }
