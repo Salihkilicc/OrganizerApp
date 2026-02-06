@@ -1,0 +1,94 @@
+export default {
+  "name": "Planora : AI Organizer",
+  "slug": "planora",
+  "version": "1.0.14",
+  "orientation": "portrait",
+  "icon": "./assets/images/icon.png",
+  "scheme": "planora",
+  "userInterfaceStyle": "automatic",
+  "newArchEnabled": true,
+  "splash": {
+    "image": "./assets/splash.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#ffffff"
+  },
+  "ios": {
+    "supportsTablet": false,
+    "bundleIdentifier": "com.salihkilic.planora",
+    "buildNumber": "14",
+    "usesAppleSignIn": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "infoPlist": {
+      "ITSAppUsesNonExemptEncryption": false,
+      "NSLocationWhenInUseUsageDescription": "Planora uses your location to provide accurate weather data for your day. For example, Planora shows temperature and conditions based on your region to help you plan better."
+    }
+  },
+  "android": {
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "adaptiveIcon": {
+      "backgroundColor": "#E6F4FE",
+      "foregroundImage": "./assets/images/android-icon-foreground.png",
+      "backgroundImage": "./assets/images/android-icon-background.png",
+      "monochromeImage": "./assets/images/android-icon-monochrome.png"
+    },
+    "edgeToEdgeEnabled": true,
+    "predictiveBackGestureEnabled": false,
+    "package": "com.salihkilic.planora",
+    "versionCode": 1
+  },
+  "web": {
+    "output": "static",
+    "favicon": "./assets/images/favicon.png"
+  },
+  "plugins": [
+    "expo-router",
+    [
+      "expo-splash-screen",
+      {
+        "image": "./assets/splash.png",
+        "imageWidth": 240,
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff",
+        "dark": {
+          "backgroundColor": "#ffffff"
+        }
+      }
+    ],
+    "expo-web-browser",
+    [
+      "expo-notifications",
+      {
+        "mode": "production",
+        "color": "#ffffff"
+      }
+    ],
+    [
+      "react-native-google-mobile-ads",
+      {
+        "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+        "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+      }
+    ]
+  ],
+  "experiments": {
+    "typedRoutes": true,
+    "reactCompiler": true
+  },
+  "notification": {
+    "color": "#ffffff"
+  },
+  "extra": {
+    "router": {},
+    "eas": {
+      "projectId": "747cdefa-79a7-426f-b725-2dab822d1a58"
+    }
+  }
+};

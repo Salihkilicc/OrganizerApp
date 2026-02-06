@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   Alert,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,25 +18,25 @@ import { FocusModeOverlay } from '@/components/FocusModeOverlay';
 import { HourColumn } from '@/components/HourColumn';
 import { PlanEditor } from '@/components/PlanEditor';
 import { PlanGrid } from '@/components/PlanGrid';
-import { AiPlanModal } from '@/components/AiPlanModal';
+import { AiPlanModal } from '@/features/ai-planner';
+import { useI18n } from '@/i18n/useI18n';
 import { AiPlanBlock } from '@/lib/aiPlan';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import type { SupportedLanguage } from '@/store/useLanguage';
 import {
-  usePlans,
-  type PlanBlock,
-  type PlanCategory,
   isAfterToday,
   isBeforeToday,
   isToday as isDateToday,
   todayDate,
+  usePlans,
+  type PlanBlock,
+  type PlanCategory,
 } from '@/store/usePlans';
-import { useTheme } from '@/store/useTheme';
 import { usePoints } from '@/store/usePoints';
 import { usePremium } from '@/store/usePremium';
+import { useTheme } from '@/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useI18n } from '@/i18n/useI18n';
-import type { SupportedLanguage } from '@/store/useLanguage';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -166,10 +166,10 @@ export default function PlanScreen() {
   const summaryMessage =
     blockCount > 0
       ? t((d) => d.plan.summary.withPlans, {
-          total: blockCount,
-          plural: blockCount === 1 ? '' : 's',
-          hours: totalHours.toFixed(1),
-        })
+        total: blockCount,
+        plural: blockCount === 1 ? '' : 's',
+        hours: totalHours.toFixed(1),
+      })
       : t((d) => d.plan.summary.noPlans);
 
   const hasManualBlocks = dailyBlocks.some((block) => !block.aiGenerated);
@@ -496,9 +496,9 @@ export default function PlanScreen() {
                   backgroundColor: palette.card,
                   borderColor: palette.border,
                 },
-            ]}>
-            <View style={[styles.monthModalHandle, { backgroundColor: palette.border }]} />
-            <Text style={[styles.monthModalTitle, { color: palette.text }]}>
+              ]}>
+              <View style={[styles.monthModalHandle, { backgroundColor: palette.border }]} />
+              <Text style={[styles.monthModalTitle, { color: palette.text }]}>
                 {t((d) => d.plan.selectMonth)}
               </Text>
               <ScrollView
@@ -618,29 +618,29 @@ export default function PlanScreen() {
           onClose={handleCloseCopyModal}
           onConfirm={handleConfirmCopyModal}
         />
-      {!isPast && (
-        <Pressable
-          onPress={openAddEditor}
-          style={({ pressed }) => [
-            styles.fab,
-            {
-              backgroundColor: palette.card,
-              opacity: pressed ? 0.8 : 1,
-              shadowColor: palette.border,
-            },
-          ]}>
-          <Ionicons name="add-circle" size={48} color={palette.tint} />
-        </Pressable>
-      )}
-      <PlanEditor
-        visible={editorVisible}
-        initial={editorInitial}
-        date={selectedDate}
-        onCancel={closeEditor}
-        onSave={handleSave}
-        onDelete={handleDelete}
-      />
-      <FocusModeOverlay visible={focusVisible} onClose={closeFocusMode} />
+        {!isPast && (
+          <Pressable
+            onPress={openAddEditor}
+            style={({ pressed }) => [
+              styles.fab,
+              {
+                backgroundColor: palette.card,
+                opacity: pressed ? 0.8 : 1,
+                shadowColor: palette.border,
+              },
+            ]}>
+            <Ionicons name="add-circle" size={48} color={palette.tint} />
+          </Pressable>
+        )}
+        <PlanEditor
+          visible={editorVisible}
+          initial={editorInitial}
+          date={selectedDate}
+          onCancel={closeEditor}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
+        <FocusModeOverlay visible={focusVisible} onClose={closeFocusMode} />
       </SafeAreaView>
     </GestureHandlerRootView>
   );

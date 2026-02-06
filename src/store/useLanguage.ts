@@ -27,7 +27,7 @@ type LanguageState = {
 
 const STORAGE_KEY = 'planora_language';
 
-const isSupportedLanguage = (value: unknown): value is SupportedLanguage =>
+export const isSupportedLanguage = (value: unknown): value is SupportedLanguage =>
   typeof value === 'string' &&
   ['en', 'tr', 'de', 'fr', 'es', 'it', 'pt', 'ru', 'ar', 'zh', 'ja', 'ko', 'hi', 'nl', 'sv', 'pl'].includes(
     value,
