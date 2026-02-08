@@ -7,25 +7,27 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   Switch,
+  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuth } from '@/store/useAuth';
-import { type ThemeId, useTheme } from '@/store/useTheme';
-import { useLanguage } from '@/store/useLanguage';
-import { useSettings } from '@/store/useSettings';
-import { usePremium } from '@/store/usePremium';
-import { availableLanguages, getLanguageName, useI18n } from '@/i18n/useI18n';
-import { Button } from '@/components/ui/Button';
 import { CrownIcon } from '@/components/icons/CrownIcon';
+import { Button } from '@/components/ui/Button';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GradientBackground } from '@/components/ui/GradientBackground';
+import { AVATAR_IMAGES } from '@/constants/avatars';
+import type { TranslationKeys } from '@/i18n/translations';
+import { availableLanguages, getLanguageName, useI18n } from '@/i18n/useI18n';
+import { useAuth } from '@/store/useAuth';
+import { useAvatarStore } from '@/store/useAvatar';
+import { useLanguage } from '@/store/useLanguage';
+import { usePremium } from '@/store/usePremium';
+import { useSettings } from '@/store/useSettings';
+import { type ThemeId, useTheme } from '@/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import type { TranslationKeys } from '@/i18n/translations';
-import { useAvatarStore } from '@/store/useAvatar';
-import { AVATAR_IMAGES } from '@/constants/avatars';
 
 const formatThemeLabel = (key: ThemeId) =>
   key
@@ -81,7 +83,7 @@ export default function SettingsScreen() {
       : null;
 
   const displayName =
-    user?.user_metadata?.full_name ?? user?.name ?? t((d) => d.common.user);
+    user?.user_metadata?.full_name ?? t((d) => d.common.user);
   const isGuest = status === 'guest';
   const guestLabel = t((d) => d.profile.guestLabel);
   const userLabel = isGuest ? guestLabel : user?.email ?? guestLabel;
@@ -150,337 +152,325 @@ export default function SettingsScreen() {
     <View
       style={[
         styles.sectionRow,
-        styles.sectionShadow,
         {
-          backgroundColor: palette.card,
-          borderColor: palette.border,
-        },
+          paddingVertical: 8, // Reduced padding
+          paddingHorizontal: 12, // Reduced padding
+          minHeight: 44, // Smaller height constraint
+        }
       ]}>
       <View style={styles.sectionText}>
-        <Text style={[styles.sectionLabel, { color: palette.text }]}>{label}</Text>
+        <Text style={[styles.sectionLabel, {
+          color: themeKey === 'light' ? '#1e1b4b' : palette.text,
+          fontSize: 14, // Smaller text
+          fontWeight: '500' // Slightly lighter weight for modern look
+        }]}>{label}</Text>
       </View>
       <Switch
         value={value}
         onValueChange={onToggle}
         thumbColor={palette.background}
-        trackColor={{ false: palette.border, true: palette.accent }}
+        trackColor={{
+          false: themeKey === 'light' ? '#7C3AED' : '#8b5cf6', // Purple when closed (off) - light/dark variants
+          true: themeKey === 'light' ? '#2563EB' : '#3b82f6'  // Blue when open (on) - light/dark variants
+        }}
+        style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }} // Make switch smaller
       />
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, styles.headerMargin]}>
-          <Text style={[styles.heading, { color: palette.text }]}>{t((d) => d.settings.title)}</Text>
-        </View>
-
-        <View
-          style={[styles.profileCard, styles.cardShadow, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <View style={[styles.avatar, { backgroundColor: avatarSource ? palette.background : palette.accent }]}>
-            {avatarSource ? (
-              <Image source={avatarSource} style={styles.avatarImage} />
-            ) : (
-              <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
-            )}
+    <GradientBackground>
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={[styles.header, styles.headerMargin]}>
+            <Text style={[styles.heading, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>{t((d) => d.settings.title)}</Text>
           </View>
-          <View style={styles.profileBody}>
-            <Text style={[styles.profileName, { color: palette.text }]}>{displayName}</Text>
-            <Text style={[styles.profileSubtitle, { color: palette.text }]}>{userLabel}</Text>
-          </View>
-          <Pressable
-            onPress={() => router.push('/profile')}
-            style={({ pressed }) => [
-              styles.profileAction,
-              {
-                backgroundColor: palette.background,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}>
-            <Ionicons name="pencil" size={20} color={palette.text} />
-          </Pressable>
-        </View>
 
-        <View style={styles.premiumWrapper}>
-          {isPremium ? (
-            <View
-              style={[
-                styles.premiumPromo,
-                styles.cardShadow,
-                styles.premiumOwned,
-                {
-                  backgroundColor: palette.card,
-                  borderColor: palette.border,
-                },
-              ]}>
-              <View style={styles.premiumTextWrapper}>
-                <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
-                <View style={styles.premiumTextGroup}>
-                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>
-                    {t((d) => d.settings.premiumActiveTitle)}
-                  </Text>
-                  <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
-                    {t((d) => d.settings.premiumActiveSubtitle)}
-                  </Text>
-                </View>
-              </View>
+          <GlassCard
+            style={[styles.profileCard, styles.cardShadow]}>
+            <View style={[styles.avatar, { backgroundColor: avatarSource ? palette.background : palette.accent }]}>
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
+              ) : (
+                <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+              )}
             </View>
-          ) : (
+            <View style={styles.profileBody}>
+              <Text style={[styles.profileName, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>{displayName}</Text>
+              <Text style={[styles.profileSubtitle, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : palette.text }]}>{userLabel}</Text>
+            </View>
             <Pressable
-              onPress={() => router.push('/paywall')}
+              onPress={() => router.push('/profile')}
               style={({ pressed }) => [
-                styles.premiumPromo,
-                styles.cardShadow,
-                styles.premiumOutline,
+                styles.profileAction,
                 {
-                  opacity: pressed ? 0.9 : 1,
-                  backgroundColor: palette.card,
-                  borderColor: palette.border,
+                  backgroundColor: palette.background,
+                  opacity: pressed ? 0.7 : 1,
                 },
               ]}>
-              <View style={styles.premiumTextWrapper}>
-                <CrownIcon color={palette.text} size={40} style={styles.premiumIcon} />
-                <View style={styles.premiumTextGroup}>
-                  <Text style={[styles.premiumPromoTitle, { color: palette.text }]}>
-                    {t((d) => d.settings.unlockPremiumTitle)}
-                  </Text>
-                  <Text style={[styles.premiumPromoSubtitle, { color: palette.text }]}>
-                    {t((d) => d.settings.unlockPremiumSubtitle)}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={palette.text} />
+              <Ionicons name="pencil" size={20} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
             </Pressable>
-          )}
-        </View>
+          </GlassCard>
 
-        <View
-          style={[
-            styles.sectionCard,
-            styles.cardShadow,
-            {
-              backgroundColor: palette.card,
-              borderColor: palette.border,
-              marginTop: 0,
-            },
-          ]}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            {t((d) => d.settings.yourSettings)}
-          </Text>
-          <Pressable
-            onPress={() => router.push('/profile')}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              styles.sectionShadow,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Ionicons name="person-outline" size={20} color={palette.text} />
-            <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>
-                {t((d) => d.settings.personalDetails)}
-              </Text>
-              <Text style={[styles.sectionHint, { color: palette.text }]}>
-                {t((d) => d.settings.personalDetailsDescription)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.text} />
-          </Pressable>
-          <Pressable
-            onPress={() => setLanguageModalVisible(true)}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              styles.sectionShadow,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Ionicons name="language-outline" size={20} color={palette.text} />
-            <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>
-                {t((d) => d.settings.languageTitle)}
-              </Text>
-              <Text style={[styles.sectionHint, { color: palette.text }]}>
-                {getLanguageName(currentLanguage)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.text} />
-          </Pressable>
-          <Pressable
-            onPress={handleCycleTheme}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              styles.sectionShadow,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Ionicons name="sunny-outline" size={20} color={palette.text} />
-            <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>
-                {t((d) => d.settings.appearance)}
-              </Text>
-              <Text style={[styles.sectionHint, { color: palette.text }]}>
-                {t(themeLabelSelector)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.text} />
-          </Pressable>
-        </View>
-
-        <View
-          style={[
-            styles.sectionCard,
-            styles.cardShadow,
-            { backgroundColor: palette.card, borderColor: palette.border },
-          ]}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            {t((d) => d.settings.notifications)}
-          </Text>
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.nextUp),
-            notificationTypes.enableNextUp,
-            () => toggleNotificationType('enableNextUp'),
-          )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.focusNotifications),
-            notificationTypes.enableFocusNotifications,
-            () => toggleNotificationType('enableFocusNotifications'),
-          )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.missedPlans),
-            notificationTypes.enableMissedPlans,
-            () => toggleNotificationType('enableMissedPlans'),
-          )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.streakRescue),
-            notificationTypes.enableStreakRescue,
-            () => toggleNotificationType('enableStreakRescue'),
-          )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.middayMilestone),
-            notificationTypes.enableMiddayMilestone,
-            () => toggleNotificationType('enableMiddayMilestone'),
-          )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.weeklySummary),
-            notificationTypes.enableWeeklySummary,
-            () => toggleNotificationType('enableWeeklySummary'),
-          )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.badgeNotifications),
-            notificationTypes.enableBadgeNotifications,
-            () => toggleNotificationType('enableBadgeNotifications'),
-          )}
-          {renderNotificationToggle(
-            t((d) => d.settings.notificationType.waterReminders),
-            notificationTypes.enableWaterReminders && waterReminderEnabled,
-            handleToggleWater,
-          )}
-          {SHOW_REFLECTION_NOTIFICATION_TOGGLE &&
-            renderNotificationToggle(
-              t((d) => d.settings.notificationType.reflection),
-              notificationTypes.enableReflection,
-              () => toggleNotificationType('enableReflection'),
+          <View style={styles.premiumWrapper}>
+            {isPremium ? (
+              <GlassCard
+                style={[
+                  styles.premiumPromo,
+                  styles.cardShadow,
+                  styles.premiumOwned,
+                ]}>
+                <View style={styles.premiumTextWrapper}>
+                  <CrownIcon color={themeKey === 'light' ? '#1e1b4b' : palette.text} size={40} style={styles.premiumIcon} />
+                  <View style={styles.premiumTextGroup}>
+                    <Text style={[styles.premiumPromoTitle, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
+                      {t((d) => d.settings.premiumActiveTitle)}
+                    </Text>
+                    <Text style={[styles.premiumPromoSubtitle, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : palette.text }]}>
+                      {t((d) => d.settings.premiumActiveSubtitle)}
+                    </Text>
+                  </View>
+                </View>
+              </GlassCard>
+            ) : (
+              <Pressable
+                onPress={() => router.push('/paywall')}
+                style={({ pressed }) => [
+                  {
+                    opacity: pressed ? 0.9 : 1,
+                  },
+                ]}>
+                <GlassCard style={[
+                  styles.premiumPromo,
+                  styles.cardShadow,
+                  {
+                    borderWidth: 2,
+                    borderColor: themeKey === 'light' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(167, 139, 250, 0.4)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }
+                ]}>
+                  <View style={styles.premiumTextWrapper}>
+                    <CrownIcon color={themeKey === 'light' ? '#8b5cf6' : '#a78bfa'} size={44} style={styles.premiumIcon} />
+                    <View style={styles.premiumTextGroup}>
+                      <Text style={[styles.premiumPromoTitle, { color: themeKey === 'light' ? '#1e1b4b' : '#fff', fontSize: 17, fontWeight: '700' }]}>
+                        {t((d) => d.settings.unlockPremiumTitle)}
+                      </Text>
+                      <Text style={[styles.premiumPromoSubtitle, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : 'rgba(255,255,255,0.7)' }]}>
+                        {t((d) => d.settings.unlockPremiumSubtitle)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={22} color={themeKey === 'light' ? '#8b5cf6' : '#a78bfa'} />
+                </GlassCard>
+              </Pressable>
             )}
-        </View>
-
-        <View
-          style={[
-            styles.sectionCard,
-            styles.cardShadow,
-            { backgroundColor: palette.card, borderColor: palette.border },
-          ]}>
-          <Pressable
-            onPress={() => handleOpenExternalLink(TERMS_URL)}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              styles.sectionShadow,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Ionicons name="document-text-outline" size={20} color={palette.text} />
-            <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>
-                {t((d) => d.legal.termsTitle)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.text} />
-          </Pressable>
-          <Pressable
-            onPress={() => handleOpenExternalLink(PRIVACY_URL)}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              styles.sectionShadow,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Ionicons name="lock-closed-outline" size={20} color={palette.text} />
-            <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>
-                {t((d) => d.legal.privacyTitle)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.text} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/support')}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              styles.sectionShadow,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Ionicons name="mail-outline" size={20} color={palette.text} />
-            <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: palette.text }]}>
-                {t((d) => d.legal.supportTitle)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={palette.text} />
-          </Pressable>
-          <Pressable
-            onPress={handleDeleteAccount}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              styles.sectionShadow,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}>
-            <Ionicons name="trash-outline" size={20} color="#D32F2F" />
-            <View style={styles.sectionText}>
-              <Text style={[styles.sectionLabel, { color: '#D32F2F' }]}>
-                {t((d) => d.settings.deleteAccount)}
-              </Text>
-            </View>
-          </Pressable>
-          <View style={styles.signOutInline}>
-            <View style={styles.footerButtonShadow}>
-              <Button title={authButtonLabel} onPress={() => void handleAuthAction()} type="secondary" />
-            </View>
           </View>
-        </View>
 
-      </ScrollView>
+          <GlassCard
+            style={[
+              styles.sectionCard,
+              styles.cardShadow,
+              {
+                marginTop: 0,
+              },
+            ]}>
+            <Text style={[styles.sectionTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 }]}>
+              {t((d) => d.settings.yourSettings)}
+            </Text>
+            <Pressable
+              onPress={() => router.push('/profile')}
+              style={({ pressed }) => [
+                styles.sectionRow,
+                {
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Ionicons name="person-outline" size={22} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: themeKey === 'light' ? '#1e1b4b' : '#fff', fontSize: 16, fontWeight: '600' }]}>
+                  {t((d) => d.settings.personalDetails)}
+                </Text>
+                <Text style={[styles.sectionHint, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.5)' : 'rgba(255,255,255,0.5)', fontSize: 13 }]}>
+                  {t((d) => d.settings.personalDetailsDescription)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+            </Pressable>
+            <Pressable
+              onPress={() => setLanguageModalVisible(true)}
+              style={({ pressed }) => [
+                styles.sectionRow,
+                {
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Ionicons name="language-outline" size={22} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
+                  {t((d) => d.settings.languageTitle)}
+                </Text>
+                <Text style={[styles.sectionHint, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : palette.text }]}>
+                  {getLanguageName(currentLanguage)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+            </Pressable>
+            <Pressable
+              onPress={handleCycleTheme}
+              style={({ pressed }) => [
+                styles.sectionRow,
+                {
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Ionicons name="sunny-outline" size={22} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
+                  {t((d) => d.settings.appearance)}
+                </Text>
+                <Text style={[styles.sectionHint, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : palette.text }]}>
+                  {t(themeLabelSelector)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeKey === 'light' ? 'rgba(30, 27, 75, 0.3)' : 'rgba(255,255,255,0.3)'} />
+            </Pressable>
+          </GlassCard>
+
+          <GlassCard
+            style={[
+              styles.sectionCard,
+              styles.cardShadow,
+            ]}>
+            <Text style={[styles.sectionTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 }]}>
+              {t((d) => d.settings.notifications)}
+            </Text>
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.nextUp),
+              notificationTypes.enableNextUp,
+              () => toggleNotificationType('enableNextUp'),
+            )}
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.focusNotifications),
+              notificationTypes.enableFocusNotifications,
+              () => toggleNotificationType('enableFocusNotifications'),
+            )}
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.missedPlans),
+              notificationTypes.enableMissedPlans,
+              () => toggleNotificationType('enableMissedPlans'),
+            )}
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.streakRescue),
+              notificationTypes.enableStreakRescue,
+              () => toggleNotificationType('enableStreakRescue'),
+            )}
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.middayMilestone),
+              notificationTypes.enableMiddayMilestone,
+              () => toggleNotificationType('enableMiddayMilestone'),
+            )}
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.weeklySummary),
+              notificationTypes.enableWeeklySummary,
+              () => toggleNotificationType('enableWeeklySummary'),
+            )}
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.badgeNotifications),
+              notificationTypes.enableBadgeNotifications,
+              () => toggleNotificationType('enableBadgeNotifications'),
+            )}
+            {renderNotificationToggle(
+              t((d) => d.settings.notificationType.waterReminders),
+              notificationTypes.enableWaterReminders && waterReminderEnabled,
+              handleToggleWater,
+            )}
+            {SHOW_REFLECTION_NOTIFICATION_TOGGLE &&
+              renderNotificationToggle(
+                t((d) => d.settings.notificationType.reflection),
+                notificationTypes.enableReflection,
+                () => toggleNotificationType('enableReflection'),
+              )}
+          </GlassCard>
+
+          <GlassCard
+            style={[
+              styles.sectionCard,
+              styles.cardShadow,
+            ]}>
+            <Pressable
+              onPress={() => handleOpenExternalLink(TERMS_URL)}
+              style={({ pressed }) => [
+                styles.sectionRow,
+                {
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Ionicons name="document-text-outline" size={20} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
+                  {t((d) => d.legal.termsTitle)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+            </Pressable>
+            <Pressable
+              onPress={() => handleOpenExternalLink(PRIVACY_URL)}
+              style={({ pressed }) => [
+                styles.sectionRow,
+                {
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Ionicons name="lock-closed-outline" size={20} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
+                  {t((d) => d.legal.privacyTitle)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/support')}
+              style={({ pressed }) => [
+                styles.sectionRow,
+                {
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Ionicons name="mail-outline" size={20} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
+                  {t((d) => d.legal.supportTitle)}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+            </Pressable>
+            <Pressable
+              onPress={handleDeleteAccount}
+              style={({ pressed }) => [
+                styles.sectionRow,
+                {
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}>
+              <Ionicons name="trash-outline" size={20} color="#D32F2F" />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: '#D32F2F' }]}>
+                  {t((d) => d.settings.deleteAccount)}
+                </Text>
+              </View>
+            </Pressable>
+            <View style={styles.signOutInline}>
+              <View style={styles.footerButtonShadow}>
+                <Button title={authButtonLabel} onPress={() => void handleAuthAction()} type="secondary" />
+              </View>
+            </View>
+          </GlassCard>
+
+        </ScrollView>
+      </SafeAreaView>
 
       <Modal
         visible={languageModalVisible}
@@ -496,7 +486,7 @@ export default function SettingsScreen() {
               { backgroundColor: palette.card, borderColor: palette.border },
             ]}>
             <View style={[styles.selectorModalHandle, { backgroundColor: palette.border }]} />
-            <Text style={[styles.selectorModalTitle, { color: palette.text }]}>
+            <Text style={[styles.selectorModalTitle, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
               {t((d) => d.settings.languageTitle)}
             </Text>
             <ScrollView
@@ -523,7 +513,7 @@ export default function SettingsScreen() {
                     <Text
                       style={[
                         styles.selectorItemText,
-                        { color: isActive ? palette.background : palette.text },
+                        { color: isActive ? palette.background : (themeKey === 'light' ? '#1e1b4b' : palette.text) },
                       ]}>
                       {option.name}
                     </Text>
@@ -539,7 +529,7 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </GradientBackground>
   );
 }
 
@@ -710,6 +700,11 @@ const styles = StyleSheet.create({
   sectionHint: {
     fontSize: 12,
     marginTop: 4,
+  },
+  sectionDivider: {
+    height: 1,
+    marginVertical: 8,
+    marginHorizontal: 12,
   },
   footerButtonShadow: {
     borderRadius: 22,

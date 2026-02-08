@@ -1,27 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
-  ScrollView,
-  StyleSheet,
+  Animated,
   Linking,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
-import { useRevenueCatStore } from '../src/store/useRevenueCat';
+import { translations } from '@/i18n/translations';
+import { useI18n } from '@/i18n/useI18n';
 import {
   getMonthlyAndYearlyPackages,
   isEntitledToPremium,
   purchasePackageAndGetCustomerInfo,
   restoreAndGetCustomerInfo,
 } from '../src/lib/revenuecat';
+import { useRevenueCatStore } from '../src/store/useRevenueCat';
 import { useTheme } from '../src/store/useTheme';
-import { useI18n } from '@/i18n/useI18n';
-import { translations } from '@/i18n/translations';
 
 const PRIVACY_URL = 'https://salihkilicc.github.io/planora-privacy-policy/privacy.html';
 const TERMS_URL =
@@ -41,18 +41,21 @@ const PaywallScreen = () => {
   const [processing, setProcessing] = useState(false);
   const paywallFeatures = translations[lang]?.paywall.features ?? translations.en.paywall.features;
 
+  // Parallax effect
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   // --- LOGLAMA VE PAKET AYRIŞTIRMA ---
   useEffect(() => {
     console.log('🔄 [Paywall] currentOffering değişti:', JSON.stringify(currentOffering, null, 2));
-    
+
     if (currentOffering && currentOffering.availablePackages) {
       console.log('📦 [Paywall] Ham Paket Listesi:', currentOffering.availablePackages.map(p => p.identifier));
     }
 
     const { monthly, yearly } = getMonthlyAndYearlyPackages(currentOffering);
-    
-    console.log('✅ [Paywall] Ayrıştırılan Paketler:', { 
-      monthlyFound: !!monthly, 
+
+    console.log('✅ [Paywall] Ayrıştırılan Paketler:', {
+      monthlyFound: !!monthly,
       yearlyFound: !!yearly,
       monthlyPrice: monthly?.product?.priceString,
       yearlyPrice: yearly?.product?.priceString
@@ -126,7 +129,7 @@ const PaywallScreen = () => {
   const primary = (palette as any).primary ?? palette.accent;
   const selectedPackage = selected === 'monthly' ? monthlyPackage : yearlyPackage;
   const selectedHighlight = selected === 'monthly' ? '#C0C0C0' : '#F7C948';
-  
+
   // canPurchase kontrolünü loglayalım
   const canPurchase = Boolean(selectedPackage);
 
@@ -172,17 +175,67 @@ const PaywallScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.background }]}>
-      <View pointerEvents="none" style={[styles.gradientLayer, styles.gradientTop]} />
-      <View pointerEvents="none" style={[styles.gradientLayer, styles.gradientMid]} />
-      <View pointerEvents="none" style={[styles.gradientLayer, styles.gradientBottom]} />
+    <View style={[styles.container, { backgroundColor: '#ffffff' }]}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.gradientLayer,
+          styles.gradientTop,
+          {
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [0, 300],
+                outputRange: [0, -30],
+                extrapolate: 'clamp',
+              }),
+            }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.gradientLayer,
+          styles.gradientMid,
+          {
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [0, 300],
+                outputRange: [0, -20],
+                extrapolate: 'clamp',
+              }),
+            }],
+          },
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.gradientLayer,
+          styles.gradientBottom,
+          {
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [0, 300],
+                outputRange: [0, -10],
+                extrapolate: 'clamp',
+              }),
+            }],
+          },
+        ]}
+      />
 
-      <ScrollView
+      <Animated.ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: 32 + insets.bottom, paddingTop: insets.top + 16 },
         ]}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
         <View style={styles.topRow}>
           <TouchableOpacity
@@ -278,7 +331,7 @@ const PaywallScreen = () => {
             <Text style={styles.footerLink}>{t((d) => d.paywall.restore)}</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 };
@@ -288,7 +341,7 @@ export default PaywallScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#030013',
+    backgroundColor: '#ffffff',
   },
   gradientLayer: {
     position: 'absolute',
@@ -298,18 +351,18 @@ const styles = StyleSheet.create({
   gradientTop: {
     top: 0,
     height: 280,
-    backgroundColor: '#020011',
+    backgroundColor: '#1e1b4b', // Deep navy blue
   },
   gradientMid: {
     top: 220,
     height: 280,
-    backgroundColor: '#2A0A5C',
-    opacity: 0.9,
+    backgroundColor: '#5b21b6', // Rich purple
+    opacity: 0.85,
   },
   gradientBottom: {
     top: 420,
     height: 500,
-    backgroundColor: '#05020D',
+    backgroundColor: '#0f172a', // Dark navy
   },
   scrollContent: {
     paddingHorizontal: 24,
