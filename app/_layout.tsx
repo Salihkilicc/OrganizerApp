@@ -38,6 +38,7 @@ import { useSettings } from '@/store/useSettings';
 import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
 import { useWater } from '@/store/useWater';
+import mobileAds from 'react-native-google-mobile-ads';
 
 // Force SF Pro typography globally so every Text component inherits it.
 const SF_PRO_FONT_FAMILY =
@@ -143,6 +144,18 @@ export default function RootLayout() {
     return () => {
       cleanup();
     };
+  }, []);
+
+  // Initialize Google Mobile Ads
+  useEffect(() => {
+    mobileAds()
+      .initialize()
+      .then(() => {
+        console.log('[AdMob] Initialized successfully');
+      })
+      .catch((error) => {
+        console.error('[AdMob] Initialization failed:', error);
+      });
   }, []);
 
   useEffect(() => {

@@ -36,7 +36,7 @@ export default function TabLayout() {
         // 2. Floating Capsule Style
         tabBarStyle: {
           position: 'absolute',
-          bottom: 30,
+          bottom: 10,
           left: 20,
           right: 20,
           height: 70,

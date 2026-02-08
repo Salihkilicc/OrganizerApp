@@ -137,6 +137,7 @@ export function useAiPlanner({
     const [aiLimitLoading, setAiLimitLoading] = useState(false);
     const [adRewardGranted, setAdRewardGranted] = useState(false);
     const [showAdOverlay, setShowAdOverlay] = useState(false);
+    const [pendingAction, setPendingAction] = useState<'generate' | 'regenerate' | null>(null);
 
     const workStartMinutes = works ? parseTimeString(workStart) : undefined;
     const workEndMinutes = works ? parseTimeString(workEnd) : undefined;
@@ -402,6 +403,9 @@ export function useAiPlanner({
             }
             const allowed = await ensureAiAllowed();
             if (!allowed) {
+                // Show ad overlay instead of blocking
+                setPendingAction('generate');
+                setShowAdOverlay(true);
                 return false;
             }
         }
@@ -462,6 +466,7 @@ export function useAiPlanner({
             const allowed = await ensureAiAllowed();
             if (!allowed) {
                 // Show ad overlay instead of blocking
+                setPendingAction('regenerate');
                 setShowAdOverlay(true);
                 return false;
             }
@@ -514,20 +519,38 @@ export function useAiPlanner({
     }, [date, onApply, onClose, previewBlocks, resetState]);
 
     const handleWatchAd = useCallback(async () => {
-        // Close overlay
-        setShowAdOverlay(false);
-        // Grant one-time access
-        setAdRewardGranted(true);
-        // Automatically trigger regenerate with skipChecks
-        await handleRegenerate(true);
-        // Reset ad reward after use
-        setAdRewardGranted(false);
-    }, [handleRegenerate]);
+        // This is called AFTER the ad is successfully watched
+        console.log('[useAiPlanner] Ad reward confirmed, granting AI credit...');
+
+        // Add AI credit to database (reward for watching ad)
+        const { addAiCredit } = await import('@/lib/aiUsage');
+        const creditAdded = await addAiCredit(supabase);
+
+        if (creditAdded) {
+            console.log('[useAiPlanner] AI credit granted, performing action:', pendingAction);
+            // Refresh limit to show new credit
+            await refreshAiLimit();
+
+            // Perform the pending action
+            if (pendingAction === 'generate') {
+                await handleGenerate(false);
+            } else if (pendingAction === 'regenerate') {
+                await handleRegenerate(false);
+            }
+
+            // Reset pending action
+            setPendingAction(null);
+        } else {
+            console.warn('[useAiPlanner] Failed to grant AI credit');
+            setError('Failed to grant reward. Please try again.');
+        }
+    }, [handleGenerate, handleRegenerate, refreshAiLimit, pendingAction]);
 
     const handleClose = useCallback(() => {
         resetState();
         setShowAdOverlay(false);
         setAdRewardGranted(false);
+        setPendingAction(null);
         onClose();
     }, [onClose, resetState]);
 

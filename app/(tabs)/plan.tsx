@@ -20,6 +20,7 @@ import { HourColumn } from '@/components/HourColumn';
 import { PlanEditor } from '@/components/PlanEditor';
 import { PlanGrid } from '@/components/PlanGrid';
 import { AiPlanModal } from '@/features/ai-planner';
+import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { useI18n } from '@/i18n/useI18n';
 import { AiPlanBlock } from '@/lib/aiPlan';
 import { addAiCredit, checkAiLimit } from '@/lib/aiUsage';
@@ -41,9 +42,6 @@ import { useTheme } from '@/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { TestIds, useRewardedAd } from 'react-native-google-mobile-ads';
-
-const AD_UNIT_ID = TestIds.REWARDED;
 
 const HOURS_PER_DAY = 24;
 const GRID_START = 0;
@@ -128,30 +126,45 @@ export default function PlanScreen() {
   const [limitOverlayReason, setLimitOverlayReason] = useState<'limit_reached' | 'guest'>('limit_reached');
   const [isCheckingLimit, setIsCheckingLimit] = useState(false);
 
-  const { isLoaded, isEarnedReward, load, show } = useRewardedAd(AD_UNIT_ID, {
-    requestNonPersonalizedAdsOnly: true,
-  });
+  const { loaded: adLoaded, loading: adLoading, loadAd, showAd } = useRewardedAd();
 
+  // Load ad on mount
   useEffect(() => {
-    load();
-  }, [load]);
+    loadAd();
+  }, [loadAd]);
 
-  useEffect(() => {
-    if (isEarnedReward) {
-      // Add credit then open modal
-      addAiCredit(supabase).then(() => {
+  // Handle ad reward
+  const [adRewardPending, setAdRewardPending] = useState(false);
+
+  const handleAdReward = useCallback(async () => {
+    if (!adRewardPending) return;
+
+    console.log('[PlanScreen] Processing ad reward...');
+    try {
+      const success = await addAiCredit(supabase);
+      if (success) {
+        console.log('[PlanScreen] AI credit granted after ad');
         setShowLimitOverlay(false);
         setAiVisible(true);
-      });
+      } else {
+        console.warn('[PlanScreen] Failed to grant AI credit');
+        Alert.alert('Error', 'Failed to grant reward. Please try again.');
+        setShowLimitOverlay(false);
+      }
+    } catch (error) {
+      console.error('[PlanScreen] Error granting credit:', error);
+      Alert.alert('Error', 'Failed to grant reward. Please try again.');
+      setShowLimitOverlay(false);
+    } finally {
+      setAdRewardPending(false);
+      // Reload ad for next time
+      loadAd();
     }
-  }, [isEarnedReward]);
+  }, [adRewardPending, loadAd]);
 
-  // Reset when modal closes
-  const handleAiModalClose = useCallback(() => {
-    setAiVisible(false);
-    // Reload ad for next time
-    load();
-  }, [load]);
+  useEffect(() => {
+    handleAdReward();
+  }, [handleAdReward]);
   const loadPlans = usePlans((state) => state.load);
   const addPlan = usePlans((state) => state.add);
   const addMany = usePlans((state) => state.addMany);
@@ -353,14 +366,35 @@ export default function PlanScreen() {
   );
 
   const handleOverlayClose = useCallback(() => setShowLimitOverlay(false), []);
-  const handleWatchAd = useCallback(() => {
-    if (isLoaded) {
-      show();
-    } else {
-      Alert.alert(t((d) => d.common.loading), 'Loading Ad...');
-      load();
+
+  const handleWatchAd = useCallback(async () => {
+    console.log('[PlanScreen] Watch ad pressed, adLoaded:', adLoaded, 'adLoading:', adLoading);
+
+    if (!adLoaded) {
+      if (!adLoading) {
+        console.log('[PlanScreen] Ad not loaded, loading now...');
+        loadAd();
+      }
+      Alert.alert(t((d) => d.common.loading), 'Please wait, loading ad...');
+      return;
     }
-  }, [isLoaded, load, show, t]);
+
+    // Close overlay first
+    setShowLimitOverlay(false);
+
+    // Show ad
+    console.log('[PlanScreen] Showing ad...');
+    const rewarded = await showAd();
+
+    if (rewarded) {
+      // Set pending and trigger reward handling
+      setAdRewardPending(true);
+    } else {
+      console.warn('[PlanScreen] Ad not completed');
+      // Show overlay again
+      setShowLimitOverlay(true);
+    }
+  }, [adLoaded, adLoading, loadAd, showAd, t]);
 
   const handleGoPremium = useCallback(() => {
     setShowLimitOverlay(false);
@@ -399,7 +433,12 @@ export default function PlanScreen() {
     } finally {
       setIsCheckingLimit(false);
     }
-  }, [isPremium, isGuest, isCheckingLimit, selectedDate, setAiVisible]);
+  }, [isPremium, isGuest, isCheckingLimit, selectedDate]);
+
+  // Reset when modal closes
+  const handleAiModalClose = useCallback(() => {
+    setAiVisible(false);
+  }, []);
 
   const handleOpenCopyModal = useCallback(() => {
     if (blockCount === 0) return;

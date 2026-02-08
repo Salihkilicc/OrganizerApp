@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AiLimitOverlay } from '@/components/AiLimitOverlay';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/store/useTheme';
 import { useAiPlanner, type UseAiPlannerProps } from '../hooks/useAiPlanner';
@@ -34,6 +36,9 @@ export function AiPlanModal(props: AiPlanModalProps) {
   const router = useRouter();
 
   const isDark = ['dark', 'ninja', 'midnight', 'neon', 'ocean', 'coffee', 'default'].includes(themeKey);
+
+  // Rewarded ad hook
+  const { loaded: adLoaded, loadAd, showAd } = useRewardedAd();
 
   const {
     // State
@@ -95,6 +100,26 @@ export function AiPlanModal(props: AiPlanModalProps) {
     await handleRegenerate();
   };
 
+  const onWatchAdPress = async () => {
+    // Close overlay first
+    setShowAdOverlay(false);
+
+    // Show real rewarded ad (this will be full screen)
+    console.log('[AiPlanModal] Showing rewarded ad...');
+    const rewarded = await showAd();
+
+    if (rewarded) {
+      // User watched ad and earned reward
+      console.log('[AiPlanModal] Ad completed successfully');
+      await handleWatchAd();
+    } else {
+      // Ad failed or user didn't complete it
+      console.warn('[AiPlanModal] Ad not completed');
+      // Show overlay again so user can retry
+      setShowAdOverlay(true);
+    }
+  };
+
   const onGoPremium = () => {
     setShowAdOverlay(false);
     router.push('/premium');
@@ -103,6 +128,13 @@ export function AiPlanModal(props: AiPlanModalProps) {
   const onCloseOverlay = () => {
     setShowAdOverlay(false);
   };
+
+  // Load ad when modal opens
+  useEffect(() => {
+    if (visible && !adLoaded) {
+      loadAd();
+    }
+  }, [visible, adLoaded, loadAd]);
 
   // Constants used in JSX
   const placeholderColor = `${palette.text}88`;
@@ -121,7 +153,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
     >
       <AiLimitOverlay
         visible={showAdOverlay}
-        onWatchAd={handleWatchAd}
+        onWatchAd={onWatchAdPress}
         onGoPremium={onGoPremium}
         onClose={onCloseOverlay}
       />
@@ -383,6 +415,8 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         {aiUsageText}
                       </Text>
                     </View>
+
+                    {/* Scrollable plan blocks */}
                     <ScrollView
                       style={styles.previewList}
                       contentContainerStyle={[
@@ -416,6 +450,8 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         ))
                       )}
                     </ScrollView>
+
+                    {/* Fixed footer section */}
                     {stage === 'preview' && (
                       <View style={styles.feedbackSection}>
                         <Text style={[styles.feedbackLabel, { color: palette.text }]}>
@@ -454,6 +490,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         </Pressable>
                       </View>
                     )}
+
                     <View style={styles.buttonRow}>
                       <Pressable
                         onPress={() => setStage('form')}
@@ -629,10 +666,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   previewContainer: {
+    flex: 1,
     marginTop: 8,
+    paddingBottom: 24,
   },
   previewList: {
-    maxHeight: 240,
+    flex: 1,
     marginTop: 12,
   },
   previewListContent: {
