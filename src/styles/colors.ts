@@ -8,40 +8,42 @@ export type Palette = {
 };
 
 const base = {
-  deepPurple: '#2E1065', // Dark violet
-  vividPurple: '#7C3AED', // Bright purple accent
-  navyBlue: '#172554',   // Deep sea blue
-  electricBlue: '#3B82F6', // Bright blue accent
+  // New dark purple-navy palette
+  deepNavy: '#0f0f2e',        // Darkest background
+  darkPurple: '#1a1a3e',      // Main background
+  cardPurple: '#2d2d5f',      // Card background
+  brightBlue: '#4169e1',      // Primary accent
+  lightBlue: '#5b7fe8',       // Secondary accent
   white: '#FFFFFF',
-  whiteSoft: 'rgba(255, 255, 255, 0.8)',
-  whiteGlass: 'rgba(255, 255, 255, 0.15)', // For glass effect on dark
-  blackGlass: 'rgba(0, 0, 0, 0.3)', // For darker glass
+  whiteSoft: 'rgba(255, 255, 255, 0.9)',
+  whiteGlass: 'rgba(45, 45, 95, 0.6)', // Purple-tinted glass
+  purpleBorder: 'rgba(91, 127, 232, 0.2)', // Blue-purple border
 };
 
 export const themes = {
   default: {
-    background: base.deepPurple,
+    background: base.darkPurple,
     text: base.white,
     card: base.whiteGlass,
-    accent: base.vividPurple,
-    border: 'rgba(255, 255, 255, 0.1)',
-    tint: base.vividPurple,
+    accent: base.brightBlue,
+    border: base.purpleBorder,
+    tint: base.lightBlue,
   },
   light: {
     background: base.white,
-    text: base.navyBlue,
+    text: base.darkPurple,
     card: '#F3F4F6',
-    accent: base.electricBlue,
+    accent: base.brightBlue,
     border: 'rgba(0, 0, 0, 0.1)',
-    tint: base.electricBlue,
+    tint: base.brightBlue,
   },
   dark: {
-    background: base.deepPurple,
+    background: base.darkPurple,
     text: base.white,
     card: base.whiteGlass,
-    accent: base.vividPurple,
-    border: 'rgba(255, 255, 255, 0.1)',
-    tint: base.vividPurple,
+    accent: base.brightBlue,
+    border: base.purpleBorder,
+    tint: base.lightBlue,
   },
   ninja: {
     background: '#0b0c10',
@@ -126,6 +128,6 @@ export const themes = {
 } as const;
 
 export const gradients = {
-  primaryBg: [base.deepPurple, base.navyBlue], // Main screen background
-  accentCard: [base.vividPurple, base.electricBlue], // Highlights
+  primaryBg: [base.darkPurple, base.deepNavy], // Main screen background gradient
+  accentCard: [base.brightBlue, base.lightBlue], // Button gradients
 } as const;

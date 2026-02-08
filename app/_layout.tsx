@@ -148,7 +148,7 @@ export default function RootLayout() {
   useEffect(() => {
     const unsubscribe = useAuth.subscribe(
       (state, previousState) => {
-        const nextUserId = state.userId ?? null;
+        const nextUserId = state.user?.id ?? null;
         const movedToGuest =
           previousState?.status !== 'guest' &&
           (state.status === 'guest' || !nextUserId || state.isGuest);
@@ -156,11 +156,6 @@ export default function RootLayout() {
           resetUserScopedStores();
         }
       },
-      (state) => ({
-        userId: state.user?.id ?? null,
-        status: state.status,
-        isGuest: state.isGuest,
-      }),
     );
 
     return () => {
@@ -226,7 +221,7 @@ export default function RootLayout() {
       void useWater.getState().init(null);
     }
 
-    void useAvatarStore.getState().loadFromSupabase(sessionUserId);
+    void useAvatarStore.getState().loadFromSupabase();
   }, [status, user?.id]);
 
   useEffect(() => {

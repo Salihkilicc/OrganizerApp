@@ -135,6 +135,8 @@ export function useAiPlanner({
     const [aiLimitAllowed, setAiLimitAllowed] = useState(true);
     const [aiLimitReason, setAiLimitReason] = useState<AiLimitResult['reason']>();
     const [aiLimitLoading, setAiLimitLoading] = useState(false);
+    const [adRewardGranted, setAdRewardGranted] = useState(false);
+    const [showAdOverlay, setShowAdOverlay] = useState(false);
 
     const workStartMinutes = works ? parseTimeString(workStart) : undefined;
     const workEndMinutes = works ? parseTimeString(workEnd) : undefined;
@@ -459,6 +461,8 @@ export function useAiPlanner({
             }
             const allowed = await ensureAiAllowed();
             if (!allowed) {
+                // Show ad overlay instead of blocking
+                setShowAdOverlay(true);
                 return false;
             }
         }
@@ -509,8 +513,21 @@ export function useAiPlanner({
         onClose();
     }, [date, onApply, onClose, previewBlocks, resetState]);
 
+    const handleWatchAd = useCallback(async () => {
+        // Close overlay
+        setShowAdOverlay(false);
+        // Grant one-time access
+        setAdRewardGranted(true);
+        // Automatically trigger regenerate with skipChecks
+        await handleRegenerate(true);
+        // Reset ad reward after use
+        setAdRewardGranted(false);
+    }, [handleRegenerate]);
+
     const handleClose = useCallback(() => {
         resetState();
+        setShowAdOverlay(false);
+        setAdRewardGranted(false);
         onClose();
     }, [onClose, resetState]);
 
@@ -550,6 +567,8 @@ export function useAiPlanner({
         aiLimitLoading,
         aiLimitAllowed,
         aiLimitReason,
+        showAdOverlay,
+        setShowAdOverlay,
 
         // Derived
         workStartMinutes,
@@ -574,6 +593,7 @@ export function useAiPlanner({
         handleRegenerate,
         handleApply,
         handleClose,
+        handleWatchAd,
         resetState,
         formatMinutes, // useful for preview list
     };

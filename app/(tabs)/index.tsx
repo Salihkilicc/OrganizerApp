@@ -13,25 +13,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlanEditor } from '@/components/PlanEditor';
+import { Popup } from '@/components/Popup';
+import { AVATAR_IMAGES } from '@/constants/avatars';
+import { useI18n } from '@/i18n/useI18n';
+import { getFrameDecoration } from '@/lib/frameStyles';
 import { useAuth } from '@/store/useAuth';
-import { usePoints } from '@/store/usePoints';
+import { useAvatarStore } from '@/store/useAvatar';
+import { useFocusMode } from '@/store/useFocusMode';
 import { PlanBlock, todayDate, usePlans } from '@/store/usePlans';
+import { usePoints } from '@/store/usePoints';
 import { useProfileAppearance } from '@/store/useProfileAppearance';
 import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
-import { useI18n } from '@/i18n/useI18n';
-import { useRouter } from 'expo-router';
-import { useWeather } from '@/store/useWeather';
-import { useFocusMode } from '@/store/useFocusMode';
-import * as Haptics from 'expo-haptics';
 import { useWater, WATER_BOTTLE_COUNT } from '@/store/useWater';
-import { getFrameDecoration } from '@/lib/frameStyles';
-import { useAvatarStore } from '@/store/useAvatar';
-import { AVATAR_IMAGES } from '@/constants/avatars';
+import { useWeather } from '@/store/useWeather';
+import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
-import { Popup } from '@/components/Popup';
+import { useRouter } from 'expo-router';
 import { SvgXml } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
 
 const padNumber = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (totalMinutes: number) => {
@@ -71,9 +70,9 @@ const bottleSvg = `
   <path fill="currentColor" d="m87.102 100.758h-46.191c-1.669 0-3.033 1.35-3.033 3.019v15.388c0 4.87 3.965 8.835 8.835 8.835h34.588c4.87 0 8.835-3.965 8.835-8.835v-15.388c-.001-1.669-1.364-3.019-3.034-3.019zm-3.839-19.283h-38.539c-3.784 0-6.859 3.074-6.859 6.859 0 3.771 3.061 6.845 6.832 6.859h38.595c3.756-.014 6.817-3.089 6.817-6.859-.001-3.784-3.076-6.859-6.846-6.859zm0-19.27h-38.539c-3.784 0-6.859 3.074-6.859 6.845 0 3.784 3.074 6.859 6.859 6.859h38.539c3.771 0 6.845-3.074 6.845-6.859 0-3.77-3.075-6.845-6.845-6.845zm.82-32.083-8.78-12.41h-22.621l-8.765 12.424c-3.951 5.579-6.038 12.146-6.038 18.978v4.494c0 1.669 1.363 3.019 3.033 3.019h46.191c1.669 0 3.033-1.35 3.033-3.019v-4.48c-.001-6.846-2.101-13.414-6.053-19.006zm-12.758-30.122h-14.65c-1.46 0-2.643 1.183-2.643 2.643v9.488h19.937v-9.488c0-1.46-1.183-2.643-2.644-2.643z"/>
 </svg>
 `;
-const WaterBottleIcon = ({ color }: { color: string }) => (
+const WaterBottleIcon = ({ color, filled }: { color: string; filled: boolean }) => (
   <View style={styles.bottleWrapper}>
-    <SvgXml xml={bottleSvg} width={38} height={56} color={color} />
+    <SvgXml xml={bottleSvg} width={38} height={56} color={color} opacity={filled ? 1 : 0.25} />
   </View>
 );
 const createBottleScaleValues = () =>
@@ -149,18 +148,18 @@ export default function TodayScreen() {
   const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
   const avatarFrameStyle = frameDecoration
     ? {
-        borderWidth: frameDecoration.borderWidth,
-        borderColor: frameDecoration.borderColor,
-        shadowColor: frameDecoration.shadowColor ?? frameDecoration.borderColor,
-        shadowOpacity: frameDecoration.shadowOpacity ?? 0.4,
-        shadowOffset: frameDecoration.shadowOffset ?? { width: 0, height: 4 },
-        shadowRadius: frameDecoration.shadowRadius ?? 10,
-        elevation: frameDecoration.elevation ?? 3,
-      }
+      borderWidth: frameDecoration.borderWidth,
+      borderColor: frameDecoration.borderColor,
+      shadowColor: frameDecoration.shadowColor ?? frameDecoration.borderColor,
+      shadowOpacity: frameDecoration.shadowOpacity ?? 0.4,
+      shadowOffset: frameDecoration.shadowOffset ?? { width: 0, height: 4 },
+      shadowRadius: frameDecoration.shadowRadius ?? 10,
+      elevation: frameDecoration.elevation ?? 3,
+    }
     : {
-        borderWidth: 1,
-        borderColor: palette.border,
-      };
+      borderWidth: 1,
+      borderColor: palette.border,
+    };
   const avatarSource = selectedAvatar ? AVATAR_IMAGES[selectedAvatar] : null;
   const fallbackName = isGuest
     ? t((d) => d.common.guestUser)
@@ -259,10 +258,10 @@ export default function TodayScreen() {
     totalPlans === 0
       ? t((d) => d.today.planStatsEmpty)
       : t((d) => d.today.planStats, {
-          total: totalPlans,
-          plural: totalPlans === 1 ? '' : 's',
-          hours: planHoursDisplay,
-        });
+        total: totalPlans,
+        plural: totalPlans === 1 ? '' : 's',
+        hours: planHoursDisplay,
+      });
   const nextBlock = useMemo(() => {
     if (!pendingBlocks.length) return null;
     const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
@@ -340,16 +339,14 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
-        <ScrollView
-          contentContainerStyle={styles.container}
-          contentInsetAdjustmentBehavior="always"
-          showsVerticalScrollIndicator={false}
-          onTouchStart={() => {
-            if (weatherModalVisible) {
-              setWeatherModalVisible(false);
-            }
-          }}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        contentInsetAdjustmentBehavior="always"
+        showsVerticalScrollIndicator={false}>
+
+        {/* Header Row: Avatar/Friends | Streak | Shop */}
         <View style={styles.headerRow}>
+          {/* Left: Avatar + Friends */}
           <View style={styles.avatarColumn}>
             <Pressable
               onPress={handleAvatarPress}
@@ -360,7 +357,7 @@ export default function TodayScreen() {
                   opacity: pressed ? 0.8 : 1,
                 },
                 avatarFrameStyle,
-            ]}>
+              ]}>
               {avatarSource ? (
                 <Image source={avatarSource} style={styles.avatarImage} />
               ) : (
@@ -370,92 +367,56 @@ export default function TodayScreen() {
               )}
             </Pressable>
 
-            <View style={styles.friendsStrip}>
-              <Pressable
-                onPress={() => setFriendsVisible(true)}
-                style={({ pressed }) => [
-                  styles.friendsButton,
-                  {
-                    borderColor: palette.border,
-                    backgroundColor: palette.card,
-                    opacity: pressed ? 0.8 : 1,
-                  },
-                ]}>
-                <Text style={[styles.friendsLabel, { color: palette.text }]}>
-                  {t((d) => d.today.friends)}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <View style={styles.headerStats}>
-            <View style={styles.statsInline}>
-              <Pressable
-                onPress={handleWeatherPress}
-                onTouchStart={(event) => event.stopPropagation()}
-                style={({ pressed }) => [
-                  styles.weatherIconButton,
-                  pressed && styles.weatherIconPressed,
-                ]}>
-                <Text
-                  style={[
-                    styles.weatherBubbleIcon,
-                    { color: weatherError ? palette.accent : palette.text },
-                  ]}>
-                  {weatherLoading ? '' : weatherError ? '❗' : icon ?? '🌡️'}
-                </Text>
-              </Pressable>
-
-              <View style={[styles.statBlock, styles.streakBlock]}>
-                <Text style={[styles.statLabel, { color: palette.text }]}>
-                  {t((d) => d.today.streak)}
-                </Text>
-                <Text
-                  style={[
-                    styles.streakValue,
-                    { color: palette.text },
-                  ]}>
-                  {t((d) => d.today.streakValue, { count: streakDays })}
-                </Text>
-              </View>
-
-              <Pressable
-              onPress={() => router.push('/points')}
+            <Pressable
+              onPress={() => setFriendsVisible(true)}
               style={({ pressed }) => [
-                styles.statBlock,
-                styles.pointsPressable,
-                styles.buttonShadow,
+                styles.friendsButton,
                 {
-                  backgroundColor: palette.accent,
                   borderColor: palette.border,
-                  opacity: pressed ? 0.85 : 1,
+                  backgroundColor: palette.card,
+                  opacity: pressed ? 0.8 : 1,
                 },
-                pressed && styles.pointsPressed,
               ]}>
-                <Text style={[styles.statLabel, { color: palette.background, marginBottom: 2 }]}>
-                  Shop
-                </Text>
-                <View style={styles.pointsNumberRow}>
-                  <Ionicons name="storefront-outline" size={21} color={palette.background} />
-                  <View
-                    style={[
-                      styles.pointsBadge,
-                      { backgroundColor: palette.background, shadowColor: palette.text },
-                    ]}>
-                    <Text style={[styles.pointsValue, { color: palette.accent }]}>
-                      {points}
-                    </Text>
-                  </View>
-                </View>
-              </Pressable>
+              <Text style={[styles.friendsLabel, { color: palette.text }]}>
+                {t((d) => d.today.friends)}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Center: Streak */}
+          <View style={styles.streakCenter}>
+            <Text style={[styles.streakLabel, { color: palette.text }]}>
+              {t((d) => d.today.streak)}
+            </Text>
+            <View style={styles.streakRow}>
+              <Text style={styles.streakEmoji}>🔥</Text>
+              <Text style={[styles.streakDays, { color: palette.text }]}>
+                {t((d) => d.today.streakValue, { count: streakDays })}
+              </Text>
             </View>
           </View>
+
+          {/* Right: Shop Button */}
+          <Pressable
+            onPress={() => router.push('/points')}
+            style={({ pressed }) => [
+              styles.shopButton,
+              styles.buttonShadow,
+              {
+                backgroundColor: palette.accent,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}>
+            <Text style={[styles.shopButtonText, { color: palette.background }]}>
+              SHOP
+            </Text>
+          </Pressable>
         </View>
 
+        {/* Next Up Card */}
         <View
           style={[
             styles.nextUpCard,
-            styles.buttonShadow,
             { backgroundColor: palette.card, borderColor: palette.border },
           ]}>
           <Text style={[styles.nextUpLabel, { color: palette.text }]}>
@@ -501,7 +462,7 @@ export default function TodayScreen() {
               </Pressable>
             </>
           ) : (
-            <View style={styles.nextUpEmptyContainer}>
+            <>
               <Text style={[styles.nextUpEmpty, { color: palette.text }]}>
                 {t((d) => d.today.noNextBlock)}
               </Text>
@@ -511,7 +472,6 @@ export default function TodayScreen() {
                   styles.startFocusButton,
                   styles.buttonShadow,
                   {
-                    alignSelf: 'flex-start',
                     backgroundColor: palette.accent,
                     opacity: pressed ? 0.85 : 1,
                   },
@@ -520,19 +480,18 @@ export default function TodayScreen() {
                   {t((d) => d.today.createPlan)}
                 </Text>
               </Pressable>
-            </View>
+            </>
           )}
         </View>
 
-        <View style={styles.planWaterRow}>
-          <View style={styles.waterLabelStack}>
-            <Text style={[styles.waterLabel, { color: '#1f7bff' }]}>
-              {t((d) => d.today.waterDaily)}
-            </Text>
-            <Text style={[styles.waterLabel, { color: '#1f7bff' }]}>
-              {t((d) => d.today.waterWaters)}
-            </Text>
-          </View>
+        {/* Daily Waters Section */}
+        <View style={styles.waterSection}>
+          <Text style={[styles.waterSectionLabel, { color: palette.text }]}>
+            {t((d) => d.today.waterDaily)}
+          </Text>
+          <Text style={[styles.waterSectionSubLabel, { color: palette.text }]}>
+            {t((d) => d.today.waterWaters)}
+          </Text>
           <View style={styles.waterBottleRow}>
             {bottleStates.map((isFull, index) => (
               <AnimatedTouchableOpacity
@@ -544,7 +503,6 @@ export default function TodayScreen() {
                   styles.waterButton,
                   {
                     transform: [{ scale: bottleScales[index] }],
-                    opacity: isFull ? 1 : 0.25,
                   },
                 ]}>
                 <WaterBottleIcon color={palette.tint} filled={isFull} />
@@ -552,106 +510,109 @@ export default function TodayScreen() {
             ))}
           </View>
         </View>
-        <View style={styles.planCardContainer}>
-          <View
-            style={[styles.planCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-            <View style={styles.planHeaderRow}>
-              <Text style={[styles.planTitle, { color: palette.text }]}>
-                {t((d) => d.today.planSectionTitle)}
+
+        {/* Today's Plan Section */}
+        <View
+          style={[
+            styles.planCard,
+            { backgroundColor: palette.card, borderColor: palette.border },
+          ]}>
+          <View style={styles.planHeaderRow}>
+            <Text style={[styles.planTitle, { color: palette.text }]}>
+              {t((d) => d.today.planSectionTitle)}
+            </Text>
+            <Text style={[styles.planStatsText, { color: palette.text }]}>{planStatsText}</Text>
+          </View>
+          {todayBlocks.length === 0 ? (
+            <View style={styles.planEmptyState}>
+              <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
+                {t((d) => d.today.planEmptyTitle)}
               </Text>
-              <Text style={[styles.planStatsText, { color: palette.text }]}>{planStatsText}</Text>
+              <Text style={[styles.planEmptyHint, { color: palette.text }]}>
+                {t((d) => d.today.planEmptyHint)}
+              </Text>
+              <Pressable
+                onPress={goToPlan}
+                style={({ pressed }) => [
+                  styles.startFocusButton,
+                  styles.buttonShadow,
+                  {
+                    alignSelf: 'center',
+                    backgroundColor: palette.accent,
+                    opacity: pressed ? 0.85 : 1,
+                    marginTop: 16,
+                  },
+                ]}>
+                <Text style={[styles.startFocusText, { color: palette.background }]}>
+                  {t((d) => d.today.openPlanner)}
+                </Text>
+              </Pressable>
             </View>
-            {todayBlocks.length === 0 ? (
-              <View style={styles.planEmptyState}>
-                <Text style={[styles.planEmptyTitle, { color: palette.text }]}>
-                  {t((d) => d.today.planEmptyTitle)}
-                </Text>
-                <Text style={[styles.planEmptyHint, { color: palette.text }]}>
-                  {t((d) => d.today.planEmptyHint)}
-                </Text>
+          ) : (
+            todayBlocks.map((block) => {
+              const accentColor = block.color ?? palette.accent;
+              const isDone = Boolean(block.done);
+              return (
                 <Pressable
-                  onPress={goToPlan}
+                  key={block.id}
+                  onPress={() => handleBlockPress(block)}
                   style={({ pressed }) => [
-                    styles.startFocusButton,
+                    styles.blockRow,
                     styles.buttonShadow,
                     {
-                      alignSelf: 'center',
-                      backgroundColor: palette.accent,
-                      opacity: pressed ? 0.85 : 1,
-                      marginTop: 16,
+                      borderColor: palette.border,
+                      backgroundColor: palette.background,
+                      opacity: pressed ? 0.65 : 1,
                     },
                   ]}>
-                  <Text style={[styles.startFocusText, { color: palette.background }]}>
-                    {t((d) => d.today.openPlanner)}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              todayBlocks.map((block) => {
-                const accentColor = block.color ?? palette.accent;
-                const isDone = Boolean(block.done);
-                return (
                   <Pressable
-                    key={block.id}
-                    onPress={() => handleBlockPress(block)}
-                    style={({ pressed }) => [
-                      styles.blockRow,
-                      styles.buttonShadow,
+                    onPress={(event) => toggleDone(block, event)}
+                    style={[
+                      styles.completionToggle,
+                      {
+                        borderColor: palette.accent,
+                        backgroundColor: isDone ? palette.accent : 'transparent',
+                      },
+                    ]}
+                    hitSlop={6}>
+                    {isDone && (
+                      <Text style={[styles.completionCheck, { color: palette.background }]}>✓</Text>
+                    )}
+                  </Pressable>
+                  <View style={[styles.blockAccent, { backgroundColor: accentColor }]} />
+                  <View
+                    style={[
+                      styles.blockCategoryIcon,
                       {
                         borderColor: palette.border,
-                        backgroundColor: palette.background,
-                        opacity: pressed ? 0.65 : 1,
+                        backgroundColor: palette.card,
                       },
                     ]}>
-                    <Pressable
-                      onPress={(event) => toggleDone(block, event)}
+                    <Text style={[styles.blockCategoryIconText, { color: palette.text }]}>
+                      {getCategoryIcon(block.category)}
+                    </Text>
+                  </View>
+                  <View style={styles.blockInfo}>
+                    <Text style={[styles.blockTime, { color: palette.text }]}>
+                      {formatRange(block)}
+                    </Text>
+                    <Text
                       style={[
-                        styles.completionToggle,
+                        styles.blockTitle,
                         {
-                          borderColor: palette.accent,
-                          backgroundColor: isDone ? palette.accent : 'transparent',
+                          color: palette.text,
+                          textDecorationLine: isDone ? 'line-through' : 'none',
+                          opacity: isDone ? 0.6 : 1,
                         },
                       ]}
-                      hitSlop={6}>
-                      {isDone && (
-                        <Text style={[styles.completionCheck, { color: palette.background }]}>✓</Text>
-                      )}
-                    </Pressable>
-                    <View style={[styles.blockAccent, { backgroundColor: accentColor }]} />
-                    <View
-                      style={[
-                        styles.blockCategoryIcon,
-                        {
-                          borderColor: palette.border,
-                          backgroundColor: palette.card,
-                        },
-                      ]}>
-                      <Text style={[styles.blockCategoryIconText, { color: palette.text }]}>
-                        {getCategoryIcon(block.category)}
-                      </Text>
-                    </View>
-                    <View style={styles.blockInfo}>
-                      <Text style={[styles.blockTime, { color: palette.text }]}>
-                        {formatRange(block)}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.blockTitle,
-                          {
-                            color: palette.text,
-                            textDecorationLine: isDone ? 'line-through' : 'none',
-                            opacity: isDone ? 0.6 : 1,
-                          },
-                        ]}
-                        numberOfLines={1}>
-                        {block.title}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })
-            )}
-          </View>
+                      numberOfLines={1}>
+                      {block.title}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
         </View>
       </ScrollView>
 
@@ -670,40 +631,6 @@ export default function TodayScreen() {
         icon="🤝"
         onClose={() => setFriendsVisible(false)}
       />
-      <Popup
-        visible={weatherModalVisible}
-        title={t((d) => d.today.weeklyWeatherTitle)}
-        description={t((d) => d.today.weeklyWeatherSubtitle)}
-        icon="🌤️"
-        onClose={() => setWeatherModalVisible(false)}>
-        <Animated.View
-          style={[
-            styles.weatherPopupContent,
-            weatherModalStyle,
-            { borderColor: palette.border },
-          ]}>
-          <View style={styles.weatherModalList}>
-            {weeklyPreview.length ? (
-              weeklyPreview.map((day, index) => (
-                <View
-                  key={`${day.day}-${index}`}
-                  style={[
-                    styles.weeklyRow,
-                    index === weeklyPreview.length - 1 && styles.weeklyRowLast,
-                  ]}>
-                  <Text style={[styles.weeklyDay, { color: palette.text }]}>{day.day}</Text>
-                  <Text style={[styles.weeklyIcon, { color: palette.accent }]}>{day.icon}</Text>
-                  <Text style={[styles.weeklyTemp, { color: palette.text }]}>{day.temp}°C</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={[styles.weeklyUnavailable, { color: palette.text }]}>
-                {t((d) => d.today.weeklyUnavailable)}
-              </Text>
-            )}
-          </View>
-        </Animated.View>
-      </Popup>
     </SafeAreaView>
   );
 }
@@ -720,19 +647,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
     marginBottom: 24,
   },
   avatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    marginBottom: 12,
   },
   avatarInitials: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
   },
   avatarImage: {
@@ -744,44 +671,53 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flexShrink: 0,
   },
-  friendsStrip: {
-    marginTop: 12,
-    marginLeft: 4,
-  },
   friendsButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
     borderWidth: 1,
-    minWidth: 74,
     alignItems: 'center',
   },
   friendsLabel: {
-    fontSize: 9,
+    fontSize: 10,
     textTransform: 'uppercase',
-    letterSpacing: 0.35,
+    letterSpacing: 0.5,
     fontWeight: '700',
   },
-  headerStats: {
+  streakCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  streakLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+    opacity: 0.8,
+  },
+  streakRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    flexShrink: 0,
-    marginLeft: 'auto',
-    justifyContent: 'flex-end',
-    marginTop: 4,
+    alignItems: 'center',
+    gap: 6,
   },
-  statsInline: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginLeft: 12,
-    marginRight: 8,
+  streakEmoji: {
+    fontSize: 20,
   },
-  statBlock: {
-    alignItems: 'flex-start',
+  streakDays: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  streakBlock: {
-    marginLeft: 8,
-    marginRight: 12,
+  shopButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shopButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   buttonShadow: {
     shadowColor: '#000',
@@ -789,106 +725,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 18,
     elevation: 10,
-  },
-  pointsPressable: {
-    borderRadius: BUTTON_CORNER_RADIUS,
-    paddingVertical: 3.4,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    flexDirection: 'column',
-    gap: 4,
-    marginLeft: 6,
-    marginTop: -2,
-  },
-  pointsPressed: {
-    opacity: 0.75,
-  },
-  weatherIconButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    marginLeft: 4,
-    marginRight: 4,
-  },
-  weatherIconPressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.96 }],
-  },
-  weatherBubbleIcon: {
-    fontSize: 20,
-  },
-  weeklyCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
-    marginTop: 12,
-  },
-  weeklyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  weeklyRowLast: {
-    marginBottom: 0,
-  },
-  weeklyDay: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  weeklyIcon: {
-    fontSize: 16,
-  },
-  weeklyTemp: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  weeklyUnavailable: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  weatherPopupContent: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    width: '100%',
-    marginTop: 8,
-  },
-  weatherModalList: {
-    width: '100%',
-  },
-  statLabel: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  streakValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pointsBadge: {
-    marginTop: 3,
-    borderRadius: 16,
-    paddingHorizontal: 9,
-    paddingVertical: 2.5,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  pointsNumberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  pointsValue: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   nextUpCard: {
     borderRadius: 20,
@@ -1012,25 +848,26 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  planWaterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginBottom: 12,
+  waterSection: {
+    marginBottom: 20,
   },
-  waterLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 18,
+  waterSectionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+    opacity: 0.9,
+  },
+  waterSectionSubLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 12,
+    opacity: 0.7,
   },
   waterBottleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 1,
-    marginLeft: 12,
-  },
-  waterLabelStack: {
-    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    gap: 8,
   },
   planEmptyState: {
     marginTop: 8,

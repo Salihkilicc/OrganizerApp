@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -14,6 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AiLimitOverlay } from '@/components/AiLimitOverlay';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/store/useTheme';
@@ -25,10 +28,12 @@ export type AiPlanModalProps = UseAiPlannerProps;
 
 export function AiPlanModal(props: AiPlanModalProps) {
   const { visible } = props;
-  const { palette } = useTheme();
+  const { palette, themeKey } = useTheme();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  const isDark = ['dark', 'ninja', 'midnight', 'neon', 'ocean', 'coffee', 'default'].includes(themeKey);
 
   const {
     // State
@@ -76,7 +81,10 @@ export function AiPlanModal(props: AiPlanModalProps) {
     handleRegenerate,
     handleApply,
     handleClose,
+    handleWatchAd,
     formatMinutes,
+    showAdOverlay,
+    setShowAdOverlay,
   } = useAiPlanner(props);
 
   const onGeneratePress = async () => {
@@ -85,6 +93,15 @@ export function AiPlanModal(props: AiPlanModalProps) {
 
   const onRegeneratePress = async () => {
     await handleRegenerate();
+  };
+
+  const onGoPremium = () => {
+    setShowAdOverlay(false);
+    router.push('/premium');
+  };
+
+  const onCloseOverlay = () => {
+    setShowAdOverlay(false);
   };
 
   // Constants used in JSX
@@ -102,6 +119,12 @@ export function AiPlanModal(props: AiPlanModalProps) {
       statusBarTranslucent
       onRequestClose={handleClose}
     >
+      <AiLimitOverlay
+        visible={showAdOverlay}
+        onWatchAd={handleWatchAd}
+        onGoPremium={onGoPremium}
+        onClose={onCloseOverlay}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + 24}
@@ -112,339 +135,360 @@ export function AiPlanModal(props: AiPlanModalProps) {
         />
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={handleClose} />
-          <View
-            style={[
-              styles.sheet,
-              {
-                backgroundColor: palette.card,
-                borderColor: palette.border,
-                shadowColor: palette.text,
-                paddingBottom: 16 + insets.bottom,
-              },
-            ]}>
-            <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.aiPlanner.title)}</Text>
-            <Text style={[styles.subTitle, { color: palette.text }]}>{dateLabel}</Text>
-
-            {stage === 'form' ? (
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={[
-                  styles.formContent,
-                  { paddingBottom: 18 + insets.bottom },
-                ]}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.field}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                    {t((d) => d.aiPlanner.wakeTime)}
-                  </Text>
-                  <TextInput
-                    value={wakeTime}
-                    onChangeText={(value) => setWakeTime(sanitizeTimeInput(value))}
-                    style={[
-                      styles.input,
-                      { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
-                    ]}
-                    placeholder="07:30"
-                    placeholderTextColor={placeholderColor}
-                    maxLength={5}
-                  />
-                </View>
-                <View style={styles.field}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                    {t((d) => d.aiPlanner.sleepTime)}
-                  </Text>
-                  <TextInput
-                    value={sleepTime}
-                    onChangeText={(value) => setSleepTime(sanitizeTimeInput(value))}
-                    style={[
-                      styles.input,
-                      { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
-                    ]}
-                    placeholder="23:30"
-                    placeholderTextColor={placeholderColor}
-                    maxLength={5}
-                  />
-                </View>
-                <View style={styles.field}>
-                  <View style={styles.workToggleRow}>
-                    <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                      {t((d) => d.aiPlanner.workToggle)}
-                    </Text>
-                    <Switch
-                      value={works}
-                      onValueChange={setWorks}
-                      trackColor={{ true: palette.accent, false: palette.border }}
-                      thumbColor={palette.background}
-                    />
-                  </View>
-                  {works && (
-                    <>
-                      <View style={styles.fieldRow}>
-                        <View style={styles.fieldHalf}>
-                          <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                            {t((d) => d.aiPlanner.workStart)}
-                          </Text>
-                          <TextInput
-                            value={workStart}
-                            onChangeText={(value) => setWorkStart(sanitizeTimeInput(value))}
-                            style={[
-                              styles.input,
-                              { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
-                            ]}
-                            placeholder="09:00"
-                            placeholderTextColor={placeholderColor}
-                            maxLength={5}
-                          />
-                        </View>
-                        <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
-                          <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                            {t((d) => d.aiPlanner.workEnd)}
-                          </Text>
-                          <TextInput
-                            value={workEnd}
-                            onChangeText={(value) => setWorkEnd(sanitizeTimeInput(value))}
-                            style={[
-                              styles.input,
-                              { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
-                            ]}
-                            placeholder="17:00"
-                            placeholderTextColor={placeholderColor}
-                            maxLength={5}
-                          />
-                        </View>
-                      </View>
-                      {workValidationError ? (
-                        <Text style={[styles.errorText, { color: palette.accent }]}>
-                          {workValidationError}
-                        </Text>
-                      ) : null}
-                    </>
-                  )}
-                </View>
-                <View style={styles.field}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                    {t((d) => d.aiPlanner.priorities)}
-                  </Text>
-                  <TextInput
-                    value={priorities}
-                    onChangeText={setPriorities}
-                    style={[
-                      styles.input,
-                      styles.multiline,
-                      { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
-                    ]}
-                    placeholder={t((d) => d.aiPlanner.prioritiesPlaceholder)}
-                    placeholderTextColor={placeholderColor}
-                    multiline
-                    numberOfLines={3}
-                  />
-                  <Text style={[styles.helperText, { color: palette.text }]}>
-                    {helperTexts.priorities}
-                  </Text>
-                </View>
-                <View style={styles.field}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                    {t((d) => d.aiPlanner.habits)}
-                  </Text>
-                  <TextInput
-                    value={habits}
-                    onChangeText={setHabits}
-                    style={[
-                      styles.input,
-                      styles.multiline,
-                      { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
-                    ]}
-                    placeholder={t((d) => d.aiPlanner.habitsPlaceholder)}
-                    placeholderTextColor={placeholderColor}
-                    multiline
-                    numberOfLines={3}
-                  />
-                  <Text style={[styles.helperText, { color: palette.text }]}>
-                    {helperTexts.habits}
-                  </Text>
-                </View>
-                <View style={styles.field}>
-                  <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                    {t((d) => d.aiPlanner.notes)}
-                  </Text>
-                  <TextInput
-                    value={feedback}
-                    onChangeText={setFeedback}
-                    style={[
-                      styles.input,
-                      styles.multiline,
-                      { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
-                    ]}
-                    placeholder={t((d) => d.aiPlanner.notesPlaceholder)}
-                    placeholderTextColor={placeholderColor}
-                    multiline
-                    numberOfLines={3}
-                  />
-                  <Text style={[styles.helperText, { color: palette.text }]}>
-                    {helperTexts.feedbackExamples}
-                  </Text>
-                </View>
-                <View style={styles.limitRow}>
-                  {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
-                  <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>
-                    {aiUsageText}
-                  </Text>
-                </View>
-                {error ? (
-                  <Text style={[styles.errorText, { color: palette.accent }]}>{error}</Text>
-                ) : null}
-                <View style={styles.buttonRow}>
-                  <Pressable
-                    onPress={handleClose}
-                    style={({ pressed }) => [
-                      styles.outlineButton,
-                      {
-                        borderColor: palette.border,
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.buttonLabel, { color: palette.text }]}>
-                      {t((d) => d.common.cancel)}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={onGeneratePress}
-                    disabled={generateDisabled}
-                    style={({ pressed }) => [
-                      styles.primaryButton,
-                      {
-                        backgroundColor: palette.accent,
-                        opacity: isGenerating ? 0.6 : generateDisabled ? 0.5 : pressed ? 0.85 : 1,
-                      },
-                    ]}
-                  >
-                    {isGenerating ? (
-                      <ActivityIndicator color={palette.background} />
-                    ) : (
-                      <Text style={[styles.buttonLabel, { color: palette.background }]}>
-                        {t((d) => d.aiPlanner.generate)}
-                      </Text>
-                    )}
-                  </Pressable>
-                </View>
-              </ScrollView>
-            ) : (
-              <View style={styles.previewContainer}>
-                <Text style={[styles.previewTitle, { color: palette.text }]}>
-                  {t((d) => d.aiPlanner.suggestedBlocks)}
-                </Text>
-                <View style={styles.limitRow}>
-                  {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
-                  <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>
-                    {aiUsageText}
-                  </Text>
-                </View>
-                <ScrollView
-                  style={styles.previewList}
-                  contentContainerStyle={[
-                    styles.previewListContent,
-                    { paddingBottom: 18 + insets.bottom },
+          <View style={styles.modalContainer}>
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 90 : 110}
+              tint={isDark ? 'dark' : 'light'}
+              style={[
+                styles.glassCard,
+                {
+                  backgroundColor: isDark ? 'rgba(20,20,40,0.85)' : 'rgba(255,255,255,0.85)',
+                  borderColor: isDark ? 'rgba(91,127,232,0.3)' : 'rgba(0,0,0,0.1)',
+                },
+              ]}
+            >
+              {/* Fixed Header */}
+              <View style={[styles.header, { borderBottomColor: palette.border }]}>
+                <Pressable
+                  onPress={handleClose}
+                  style={({ pressed }) => [
+                    styles.backButton,
+                    { opacity: pressed ? 0.6 : 1 },
                   ]}
-                  showsVerticalScrollIndicator={false}
                 >
-                  {previewList.length === 0 ? (
-                    <Text style={[styles.previewEmptyText, { color: palette.text }]}>
-                      {error ?? t((d) => d.aiPlanner.noBlocks)}
-                    </Text>
-                  ) : (
-                    previewList.map((block, index) => (
-                      <View
-                        key={`${block.startMin}-${block.title}-${index}`}
-                        style={[
-                          styles.previewItem,
-                          {
-                            borderColor: palette.border,
-                            backgroundColor: palette.background,
-                            shadowColor: palette.text,
-                          },
-                        ]}>
-                        <Text style={[styles.previewTime, { color: palette.text }]}>
-                          {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
-                        </Text>
-                        <Text style={[styles.previewTitleRow, { color: palette.text }]}>{block.title}</Text>
-                        <Text style={[styles.previewCategory, { color: palette.text }]}>{block.category}</Text>
-                      </View>
-                    ))
-                  )}
-                </ScrollView>
-                {stage === 'preview' && (
-                  <View style={styles.feedbackSection}>
-                    <Text style={[styles.feedbackLabel, { color: palette.text }]}>
-                      {t((d) => d.aiPlanner.feedbackLabel)}
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.feedbackInput,
-                        {
-                          borderColor: palette.border,
-                          color: inputTextColor,
-                          backgroundColor: palette.background,
-                        },
-                      ]}
-                      placeholder={t((d) => d.aiPlanner.feedbackPlaceholder)}
-                      placeholderTextColor={placeholderColor}
-                      multiline
-                      value={feedback}
-                      onChangeText={setFeedback}
-                    />
-                    <Pressable
-                      onPress={onRegeneratePress}
-                      disabled={regenerateDisabled}
-                      style={({ pressed }) => [
-                        styles.feedbackButton,
-                        {
-                          borderColor: palette.border,
-                          backgroundColor: palette.card,
-                          opacity: regenerateDisabled ? 0.5 : pressed ? 0.8 : 1,
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.feedbackButtonText, { color: palette.text }]}>
-                        {t((d) => d.aiPlanner.regenerate)}
-                      </Text>
-                    </Pressable>
-                  </View>
-                )}
-                <View style={styles.buttonRow}>
-                  <Pressable
-                    onPress={() => setStage('form')}
-                    style={({ pressed }) => [
-                      styles.outlineButton,
-                      {
-                        borderColor: palette.border,
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.buttonLabel, { color: palette.text }]}>
-                      {t((d) => d.aiPlanner.back)}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleApply}
-                    disabled={!hasPreview}
-                    style={({ pressed }) => [
-                      styles.primaryButton,
-                      {
-                        backgroundColor: palette.accent,
-                        opacity: !hasPreview ? 0.5 : pressed ? 0.85 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.buttonLabel, { color: palette.background }]}>
-                      {t((d) => d.aiPlanner.apply)}
-                    </Text>
-                  </Pressable>
+                  <Ionicons name="arrow-back" size={24} color={palette.text} />
+                </Pressable>
+                <View style={styles.headerTitles}>
+                  <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.aiPlanner.title)}</Text>
+                  <Text style={[styles.subTitle, { color: palette.text }]}>{dateLabel}</Text>
                 </View>
               </View>
-            )}
+
+              {/* Scrollable Content */}
+              <View style={styles.scrollContainer}>
+
+                {stage === 'form' ? (
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={[
+                      styles.formContent,
+                      { paddingBottom: 18 },
+                    ]}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <View style={styles.field}>
+                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                        {t((d) => d.aiPlanner.wakeTime)}
+                      </Text>
+                      <TextInput
+                        value={wakeTime}
+                        onChangeText={(value) => setWakeTime(sanitizeTimeInput(value))}
+                        style={[
+                          styles.input,
+                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                        ]}
+                        placeholder="07:30"
+                        placeholderTextColor={placeholderColor}
+                        maxLength={5}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                        {t((d) => d.aiPlanner.sleepTime)}
+                      </Text>
+                      <TextInput
+                        value={sleepTime}
+                        onChangeText={(value) => setSleepTime(sanitizeTimeInput(value))}
+                        style={[
+                          styles.input,
+                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                        ]}
+                        placeholder="23:30"
+                        placeholderTextColor={placeholderColor}
+                        maxLength={5}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <View style={styles.workToggleRow}>
+                        <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                          {t((d) => d.aiPlanner.workToggle)}
+                        </Text>
+                        <Switch
+                          value={works}
+                          onValueChange={setWorks}
+                          trackColor={{ true: palette.accent, false: palette.border }}
+                          thumbColor={palette.background}
+                        />
+                      </View>
+                      {works && (
+                        <>
+                          <View style={styles.fieldRow}>
+                            <View style={styles.fieldHalf}>
+                              <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                                {t((d) => d.aiPlanner.workStart)}
+                              </Text>
+                              <TextInput
+                                value={workStart}
+                                onChangeText={(value) => setWorkStart(sanitizeTimeInput(value))}
+                                style={[
+                                  styles.input,
+                                  { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                                ]}
+                                placeholder="09:00"
+                                placeholderTextColor={placeholderColor}
+                                maxLength={5}
+                              />
+                            </View>
+                            <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
+                              <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                                {t((d) => d.aiPlanner.workEnd)}
+                              </Text>
+                              <TextInput
+                                value={workEnd}
+                                onChangeText={(value) => setWorkEnd(sanitizeTimeInput(value))}
+                                style={[
+                                  styles.input,
+                                  { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                                ]}
+                                placeholder="17:00"
+                                placeholderTextColor={placeholderColor}
+                                maxLength={5}
+                              />
+                            </View>
+                          </View>
+                          {workValidationError ? (
+                            <Text style={[styles.errorText, { color: palette.accent }]}>
+                              {workValidationError}
+                            </Text>
+                          ) : null}
+                        </>
+                      )}
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                        {t((d) => d.aiPlanner.priorities)}
+                      </Text>
+                      <TextInput
+                        value={priorities}
+                        onChangeText={setPriorities}
+                        style={[
+                          styles.input,
+                          styles.multiline,
+                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                        ]}
+                        placeholder={t((d) => d.aiPlanner.prioritiesPlaceholder)}
+                        placeholderTextColor={placeholderColor}
+                        multiline
+                        numberOfLines={3}
+                      />
+                      <Text style={[styles.helperText, { color: palette.text }]}>
+                        {helperTexts.priorities}
+                      </Text>
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                        {t((d) => d.aiPlanner.habits)}
+                      </Text>
+                      <TextInput
+                        value={habits}
+                        onChangeText={setHabits}
+                        style={[
+                          styles.input,
+                          styles.multiline,
+                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                        ]}
+                        placeholder={t((d) => d.aiPlanner.habitsPlaceholder)}
+                        placeholderTextColor={placeholderColor}
+                        multiline
+                        numberOfLines={3}
+                      />
+                      <Text style={[styles.helperText, { color: palette.text }]}>
+                        {helperTexts.habits}
+                      </Text>
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                        {t((d) => d.aiPlanner.notes)}
+                      </Text>
+                      <TextInput
+                        value={feedback}
+                        onChangeText={setFeedback}
+                        style={[
+                          styles.input,
+                          styles.multiline,
+                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                        ]}
+                        placeholder={t((d) => d.aiPlanner.notesPlaceholder)}
+                        placeholderTextColor={placeholderColor}
+                        multiline
+                        numberOfLines={3}
+                      />
+                      <Text style={[styles.helperText, { color: palette.text }]}>
+                        {helperTexts.feedbackExamples}
+                      </Text>
+                    </View>
+                    <View style={styles.limitRow}>
+                      {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
+                      <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>
+                        {aiUsageText}
+                      </Text>
+                    </View>
+                    {error ? (
+                      <Text style={[styles.errorText, { color: palette.accent }]}>{error}</Text>
+                    ) : null}
+                    <View style={styles.buttonRow}>
+                      <Pressable
+                        onPress={handleClose}
+                        style={({ pressed }) => [
+                          styles.outlineButton,
+                          {
+                            borderColor: palette.border,
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.buttonLabel, { color: palette.text }]}>
+                          {t((d) => d.common.cancel)}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={onGeneratePress}
+                        disabled={generateDisabled}
+                        style={({ pressed }) => [
+                          styles.primaryButton,
+                          {
+                            backgroundColor: palette.accent,
+                            opacity: isGenerating ? 0.6 : generateDisabled ? 0.5 : pressed ? 0.85 : 1,
+                          },
+                        ]}
+                      >
+                        {isGenerating ? (
+                          <ActivityIndicator color={palette.background} />
+                        ) : (
+                          <Text style={[styles.buttonLabel, { color: palette.background }]}>
+                            {t((d) => d.aiPlanner.generate)}
+                          </Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  </ScrollView>
+                ) : (
+                  <View style={styles.previewContainer}>
+                    <Text style={[styles.previewTitle, { color: palette.text }]}>
+                      {t((d) => d.aiPlanner.suggestedBlocks)}
+                    </Text>
+                    <View style={styles.limitRow}>
+                      {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
+                      <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>
+                        {aiUsageText}
+                      </Text>
+                    </View>
+                    <ScrollView
+                      style={styles.previewList}
+                      contentContainerStyle={[
+                        styles.previewListContent,
+                        { paddingBottom: 18 },
+                      ]}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      {previewList.length === 0 ? (
+                        <Text style={[styles.previewEmptyText, { color: palette.text }]}>
+                          {error ?? t((d) => d.aiPlanner.noBlocks)}
+                        </Text>
+                      ) : (
+                        previewList.map((block, index) => (
+                          <View
+                            key={`${block.startMin}-${block.title}-${index}`}
+                            style={[
+                              styles.previewItem,
+                              {
+                                borderColor: palette.border,
+                                backgroundColor: palette.background,
+                                shadowColor: palette.text,
+                              },
+                            ]}>
+                            <Text style={[styles.previewTime, { color: palette.text }]}>
+                              {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
+                            </Text>
+                            <Text style={[styles.previewTitleRow, { color: palette.text }]}>{block.title}</Text>
+                            <Text style={[styles.previewCategory, { color: palette.text }]}>{block.category}</Text>
+                          </View>
+                        ))
+                      )}
+                    </ScrollView>
+                    {stage === 'preview' && (
+                      <View style={styles.feedbackSection}>
+                        <Text style={[styles.feedbackLabel, { color: palette.text }]}>
+                          {t((d) => d.aiPlanner.feedbackLabel)}
+                        </Text>
+                        <TextInput
+                          style={[
+                            styles.feedbackInput,
+                            {
+                              borderColor: palette.border,
+                              color: inputTextColor,
+                              backgroundColor: palette.background,
+                            },
+                          ]}
+                          placeholder={t((d) => d.aiPlanner.feedbackPlaceholder)}
+                          placeholderTextColor={placeholderColor}
+                          multiline
+                          value={feedback}
+                          onChangeText={setFeedback}
+                        />
+                        <Pressable
+                          onPress={onRegeneratePress}
+                          disabled={regenerateDisabled}
+                          style={({ pressed }) => [
+                            styles.feedbackButton,
+                            {
+                              borderColor: palette.border,
+                              backgroundColor: palette.card,
+                              opacity: regenerateDisabled ? 0.5 : pressed ? 0.8 : 1,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.feedbackButtonText, { color: palette.text }]}>
+                            {t((d) => d.aiPlanner.regenerate)}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                    <View style={styles.buttonRow}>
+                      <Pressable
+                        onPress={() => setStage('form')}
+                        style={({ pressed }) => [
+                          styles.outlineButton,
+                          {
+                            borderColor: palette.border,
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.buttonLabel, { color: palette.text }]}>
+                          {t((d) => d.aiPlanner.back)}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={handleApply}
+                        disabled={!hasPreview}
+                        style={({ pressed }) => [
+                          styles.primaryButton,
+                          {
+                            backgroundColor: palette.accent,
+                            opacity: !hasPreview ? 0.5 : pressed ? 0.85 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.buttonLabel, { color: palette.background }]}>
+                          {t((d) => d.aiPlanner.apply)}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </BlurView>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -458,34 +502,59 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
-  sheet: {
-    borderRadius: 24,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 24,
-    maxHeight: '90%',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 8,
+  modalContainer: {
+    width: '100%',
+    maxWidth: 500,
+    height: '85%',
+  },
+  glassCard: {
+    flex: 1,
+    borderRadius: 32,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerTitles: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
   },
   subTitle: {
-    fontSize: 14,
-    marginTop: 4,
-    marginBottom: 12,
+    fontSize: 13,
+    marginTop: 2,
+    opacity: 0.8,
   },
   formContent: {},
   field: {
