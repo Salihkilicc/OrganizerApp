@@ -2,6 +2,9 @@
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 /* eslint-enable import/no-duplicates */
+import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,31 +15,29 @@ import {
   Text,
   View,
 } from 'react-native';
-import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
-import { DarkTheme, DefaultTheme, ThemeProvider, type Theme } from '@react-navigation/native';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 
-import { useAuth } from '@/store/useAuth';
-import { useFocusMode } from '@/store/useFocusMode';
-import { usePoints } from '@/store/usePoints';
-import { useWater } from '@/store/useWater';
-import { usePremium } from '@/store/usePremium';
-import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
-import { useTheme } from '@/store/useTheme';
-import { useLanguage } from '@/store/useLanguage';
-import { useProfileAppearance } from '@/store/useProfileAppearance';
-import { useAvatarStore } from '@/store/useAvatar';
-import { configureRevenueCat, removeRevenueCatListeners } from '@/lib/revenuecat';
+import { GradientBackground } from '@/components/ui/GradientBackground';
 import { ensureInitialized, scheduleWeeklySummary, syncDayNotifications } from '@/lib/notifications';
-import { useRevenueCatStore } from '@/store/useRevenueCat';
+import { getDevRedirect, getProdRedirect } from '@/lib/oauth';
+import { configureRevenueCat, removeRevenueCatListeners } from '@/lib/revenuecat';
 import { initSupabaseAuthListener } from '@/lib/supabase';
-import { usePlans, todayDate } from '@/store/usePlans';
+import { resetUserScopedStores } from '@/store/resetUserScopedStores';
+import { useAuth } from '@/store/useAuth';
+import { useAvatarStore } from '@/store/useAvatar';
+import { useFocusMode } from '@/store/useFocusMode';
+import { useLanguage } from '@/store/useLanguage';
+import { todayDate, usePlans } from '@/store/usePlans';
+import { usePoints } from '@/store/usePoints';
+import { usePremium } from '@/store/usePremium';
+import { useProfileAppearance } from '@/store/useProfileAppearance';
+import { useRevenueCatStore } from '@/store/useRevenueCat';
 import { useSettings } from '@/store/useSettings';
 import { useStreak } from '@/store/useStreak';
-import { resetUserScopedStores } from '@/store/resetUserScopedStores';
+import { useTheme } from '@/store/useTheme';
+import { useWater } from '@/store/useWater';
 
 // Force SF Pro typography globally so every Text component inherits it.
 const SF_PRO_FONT_FAMILY =
@@ -289,7 +290,7 @@ export default function RootLayout() {
       ...baseTheme,
       colors: {
         ...baseTheme.colors,
-        background: palette.background,
+        background: 'transparent',
         card: palette.card,
         border: palette.border,
         text: palette.text,
@@ -302,29 +303,31 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ErrorBoundary>
           <ThemeProvider value={navigatorTheme}>
-            <Stack>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="points" options={{ headerShown: false }} />
-              <Stack.Screen name="profile" options={{ headerShown: false }} />
-              <Stack.Screen name="focus" options={{ headerShown: false }} />
-              <Stack.Screen name="premium" options={{ headerShown: false }} />
-              <Stack.Screen name="paywall" options={{ headerShown: false }} />
-              <Stack.Screen name="language" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
-              <Stack.Screen name="privacy" options={{ headerShown: false }} />
-              <Stack.Screen name="terms" options={{ headerShown: false }} />
-              <Stack.Screen name="support" options={{ headerShown: false }} />
-            </Stack>
-            <StatusBar style="auto" />
-            <StartupOverlay
-              visible={showStartupScreen}
-              opacity={splashOpacity}
-              blocking={isHydrating}
-              backgroundColor="#ffffff"
-              accentColor={palette.accent}
-              cardColor="#ffffff"
-            />
+            <GradientBackground style={{ flex: 1 }}>
+              <Stack>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="points" options={{ headerShown: false }} />
+                <Stack.Screen name="profile" options={{ headerShown: false }} />
+                <Stack.Screen name="focus" options={{ headerShown: false }} />
+                <Stack.Screen name="premium" options={{ headerShown: false }} />
+                <Stack.Screen name="paywall" options={{ headerShown: false }} />
+                <Stack.Screen name="language" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: false }} />
+                <Stack.Screen name="privacy" options={{ headerShown: false }} />
+                <Stack.Screen name="terms" options={{ headerShown: false }} />
+                <Stack.Screen name="support" options={{ headerShown: false }} />
+              </Stack>
+              <StatusBar style="auto" />
+              <StartupOverlay
+                visible={showStartupScreen}
+                opacity={splashOpacity}
+                blocking={isHydrating}
+                backgroundColor="#ffffff"
+                accentColor={palette.accent}
+                cardColor="#ffffff"
+              />
+            </GradientBackground>
           </ThemeProvider>
         </ErrorBoundary>
       </GestureHandlerRootView>

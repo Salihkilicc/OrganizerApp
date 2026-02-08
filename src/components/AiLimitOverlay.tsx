@@ -1,12 +1,14 @@
-import { useTheme } from '@/store/useTheme';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { gradients } from '@/styles/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef } from 'react';
 import {
     Animated,
     Pressable,
     StyleSheet,
     Text,
-    View
+    View,
 } from 'react-native';
 
 type AiLimitOverlayProps = {
@@ -22,7 +24,6 @@ export function AiLimitOverlay({
     onGoPremium,
     onClose,
 }: AiLimitOverlayProps) {
-    const { palette, themeKey } = useTheme();
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -55,95 +56,94 @@ export function AiLimitOverlay({
     return (
         <View style={styles.overlayContainer} pointerEvents="box-none">
             <View style={StyleSheet.absoluteFill}>
-                {/* Semi-transparent background */}
+                {/* Darker backdrop for focus */}
                 <Animated.View
                     style={[
                         styles.backdrop,
                         {
-                            backgroundColor: 'rgba(0,0,0,0.85)',
-                            opacity: fadeAnim
-                        }
+                            backgroundColor: 'rgba(0,0,0,0.6)',
+                            opacity: fadeAnim,
+                        },
                     ]}
                 />
 
                 {/* Content Container */}
                 <View style={styles.container}>
                     <Animated.View
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: palette.card,
-                                opacity: fadeAnim,
-                                transform: [{ scale: scaleAnim }],
-                            },
-                        ]}
+                        style={{
+                            width: '100%',
+                            maxWidth: 340,
+                            opacity: fadeAnim,
+                            transform: [{ scale: scaleAnim }],
+                        }}
                     >
-                        {/* Header Icon */}
-                        <View style={styles.iconContainer}>
-                            <Ionicons
-                                name="star"
-                                size={48}
-                                color={themeKey === 'dark' || themeKey === 'ninja' || themeKey === 'midnight' ? '#FFD700' : palette.accent}
-                            />
-                        </View>
+                        <GlassCard style={styles.cardContent}>
+                            {/* Header Icon */}
+                            <View style={styles.iconContainer}>
+                                <Ionicons name="sparkles" size={48} color="#FFFFFF" />
+                            </View>
 
-                        {/* Texts */}
-                        <Text style={[styles.title, { color: palette.text }]}>
-                            Unlock AI Plan
-                        </Text>
-                        <Text style={[styles.subtitle, { color: palette.text, opacity: 0.8 }]}>
-                            Watch an ad for one-time access or Go Premium for unlimited power.
-                        </Text>
+                            {/* Texts */}
+                            <Text style={styles.title}>Unlock AI Power</Text>
+                            <Text style={styles.subtitle}>
+                                You've reached your free daily limit. Watch a short ad to continue or
+                                unlock unlimited access with Premium.
+                            </Text>
 
-                        {/* Buttons */}
-                        <View style={styles.buttonContainer}>
-                            <Pressable
-                                onPress={onWatchAd}
-                                style={({ pressed }) => [
-                                    styles.button,
-                                    styles.primaryButton,
-                                    {
-                                        backgroundColor: palette.accent,
-                                        opacity: pressed ? 0.9 : 1
-                                    },
-                                ]}
-                            >
-                                <Ionicons name="play-circle-outline" size={20} color={palette.card} style={{ marginRight: 8 }} />
-                                <Text style={[styles.buttonText, { color: palette.card, fontWeight: '700' }]}>
-                                    Watch Ad & Generate
-                                </Text>
-                            </Pressable>
+                            {/* Buttons */}
+                            <View style={styles.buttonContainer}>
+                                <Pressable
+                                    onPress={onWatchAd}
+                                    style={({ pressed }) => [
+                                        styles.buttonWrapper,
+                                        { opacity: pressed ? 0.9 : 1 },
+                                    ]}
+                                >
+                                    <LinearGradient
+                                        colors={gradients.accentCard}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.gradientButton}
+                                    >
+                                        <Ionicons
+                                            name="play-circle"
+                                            size={22}
+                                            color="#FFFFFF"
+                                            style={{ marginRight: 8 }}
+                                        />
+                                        <Text style={styles.primaryButtonText}>
+                                            Watch Ad & Generate
+                                        </Text>
+                                    </LinearGradient>
+                                </Pressable>
 
-                            <Pressable
-                                onPress={onGoPremium}
-                                style={({ pressed }) => [
-                                    styles.button,
-                                    styles.secondaryButton,
-                                    {
-                                        backgroundColor: palette.background,
-                                        borderColor: palette.border,
-                                        opacity: pressed ? 0.9 : 1
-                                    },
-                                ]}
-                            >
-                                <Ionicons name="diamond-outline" size={20} color={palette.text} style={{ marginRight: 8 }} />
-                                <Text style={[styles.buttonText, { color: palette.text }]}>
-                                    Get Premium
-                                </Text>
-                            </Pressable>
+                                <Pressable
+                                    onPress={onGoPremium}
+                                    style={({ pressed }) => [
+                                        styles.secondaryButton,
+                                        { opacity: pressed ? 0.8 : 1 },
+                                    ]}
+                                >
+                                    <Ionicons
+                                        name="diamond-outline"
+                                        size={20}
+                                        color="#FFFFFF"
+                                        style={{ marginRight: 8 }}
+                                    />
+                                    <Text style={styles.secondaryButtonText}>Get Premium</Text>
+                                </Pressable>
 
-                            <Pressable
-                                onPress={onClose}
-                                style={({ pressed }) => [
-                                    styles.cancelButton,
-                                    { opacity: pressed ? 0.6 : 1 }
-                                ]}
-                            >
-                                <Text style={[styles.cancelText, { color: palette.text, opacity: 0.6 }]}>
-                                    Cancel
-                                </Text>
-                            </Pressable>
-                        </View>
+                                <Pressable
+                                    onPress={onClose}
+                                    style={({ pressed }) => [
+                                        styles.cancelButton,
+                                        { opacity: pressed ? 0.6 : 1 },
+                                    ]}
+                                >
+                                    <Text style={styles.cancelText}>Maybe Later</Text>
+                                </Pressable>
+                            </View>
+                        </GlassCard>
                     </Animated.View>
                 </View>
             </View>
@@ -168,60 +168,77 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
     },
-    card: {
-        width: '100%',
-        maxWidth: 340,
-        borderRadius: 24,
+    cardContent: {
         padding: 24,
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 10,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
-        elevation: 10,
+        borderRadius: 32,
     },
     iconContainer: {
-        marginBottom: 16,
-        padding: 12,
+        marginBottom: 20,
+        padding: 16,
         borderRadius: 50,
-        backgroundColor: 'rgba(128,128,128,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
     },
     title: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginBottom: 8,
+        fontSize: 24,
+        fontWeight: '800',
+        marginBottom: 12,
         textAlign: 'center',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
     subtitle: {
-        fontSize: 15,
+        fontSize: 16,
         textAlign: 'center',
-        marginBottom: 24,
-        lineHeight: 22,
+        marginBottom: 32,
+        lineHeight: 24,
+        color: 'rgba(255,255,255,0.8)',
     },
     buttonContainer: {
         width: '100%',
-        gap: 12,
+        gap: 16,
     },
-    button: {
+    buttonWrapper: {
+        width: '100%',
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+    },
+    gradientButton: {
         flexDirection: 'row',
         width: '100%',
-        paddingVertical: 14,
-        borderRadius: 14,
+        paddingVertical: 16,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    primaryButton: {
-        // Style handled in inline styles for color
+    primaryButtonText: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     secondaryButton: {
+        flexDirection: 'row',
+        width: '100%',
+        paddingVertical: 15,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
+        backgroundColor: 'rgba(255,255,255,0.05)',
     },
-    buttonText: {
+    secondaryButtonText: {
         fontSize: 16,
         fontWeight: '600',
+        color: '#FFFFFF',
     },
     cancelButton: {
         paddingVertical: 8,
@@ -231,5 +248,6 @@ const styles = StyleSheet.create({
     cancelText: {
         fontSize: 14,
         fontWeight: '500',
+        color: 'rgba(255,255,255,0.5)',
     },
 });

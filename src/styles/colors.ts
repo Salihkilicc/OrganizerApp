@@ -7,30 +7,41 @@ export type Palette = {
   tint: string;
 };
 
+const base = {
+  deepPurple: '#2E1065', // Dark violet
+  vividPurple: '#7C3AED', // Bright purple accent
+  navyBlue: '#172554',   // Deep sea blue
+  electricBlue: '#3B82F6', // Bright blue accent
+  white: '#FFFFFF',
+  whiteSoft: 'rgba(255, 255, 255, 0.8)',
+  whiteGlass: 'rgba(255, 255, 255, 0.15)', // For glass effect on dark
+  blackGlass: 'rgba(0, 0, 0, 0.3)', // For darker glass
+};
+
 export const themes = {
   default: {
-    background: '#F9FAFB',
-    text: '#111827',
-    card: '#FFFFFF',
-    accent: '#2563EB',
-    border: '#E5E7EB',
-    tint: '#2563EB',
+    background: base.deepPurple,
+    text: base.white,
+    card: base.whiteGlass,
+    accent: base.vividPurple,
+    border: 'rgba(255, 255, 255, 0.1)',
+    tint: base.vividPurple,
   },
   light: {
-    background: '#F3F4F6',
-    text: '#111827',
-    card: '#FFFFFF',
-    accent: '#3B82F6',
-    border: '#E5E7EB',
-    tint: '#3B82F6',
+    background: base.white,
+    text: base.navyBlue,
+    card: '#F3F4F6',
+    accent: base.electricBlue,
+    border: 'rgba(0, 0, 0, 0.1)',
+    tint: base.electricBlue,
   },
   dark: {
-    background: '#0F172A',
-    text: '#E5E7EB',
-    card: '#1F2937',
-    accent: '#60A5FA',
-    border: '#374151',
-    tint: '#60A5FA',
+    background: base.deepPurple,
+    text: base.white,
+    card: base.whiteGlass,
+    accent: base.vividPurple,
+    border: 'rgba(255, 255, 255, 0.1)',
+    tint: base.vividPurple,
   },
   ninja: {
     background: '#0b0c10',
@@ -112,4 +123,9 @@ export const themes = {
     border: '#E2E8F0',
     tint: '#475569',
   },
+} as const;
+
+export const gradients = {
+  primaryBg: [base.deepPurple, base.navyBlue], // Main screen background
+  accentCard: [base.vividPurple, base.electricBlue], // Highlights
 } as const;
