@@ -2,7 +2,6 @@ import { create } from 'zustand';
 
 import { todayDate, usePlans } from '@/store/usePlans';
 import { usePoints } from '@/store/usePoints';
-import { notifyFocusStarted } from '@/lib/notifications';
 
 const MINUTE_MS = 60 * 1000;
 const MAX_FOCUS_POINTS_PER_DAY = 90;
@@ -69,9 +68,6 @@ export const useFocusMode = create<FocusModeState>((set, get) => ({
       linkedBlockId: options?.blockId ?? undefined,
       markDoneOnCompletion: options?.markDoneOnCompletion ?? false,
     });
-    if (Date.now() >= suppressStartNotificationUntil) {
-      void notifyFocusStarted();
-    }
     suppressStartNotificationUntil = 0;
   },
   startFocusForBlock(blockId, durationMinutes) {

@@ -30,12 +30,12 @@ export const themes = {
     tint: base.lightBlue,
   },
   light: {
-    background: base.white,
-    text: base.darkPurple,
-    card: '#F3F4F6',
-    accent: base.brightBlue,
-    border: 'rgba(0, 0, 0, 0.1)',
-    tint: base.brightBlue,
+    background: '#FFFFFF',
+    text: '#1a1a3e',
+    card: 'rgba(248, 248, 250, 0.9)', // Very light gray
+    accent: '#4169e1',
+    border: 'rgba(139, 92, 246, 0.15)',
+    tint: '#8b5cf6',
   },
   dark: {
     background: base.darkPurple,
@@ -130,4 +130,20 @@ export const themes = {
 export const gradients = {
   primaryBg: [base.darkPurple, base.deepNavy], // Main screen background gradient
   accentCard: [base.brightBlue, base.lightBlue], // Button gradients
+
+  // Theme-specific gradients
+  default: [base.darkPurple, base.deepNavy],
+  light: ['#FFFFFF', '#FAFAFA', '#F5F5F5'], // White background
+  dark: [base.darkPurple, base.deepNavy],
+  ninja: ['#0b0c10', '#1f2833'],
+  classic: ['#F4F6FB', '#E8EEFF'],
+  midnight: ['#030712', '#1e1b4b'],
+  forest: ['#0C1F0E', '#132313'],
+  sunset: ['#FFF7ED', '#FFE4D6'],
+  ocean: ['#030D1F', '#0c1e3a'],
+  sakura: ['#FFF3F8', '#FFE4EC'],
+  neon: ['#05050A', '#0B0D1E'],
+  coffee: ['#1A130F', '#2D2118'],
+  minimal: ['#F8FAFC', '#F1F5F9'],
 } as const;
+

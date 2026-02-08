@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { memo, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -9,9 +11,9 @@ import {
   View,
 } from 'react-native';
 
-import { useTheme } from '@/store/useTheme';
-import { isBeforeToday, type PlanBlock, type PlanCategory } from '@/store/usePlans';
 import { PLAN_CATEGORY_COLORS } from '@/constants/categoryColors';
+import { isBeforeToday, type PlanBlock, type PlanCategory } from '@/store/usePlans';
+import { useTheme } from '@/store/useTheme';
 
 const HOURS_PER_DAY = 24;
 const HOUR_COPIES = 3;
@@ -19,11 +21,26 @@ const VISUAL_OFFSET_MIN = 30;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+const getCategoryIcon = (cat: string): keyof typeof Ionicons.glyphMap => {
+  switch (cat) {
+    case 'work': return 'briefcase';
+    case 'study': return 'school';
+    case 'gym': return 'barbell';
+    case 'focus': return 'scan-circle';
+    case 'meeting': return 'people';
+    case 'reading': return 'book';
+    case 'break': return 'cafe';
+    case 'personal': return 'person';
+    default: return 'ellipse';
+  }
+};
+
 type Props = {
   date: string;
   blocks: PlanBlock[];
   onMove: (id: string, newStartMin: number, newEndMin: number) => void;
   onEdit: (id: string) => void;
+  onCheck: (id: string) => void;
   onCreateAtMinute?: (minute: number) => void;
   pxPerMin?: number;
   step?: number;
@@ -40,9 +57,8 @@ type BlockLayout = {
 type DraggableBlockProps = {
   block: PlanBlock;
   style: any[];
-  textStyle: { color: string; textDecorationLine: 'none' | 'line-through' };
-  timeStyle: { color: string; textDecorationLine: 'none' | 'line-through' };
   onEdit: () => void;
+  onCheck: (id: string) => void;
   onMove: (id: string, newStartMin: number, newEndMin: number) => void;
   pxPerMin: number;
   snapStep: number;
@@ -53,9 +69,8 @@ type DraggableBlockProps = {
 const DraggableBlock = ({
   block,
   style,
-  textStyle,
-  timeStyle,
   onEdit,
+  onCheck,
   onMove,
   pxPerMin,
   snapStep,
@@ -64,6 +79,7 @@ const DraggableBlock = ({
 }: DraggableBlockProps) => {
   const panY = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
+  const checkScale = useRef(new Animated.Value(1)).current;
   const [dragging, setDragging] = useState(false);
   const duration = Math.max(1, block.endMin - block.startMin);
   const maxStart = Math.max(dayStartMin, dayEndMin - duration);
@@ -120,21 +136,45 @@ const DraggableBlock = ({
     [dragging, panY, scale],
   );
 
+  const handleCheck = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.sequence([
+      Animated.timing(checkScale, { toValue: 0.8, duration: 50, useNativeDriver: true }),
+      Animated.spring(checkScale, { toValue: 1.2, friction: 3, useNativeDriver: true }),
+      Animated.timing(checkScale, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start(() => onCheck(block.id));
+  };
+
+  const iconName = getCategoryIcon(block.category || 'other');
+
   return (
     <Animated.View {...responder.panHandlers} style={[...style, animatedStyle]}>
       <Pressable onPress={onEdit} style={StyleSheet.absoluteFill} />
-      <View style={styles.textContainer} pointerEvents="none">
-        <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.blockTitle, textStyle]}>
+
+      {/* Header: Icon + Title */}
+      <View style={styles.blockHeader} pointerEvents="none">
+        <View style={styles.iconBadge}>
+          <Ionicons name={iconName} size={14} color="#fff" />
+        </View>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.blockTitle}>
           {block.title}
         </Text>
-        <Text style={[styles.blockTime, timeStyle]}>
-          {formatTime(block.startMin)} – {formatTime(block.endMin)}
-        </Text>
       </View>
+
+      {/* Time */}
+      <Text style={styles.blockTime} pointerEvents="none">
+        {formatTime(block.startMin)} – {formatTime(block.endMin)}
+      </Text>
+
+      {/* Bouncy Checkbox (Top Right) */}
+      <Pressable style={styles.checkboxArea} onPress={handleCheck}>
+        <Animated.View style={[styles.checkbox, { transform: [{ scale: checkScale }] }]}>
+          {block.done && <Ionicons name="checkmark" size={14} color="#000" />}
+        </Animated.View>
+      </Pressable>
     </Animated.View>
   );
 };
-
 
 const calculateLayouts = (blocks: PlanBlock[]): BlockLayout[] => {
   const layout: BlockLayout[] = blocks.map(() => ({ column: 0, totalColumns: 1 }));
@@ -186,6 +226,7 @@ export const PlanGrid = memo(function PlanGrid({
   date,
   blocks,
   onEdit,
+  onCheck,
   onMove,
   pxPerMin = 1,
   step = 30,
@@ -233,7 +274,7 @@ export const PlanGrid = memo(function PlanGrid({
 
   return (
     <View style={[styles.wrapper, { borderColor: palette.border }]}>
-      <View style={[styles.grid, { height: effectiveHeight, backgroundColor: palette.background }]}>
+      <View style={[styles.grid, { height: effectiveHeight, backgroundColor: 'transparent' }]}>
         {onCreateAtMinute && (
           <Pressable style={StyleSheet.absoluteFill} onPress={handleGridPress} />
         )}
@@ -247,9 +288,9 @@ export const PlanGrid = memo(function PlanGrid({
                 styles.line,
                 {
                   top,
-                  backgroundColor: palette.border,
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
                   height: isHour ? 1.8 : 1,
-                  opacity: isHour ? 0.35 : 0.18,
+                  opacity: isHour ? 1 : 0.6,
                 },
               ]}
             />
@@ -285,91 +326,78 @@ export const PlanGrid = memo(function PlanGrid({
             const isDone = block.done ?? false;
             const doneBackground = 'rgba(0,0,0,0.25)';
             const doneBorder = '#000';
-            const doneTextColor = '#555';
-            const textDecorationLine = isPastBlock || isDone ? 'line-through' : 'none';
             const blockBackground = isPastBlock
               ? '#333333'
               : isDone
-              ? doneBackground
-              : paletteColor.background;
+                ? doneBackground
+                : paletteColor.background;
             const blockBorder = isPastBlock
               ? '#555555'
               : isDone
-              ? doneBorder
-              : paletteColor.border;
-          const blockTextColor = isPastBlock
-            ? '#BBBBBB'
-            : isDone
-            ? doneTextColor
-            : palette.text;
-          const handlePress = () => {
-            if (isPastBlock) return;
-            onEdit(block.id);
-          };
-          const textStyle = {
-            color: blockTextColor,
-            textDecorationLine,
-          } as const;
-          const timeStyle = {
-            color: blockTextColor,
-            textDecorationLine,
-          } as const;
-          const isInteractiveCopy = copyIndex === Math.floor(HOUR_COPIES / 2) && !isPastBlock;
+                ? doneBorder
+                : paletteColor.border;
+            const handlePress = () => {
+              if (isPastBlock) return;
+              onEdit(block.id);
+            };
+            const isInteractiveCopy = copyIndex === Math.floor(HOUR_COPIES / 2) && !isPastBlock;
 
-          return (
-            <View key={`${block.id}-${copyIndex}`} pointerEvents="box-none">
-              {isInteractiveCopy ? (
-                <DraggableBlock
-                  block={block}
-                  onEdit={handlePress}
-                  onMove={onMove}
-                  pxPerMin={touchPxPerMin}
-                  snapStep={snapStep}
-                  dayStartMin={startMin}
-                  dayEndMin={endMin}
-                  style={[
-                    styles.block,
-                    {
-                      top: baseTop + copyOffset,
-                      height: baseHeight,
-                      left: `${leftPercent}%`,
-                      width: `${widthPercent}%`,
-                      backgroundColor: blockBackground,
-                      borderColor: blockBorder,
-                    },
-                  ]}
-                  textStyle={textStyle}
-                  timeStyle={timeStyle}
-                />
-              ) : (
-                <Pressable
-                  disabled={isPastBlock}
-                  onPress={handlePress}
-                  style={[
-                    styles.block,
-                    {
-                      top: baseTop + copyOffset,
-                      height: baseHeight,
-                      left: `${leftPercent}%`,
-                      width: `${widthPercent}%`,
-                      backgroundColor: blockBackground,
-                      borderColor: blockBorder,
-                    },
-                  ]}>
-                  <View style={styles.textContainer} pointerEvents="none">
-                    <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.blockTitle, textStyle]}>
-                      {block.title}
-                    </Text>
-                    <Text style={[styles.blockTime, timeStyle]}>
+            return (
+              <View key={`${block.id}-${copyIndex}`} pointerEvents="box-none">
+                {isInteractiveCopy ? (
+                  <DraggableBlock
+                    block={block}
+                    onEdit={handlePress}
+                    onCheck={onCheck}
+                    onMove={onMove}
+                    pxPerMin={touchPxPerMin}
+                    snapStep={snapStep}
+                    dayStartMin={startMin}
+                    dayEndMin={endMin}
+                    style={[
+                      styles.block,
+                      {
+                        top: baseTop + copyOffset,
+                        height: baseHeight,
+                        left: `${leftPercent}%`,
+                        width: `${widthPercent}%`,
+                        backgroundColor: blockBackground,
+                        borderColor: blockBorder,
+                      },
+                    ]}
+                  />
+                ) : (
+                  <Pressable
+                    disabled={isPastBlock}
+                    onPress={handlePress}
+                    style={[
+                      styles.block,
+                      {
+                        top: baseTop + copyOffset,
+                        height: baseHeight,
+                        left: `${leftPercent}%`,
+                        width: `${widthPercent}%`,
+                        backgroundColor: blockBackground,
+                        borderColor: blockBorder,
+                      },
+                    ]}>
+                    <View style={styles.blockHeader} pointerEvents="none">
+                      <View style={styles.iconBadge}>
+                        <Ionicons name={getCategoryIcon(block.category || 'other')} size={14} color="#fff" />
+                      </View>
+                      <Text numberOfLines={1} ellipsizeMode="tail" style={styles.blockTitle}>
+                        {block.title}
+                      </Text>
+                    </View>
+                    <Text style={styles.blockTime} pointerEvents="none">
                       {formatTime(block.startMin)} – {formatTime(block.endMin)}
                     </Text>
-                  </View>
-                </Pressable>
-              )}
-            </View>
-          );
-        });
-      })}
+                  </Pressable>
+                )}
+              </View>
+            );
+          });
+        })}
       </View>
     </View>
   );
@@ -405,8 +433,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 14,
     padding: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 10,
     shadowColor: '#000',
     shadowOpacity: 0.12,
@@ -414,17 +440,43 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  textContainer: {
-    justifyContent: 'center',
+  blockHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  iconBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   blockTitle: {
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 14,
+    flex: 1,
   },
   blockTime: {
     fontSize: 11,
-    opacity: 0.85,
-    textAlign: 'center',
+    color: 'rgba(255,255,255,0.7)',
+    marginLeft: 30,
+  },
+  checkboxArea: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

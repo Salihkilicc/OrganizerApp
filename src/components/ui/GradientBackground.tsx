@@ -1,3 +1,4 @@
+import { useTheme } from '@/store/useTheme';
 import { gradients } from '@/styles/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
@@ -8,9 +9,12 @@ interface GradientBackgroundProps extends ViewProps {
 }
 
 export function GradientBackground({ children, style, ...props }: GradientBackgroundProps) {
+    const { themeKey } = useTheme();
+    const colors = gradients[themeKey] || gradients.default;
+
     return (
         <LinearGradient
-            colors={gradients.primaryBg}
+            colors={colors}
             style={[styles.container, style]}
             {...props}
         >

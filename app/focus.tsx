@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useFocusMode } from '@/store/useFocusMode';
-import { useTheme } from '@/store/useTheme';
+import { PLAN_CATEGORY_COLORS } from '@/constants/categoryColors';
 import { useI18n } from '@/i18n/useI18n';
+import { useFocusMode } from '@/store/useFocusMode';
 import type { PlanCategory } from '@/store/usePlans';
+import { useTheme } from '@/store/useTheme';
 
 const DEFAULT_MINUTES = 30;
 const EXTEND_MINUTES = 15;
@@ -20,26 +23,17 @@ type FocusParams = {
   endMin?: string;
 };
 
-const getCategoryIcon = (category?: PlanCategory) => {
+const getCategoryIcon = (category?: PlanCategory): keyof typeof Ionicons.glyphMap => {
   switch (category) {
-    case 'focus':
-      return '🎯';
-    case 'study':
-      return '📚';
-    case 'work':
-      return '💼';
-    case 'gym':
-      return '🏋️';
-    case 'meeting':
-      return '🧑‍🤝‍🧑';
-    case 'reading':
-      return '📖';
-    case 'break':
-      return '☕';
-    case 'personal':
-      return '🌸';
-    default:
-      return '⭐';
+    case 'focus': return 'scan-circle';
+    case 'study': return 'school';
+    case 'work': return 'briefcase';
+    case 'gym': return 'barbell';
+    case 'meeting': return 'people';
+    case 'reading': return 'book';
+    case 'break': return 'cafe';
+    case 'personal': return 'person';
+    default: return 'star';
   }
 };
 
@@ -50,8 +44,10 @@ export default function FocusScreen() {
   const params = useLocalSearchParams<FocusParams>();
   const [tickTime, setTickTime] = useState(() => Date.now());
   const wasActiveRef = useRef(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const { active, remainingMinutes, lastTickAt, startedAt, start, exit, addMinutes } =
     useFocusMode();
+
   const categoryLabels = useMemo(
     () => ({
       focus: t((d) => d.plan.categories.focus),
@@ -76,6 +72,16 @@ export default function FocusScreen() {
     const duration = Math.max(0, Math.floor(endMin - startMin));
     return duration > 0 ? duration : DEFAULT_MINUTES;
   }, [params.startMin, params.endMin]);
+
+  // Pulse animation for countdown
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [pulseAnim]);
 
   useEffect(() => {
     if (!active) {
@@ -123,37 +129,68 @@ export default function FocusScreen() {
   const title = params.title ?? t((d) => d.focus.sessionFallback);
   const categoryLabel = categoryLabels[params.category ?? 'other'] ?? categoryLabels.other;
   const categoryIcon = getCategoryIcon(params.category);
+  const categoryColor = PLAN_CATEGORY_COLORS[params.category as PlanCategory] || PLAN_CATEGORY_COLORS.other;
+
+  // Determine if light theme
+  const isLightTheme = ['light', 'classic', 'sunset', 'sakura', 'minimal'].includes(palette.background);
+  const lightGradient = ['#FFFFFF', `${categoryColor.border}15`, `${categoryColor.border}25`] as const; // White -> Category tint
+  const darkGradient = [categoryColor.background, '#000'] as const;
+  const gradientColors = isLightTheme ? lightGradient : darkGradient;
+  const textColor = isLightTheme ? '#1a1a3e' : '#fff';
+  const closeButtonBg = isLightTheme ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.3)';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]}>
-      <View style={styles.layout}>
-        <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <Text style={[styles.heading, { color: palette.text }]}>{t((d) => d.focus.title)}</Text>
-          <Text style={[styles.sessionTitle, { color: palette.text }]} numberOfLines={2}>
+    <View style={styles.container}>
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={gradientColors}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Close Button */}
+        <Pressable onPress={handleExit} style={[styles.closeButton, { backgroundColor: closeButtonBg }]}>
+          <Ionicons name="close" size={28} color={textColor} />
+        </Pressable>
+
+        <View style={styles.content}>
+          {/* Category Badge */}
+          <View style={[styles.categoryBadge, { backgroundColor: categoryColor.border }]}>
+            <Ionicons name={categoryIcon} size={24} color="#fff" />
+            <Text style={styles.categoryText}>{categoryLabel}</Text>
+          </View>
+
+          {/* Task Title */}
+          <Text style={[styles.title, { color: textColor }]} numberOfLines={2}>
             {title}
           </Text>
-          <View
-            style={[
-              styles.categoryChip,
-              {
-                borderColor: palette.border,
-                backgroundColor: palette.background,
-              },
-            ]}>
-            <Text style={[styles.categoryText, { color: palette.text }]}>
-              {`${categoryIcon} ${categoryLabel}`}
-            </Text>
+
+          {/* Countdown Timer */}
+          <Animated.View style={[styles.timerContainer, { transform: [{ scale: pulseAnim }] }]}>
+            <Text style={[styles.countdown, { color: textColor }]}>{countdown}</Text>
+          </Animated.View>
+
+          {/* Stats */}
+          <View style={[styles.statsRow, { backgroundColor: isLightTheme ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.2)' }]}>
+            <View style={styles.statItem}>
+              <Ionicons name="time-outline" size={20} color={isLightTheme ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'} />
+              <Text style={[styles.statLabel, { color: isLightTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>{displayMinutes} min left</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)' }]} />
+            <View style={styles.statItem}>
+              <Ionicons name="trophy-outline" size={20} color={isLightTheme ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'} />
+              <Text style={[styles.statLabel, { color: isLightTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>+{displayMinutes} pts</Text>
+            </View>
           </View>
-          <Text style={[styles.description, { color: palette.text }]}>
-            {t((d) => d.focus.description)}
+
+          {/* Description */}
+          <Text style={[styles.description, { color: isLightTheme ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)' }]}>
+            Stay focused. You're earning 1 point per minute.
           </Text>
-          <Text style={[styles.countdown, { color: palette.text }]}>{countdown}</Text>
-          <Text style={[styles.description, { color: palette.text, marginTop: 6 }]}>
-            {t((d) => d.focus.minutesLabel, { minutes: displayMinutes })}
-          </Text>
-          <Text style={[styles.description, { color: palette.text, marginTop: 4 }]}>
-            {t((d) => d.focus.pointsPerMinute, { points: 1 })}
-          </Text>
+
+          {/* Action Buttons */}
           <View style={styles.buttonRow}>
             <Pressable
               onPress={handleExit}
@@ -161,111 +198,158 @@ export default function FocusScreen() {
                 styles.button,
                 styles.secondaryButton,
                 {
-                  borderColor: palette.border,
-                  backgroundColor: palette.background,
-                  opacity: pressed ? 0.75 : 1,
+                  backgroundColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                  borderColor: isLightTheme ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.3)',
+                  opacity: pressed ? 0.7 : 1
                 },
-              ]}>
-              <Text style={[styles.buttonLabel, { color: palette.text }]}>
-                {t((d) => d.focus.exit)}
-              </Text>
+              ]}
+            >
+              <Ionicons name="stop-circle-outline" size={20} color={textColor} />
+              <Text style={[styles.buttonLabel, { color: textColor }]}>End Session</Text>
             </Pressable>
+
             <Pressable
               onPress={handleExtend}
               style={({ pressed }) => [
                 styles.button,
                 styles.primaryButton,
                 {
-                  backgroundColor: palette.accent,
-                  opacity: pressed ? 0.85 : 1,
+                  backgroundColor: categoryColor.border,
+                  opacity: pressed ? 0.85 : 1
                 },
-              ]}>
-              <Text style={[styles.buttonLabel, { color: palette.background }]}>
-                {t((d) => d.focus.addMinutes)}
-              </Text>
+              ]}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#fff" />
+              <Text style={styles.buttonLabel}>+{EXTEND_MINUTES} min</Text>
             </Pressable>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },
-  layout: {
+  closeButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 520,
-    borderRadius: 24,
     padding: 24,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
-  },
-  heading: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  sessionTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  categoryChip: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    marginBottom: 24,
   },
   categoryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 48,
+    lineHeight: 40,
+  },
+  timerContainer: {
+    marginBottom: 32,
+  },
+  countdown: {
+    color: '#fff',
+    fontSize: 96,
+    fontWeight: '900',
+    letterSpacing: -4,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 24,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 14,
     fontWeight: '600',
   },
   description: {
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 15,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 48,
     lineHeight: 22,
-  },
-  countdown: {
-    fontSize: 64,
-    fontWeight: '700',
-    marginBottom: 24,
   },
   buttonRow: {
     flexDirection: 'row',
     width: '100%',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   button: {
     flex: 1,
-    borderRadius: 14,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 6,
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 16,
+    paddingVertical: 16,
   },
-  primaryButton: {},
+  primaryButton: {
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
   secondaryButton: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   buttonLabel: {
+    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

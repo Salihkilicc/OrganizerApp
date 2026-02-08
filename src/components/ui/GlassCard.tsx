@@ -9,20 +9,26 @@ interface GlassCardProps extends ViewProps {
 }
 
 export function GlassCard({ children, style, intensity = 50, ...props }: GlassCardProps) {
-    const { palette } = useTheme();
+    const { palette, themeKey } = useTheme();
 
-    // On Android, BlurView support varies. Fallback to just the translucent background if needed.
-    // Expo BlurView works on Android now, but let's be safe with overflow hidden.
+    // Determine tint based on theme
+    const isLightTheme = ['light', 'classic', 'sunset', 'sakura', 'minimal'].includes(themeKey);
+    const tint = isLightTheme ? 'light' : 'dark';
+
+    // Border color based on theme
+    const borderColor = isLightTheme
+        ? 'rgba(0, 0, 0, 0.08)'
+        : 'rgba(255, 255, 255, 0.2)';
 
     return (
         <BlurView
             intensity={intensity}
-            tint="dark" // Using 'dark' tint as we are in a Dark AI theme context, helps text pop.
+            tint={tint}
             style={[
                 styles.container,
                 {
                     backgroundColor: palette.card,
-                    borderColor: 'rgba(255, 255, 255, 0.2)', // Slightly stronger border for glass effect
+                    borderColor,
                 },
                 style,
             ]}
