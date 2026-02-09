@@ -15,10 +15,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
-import { useTheme } from '@/store/useTheme';
-import type { PlanBlock, PlanCategory } from '@/store/usePlans';
 import { PLAN_CATEGORY_COLORS } from '@/constants/categoryColors';
 import { useI18n } from '@/i18n/useI18n';
+import type { PlanBlock, PlanCategory } from '@/store/usePlans';
+import { useTheme } from '@/store/useTheme';
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const pad = (value: number) => value.toString().padStart(2, '0');
@@ -276,13 +276,13 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                 <TextInput
                   style={[
                     styles.input,
-                  {
-                    backgroundColor: palette.background,
-                    color: inputTextColor,
-                    borderColor: palette.border,
-                  },
-                ]}
-                placeholder={t((d) => d.plan.editor.titlePlaceholder)}
+                    {
+                      backgroundColor: palette.background,
+                      color: inputTextColor,
+                      borderColor: palette.border,
+                    },
+                  ]}
+                  placeholder={t((d) => d.plan.editor.titlePlaceholder)}
                   placeholderTextColor={placeholderColor}
                   value={title}
                   onChangeText={setTitle}
@@ -428,13 +428,13 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
                   style={[
                     styles.input,
                     styles.noteInput,
-                  {
-                    backgroundColor: palette.background,
-                    color: inputTextColor,
-                    borderColor: palette.border,
-                  },
-                ]}
-                placeholder={t((d) => d.plan.editor.notePlaceholder)}
+                    {
+                      backgroundColor: palette.background,
+                      color: inputTextColor,
+                      borderColor: palette.border,
+                    },
+                  ]}
+                  placeholder={t((d) => d.plan.editor.notePlaceholder)}
                   placeholderTextColor={placeholderColor}
                   multiline
                   textAlignVertical="top"
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   },
   overlayScroll: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
   },
   overlayContent: {
     flexGrow: 1,
