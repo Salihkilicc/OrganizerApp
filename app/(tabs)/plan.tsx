@@ -2,13 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -50,7 +48,7 @@ const STEP = 30;
 const MIN_BLOCK = 60;
 const TAP_BLOCK_DURATION = 30;
 const PX_PER_MIN = 1;
-const HOUR_COPIES = 3;
+const HOUR_COPIES = 1;
 const DAY_MINUTES = HOURS_PER_DAY * 60;
 const DAY_HEIGHT = DAY_MINUTES * PX_PER_MIN;
 const AI_PLAN_CATEGORIES: AiPlanBlock['category'][] = ['focus', 'study', 'work', 'gym', 'other'];
@@ -502,41 +500,19 @@ export default function PlanScreen() {
     [updatePlan],
   );
 
-  const scrollRef = useRef<ScrollView>(null);
-  const wrapScrollRef = useRef(false);
-  const contentHeight = DAY_HEIGHT * HOUR_COPIES;
-
-  useEffect(() => {
-    const target = DAY_HEIGHT + 8 * 60 * PX_PER_MIN;
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y: target, animated: false });
-    });
-  }, []);
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (wrapScrollRef.current) {
-        wrapScrollRef.current = false;
-        return;
-      }
-      const offsetY = event.nativeEvent.contentOffset.y;
-      const lowerThreshold = DAY_HEIGHT * 0.5;
-      const upperThreshold = DAY_HEIGHT * 1.5;
-      let nextOffset: number | null = null;
-
-      if (offsetY < lowerThreshold) {
-        nextOffset = offsetY + DAY_HEIGHT;
-      } else if (offsetY > upperThreshold) {
-        nextOffset = offsetY - DAY_HEIGHT;
-      }
-
-      if (nextOffset !== null && scrollRef.current) {
-        wrapScrollRef.current = true;
-        scrollRef.current.scrollTo({ y: nextOffset, animated: false });
+  const handleCheck = useCallback(
+    (id: string) => {
+      const block = blocks.find((b) => b.id === id);
+      if (block) {
+        updatePlan(id, { done: !block.done });
       }
     },
-    [],
+    [blocks, updatePlan],
   );
+
+  const scrollRef = useRef<ScrollView>(null);
+  /* Increase to approx 120 mins extra space */
+  const contentHeight = DAY_HEIGHT + 120 * PX_PER_MIN;
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -697,8 +673,6 @@ export default function PlanScreen() {
             contentContainerStyle={[styles.scrollContent, { height: contentHeight }]}
             showsVerticalScrollIndicator={false}
             bounces={false}
-            scrollEventThrottle={16}
-            onScroll={handleScroll}
           >
             <View style={styles.innerRow}>
               <HourColumn startHour={GRID_START} endHour={GRID_END} pxPerMin={PX_PER_MIN} />
@@ -708,6 +682,7 @@ export default function PlanScreen() {
                   blocks={dailyBlocks}
                   onMove={handleMove}
                   onEdit={openEditEditor}
+                  onCheck={handleCheck}
                   onCreateAtMinute={isEditableDay ? handleCreateAtMinute : undefined}
                   step={STEP}
                   startHour={GRID_START}
@@ -904,6 +879,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 100,
   },
   innerRow: {
     flexDirection: 'row',

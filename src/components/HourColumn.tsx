@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/store/useTheme';
 
 const HOURS_PER_DAY = 24;
-const HOUR_COPIES = 3;
+const HOUR_COPIES = 1;
 
 type Props = {
   startHour?: number;
@@ -21,22 +21,26 @@ export const HourColumn = memo(function HourColumn({
   const heightPerHour = 60 * pxPerMin;
   const normalizedStart = Math.max(0, Math.min(startHour, HOURS_PER_DAY));
   const normalizedEnd = Math.max(normalizedStart + 1, Math.min(endHour, HOURS_PER_DAY));
+
+  // Create array of hours [0, 1, ..., 24]
   const hours = useMemo(
-    () => Array.from({ length: normalizedEnd - normalizedStart }, (_, index) => normalizedStart + index),
+    () => Array.from({ length: normalizedEnd - normalizedStart + 1 }, (_, index) => normalizedStart + index),
     [normalizedEnd, normalizedStart],
   );
-  const totalRows = hours.length * HOUR_COPIES;
 
   return (
-    <View style={[styles.container, { height: totalRows * heightPerHour }]}>
-      {Array.from({ length: totalRows }, (_, index) => {
-        const hour = hours[index % hours.length];
+    <View style={[styles.container, { height: hours.length * heightPerHour }]}>
+      {hours.map((hour) => {
+        // Only show label if it's <= 24
+        const showLabel = hour <= 24;
         return (
-          <View key={`${index}-${hour}`} style={[styles.row, { height: heightPerHour }]}>
+          <View key={hour} style={[styles.row, { height: heightPerHour }]}>
             <View style={[styles.line, { backgroundColor: palette.border }]} />
-            <Text style={[styles.label, { color: palette.text }]}>
-              {hour.toString().padStart(2, '0')}:00
-            </Text>
+            {showLabel && (
+              <Text style={[styles.label, { color: palette.text }]}>
+                {hour.toString().padStart(2, '0')}:00
+              </Text>
+            )}
           </View>
         );
       })}
