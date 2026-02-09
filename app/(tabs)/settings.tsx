@@ -183,34 +183,39 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={[styles.header, styles.headerMargin]}>
-            <Text style={[styles.heading, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>{t((d) => d.settings.title)}</Text>
+            <Text style={[styles.heading, { color: themeKey === 'light' ? '#5b21b6' : palette.text }]}>{t((d) => d.settings.title)}</Text>
           </View>
 
-          <GlassCard
-            style={[styles.profileCard, styles.cardShadow]}>
-            <View style={[styles.avatar, { backgroundColor: avatarSource ? palette.background : palette.accent }]}>
-              {avatarSource ? (
-                <Image source={avatarSource} style={styles.avatarImage} />
-              ) : (
-                <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
-              )}
-            </View>
-            <View style={styles.profileBody}>
-              <Text style={[styles.profileName, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>{displayName}</Text>
-              <Text style={[styles.profileSubtitle, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : palette.text }]}>{userLabel}</Text>
-            </View>
-            <Pressable
-              onPress={() => router.push('/profile')}
-              style={({ pressed }) => [
-                styles.profileAction,
-                {
-                  backgroundColor: palette.background,
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}>
-              <Ionicons name="pencil" size={20} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
-            </Pressable>
-          </GlassCard>
+          <Pressable
+            onPress={() => router.push('/profile')}
+            style={({ pressed }) => [
+              { opacity: pressed ? 0.9 : 1 },
+            ]}
+          >
+            <GlassCard
+              style={[styles.profileCard, styles.cardShadow]}>
+              <View style={[styles.avatar, { backgroundColor: avatarSource ? palette.background : palette.accent }]}>
+                {avatarSource ? (
+                  <Image source={avatarSource} style={styles.avatarImage} />
+                ) : (
+                  <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+                )}
+              </View>
+              <View style={styles.profileBody}>
+                <Text style={[styles.profileName, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>{displayName}</Text>
+                <Text style={[styles.profileSubtitle, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : palette.text }]}>{userLabel}</Text>
+              </View>
+              <View
+                style={[
+                  styles.profileAction,
+                  {
+                    backgroundColor: palette.background,
+                  },
+                ]}>
+                <Ionicons name="pencil" size={20} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              </View>
+            </GlassCard>
+          </Pressable>
 
           <View style={styles.premiumWrapper}>
             {isPremium ? (
