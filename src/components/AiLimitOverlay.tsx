@@ -1,4 +1,5 @@
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useTheme } from '@/store/useTheme';
 import { gradients } from '@/styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +25,8 @@ export function AiLimitOverlay({
     onGoPremium,
     onClose,
 }: AiLimitOverlayProps) {
+    const { palette, themeKey } = useTheme();
+    const isLight = themeKey === 'light';
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -77,15 +80,15 @@ export function AiLimitOverlay({
                             transform: [{ scale: scaleAnim }],
                         }}
                     >
-                        <GlassCard style={styles.cardContent}>
+                        <GlassCard style={[styles.cardContent, isLight && styles.lightCard]}>
                             {/* Header Icon */}
-                            <View style={styles.iconContainer}>
-                                <Ionicons name="sparkles" size={48} color="#FFFFFF" />
+                            <View style={[styles.iconContainer, isLight && styles.lightIconContainer]}>
+                                <Ionicons name="sparkles" size={48} color={isLight ? palette.accent : "#FFFFFF"} />
                             </View>
 
                             {/* Texts */}
-                            <Text style={styles.title}>Unlock AI Power</Text>
-                            <Text style={styles.subtitle}>
+                            <Text style={[styles.title, { color: palette.text }]}>Unlock AI Power</Text>
+                            <Text style={[styles.subtitle, { color: palette.text, opacity: 0.8 }]}>
                                 You've reached your free daily limit. Watch a short ad to continue or
                                 unlock unlimited access with Premium.
                             </Text>
@@ -121,16 +124,20 @@ export function AiLimitOverlay({
                                     onPress={onGoPremium}
                                     style={({ pressed }) => [
                                         styles.secondaryButton,
-                                        { opacity: pressed ? 0.8 : 1 },
+                                        {
+                                            opacity: pressed ? 0.8 : 1,
+                                            borderColor: palette.border,
+                                            backgroundColor: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'
+                                        },
                                     ]}
                                 >
                                     <Ionicons
                                         name="diamond-outline"
                                         size={20}
-                                        color="#FFFFFF"
+                                        color={isLight ? palette.text : "#FFFFFF"}
                                         style={{ marginRight: 8 }}
                                     />
-                                    <Text style={styles.secondaryButtonText}>Get Premium</Text>
+                                    <Text style={[styles.secondaryButtonText, { color: palette.text }]}>Get Premium</Text>
                                 </Pressable>
 
                                 <Pressable
@@ -140,7 +147,7 @@ export function AiLimitOverlay({
                                         { opacity: pressed ? 0.6 : 1 },
                                     ]}
                                 >
-                                    <Text style={styles.cancelText}>Maybe Later</Text>
+                                    <Text style={[styles.cancelText, { color: palette.text, opacity: 0.5 }]}>Maybe Later</Text>
                                 </Pressable>
                             </View>
                         </GlassCard>
@@ -248,6 +255,18 @@ const styles = StyleSheet.create({
     cancelText: {
         fontSize: 14,
         fontWeight: '500',
-        color: 'rgba(255,255,255,0.5)',
+    },
+    lightCard: {
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.1)',
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+    },
+    lightIconContainer: {
+        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+        borderColor: 'rgba(124, 58, 237, 0.2)',
+        shadowOpacity: 0,
     },
 });

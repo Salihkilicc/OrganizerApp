@@ -4,6 +4,9 @@ import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,13 +21,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AiLimitOverlay } from '@/components/AiLimitOverlay';
-import LoadingOverlay from '@/components/LoadingOverlay';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/store/useTheme';
 import { useAiPlanner, type UseAiPlannerProps } from '../hooks/useAiPlanner';
 
 export type AiPlanModalProps = UseAiPlannerProps;
+
+const AppIcon = require('@/assets/images/icon.png');
 
 
 
@@ -62,6 +66,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
     setStage,
     error,
     isGenerating,
+    isRegenerating,
     aiLimitRemaining,
     aiLimitLoading,
 
@@ -136,6 +141,66 @@ export function AiPlanModal(props: AiPlanModalProps) {
     }
   }, [visible, adLoaded, loadAd]);
 
+  // Animation refs
+  const translateXAnim = React.useRef(new Animated.Value(20)).current;
+  const translateYAnim = React.useRef(new Animated.Value(-20)).current;
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isGenerating || isRegenerating) {
+      Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(translateXAnim, {
+              toValue: -20,
+              duration: 1500, // Faster fly
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(translateXAnim, {
+              toValue: 20,
+              duration: 1500,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(translateYAnim, {
+              toValue: 20,
+              duration: 1500,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(translateYAnim, {
+              toValue: -20,
+              duration: 1500,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(scaleAnim, {
+              toValue: 1.1,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+              toValue: 1,
+              duration: 1500,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ]),
+        ])
+      ).start();
+    } else {
+      translateXAnim.setValue(20);
+      translateYAnim.setValue(-20);
+      scaleAnim.setValue(1);
+    }
+  }, [isGenerating, isRegenerating]);
+
   // Constants used in JSX
   const placeholderColor = `${palette.text}88`;
   const inputTextColor = `${palette.text}dd`;
@@ -161,10 +226,35 @@ export function AiPlanModal(props: AiPlanModalProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + 24}
         style={styles.flex}>
-        <LoadingOverlay
-          visible={isLoading}
-          label="Generating your plan…"
-        />
+        {(isGenerating || isRegenerating) && (
+          <View style={[styles.loadingOverlay, { backgroundColor: '#FFFFFF' }]}>
+            <View style={styles.loadingContainer}>
+              <Animated.View style={{
+                transform: [
+                  { translateX: translateXAnim },
+                  { translateY: translateYAnim },
+                  { scale: scaleAnim }
+                ],
+                shadowColor: '#000',
+                shadowOpacity: 0.15,
+                shadowRadius: 15,
+                shadowOffset: { width: 0, height: 10 }
+              }}>
+                <Image
+                  source={AppIcon}
+                  style={{ width: 100, height: 100, borderRadius: 20 }}
+                />
+              </Animated.View>
+
+              <Text style={[styles.loadingText, { color: '#000000', marginTop: 40 }]}>
+                {isRegenerating ? 'Refining your plan...' : 'AI is crafting your plan...'}
+              </Text>
+              <Text style={[styles.loadingSub, { color: '#666666' }]}>
+                {isRegenerating ? 'Applying your feedback' : 'Analyzing your habits & goals'}
+              </Text>
+            </View>
+          </View>
+        )}
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={handleClose} />
           <View style={styles.modalContainer}>
@@ -754,6 +844,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    zIndex: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 32,
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  loadingSub: {
+    marginTop: 8,
+    fontSize: 14,
+    opacity: 0.7,
+    textAlign: 'center',
   },
 });
 

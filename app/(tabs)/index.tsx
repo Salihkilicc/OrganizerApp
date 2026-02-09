@@ -251,15 +251,15 @@ export default function HomeScreen() {
 
           {blocks.filter((b: PlanBlock) => b.date === todayDateStr).length === 0 ? (
             <GlassCard style={{ padding: 30, alignItems: 'center' }}>
-              <Ionicons name="calendar-outline" size={48} color="rgba(255,255,255,0.3)" />
-              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 12 }}>
+              <Ionicons name="calendar-outline" size={48} color="#007AFF" />
+              <Text style={{ color: '#007AFF', fontSize: 14, marginTop: 12, opacity: 0.8 }}>
                 No tasks scheduled for today
               </Text>
               <Pressable
                 onPress={() => router.push('/plan')}
                 style={{ marginTop: 16, backgroundColor: palette.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
               >
-                <Text style={{ color: '#000', fontWeight: 'bold' }}>Add Task</Text>
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Add Task</Text>
               </Pressable>
             </GlassCard>
           ) : (
@@ -298,16 +298,16 @@ export default function HomeScreen() {
                 style={{
                   marginTop: 12,
                   borderWidth: 1,
-                  borderColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.1)',
+                  borderColor: '#007AFF33',
                   borderRadius: 12,
                   borderStyle: 'dashed',
                   padding: 16,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.05)' : 'rgba(255,255,255,0.03)'
+                  backgroundColor: '#007AFF11'
                 }}
               >
-                <Text style={{ color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.5)' : 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: '600' }}>
+                <Text style={{ color: '#007AFF', fontSize: 14, fontWeight: '600' }}>
                   + Draft your next move
                 </Text>
               </Pressable>
