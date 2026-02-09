@@ -1,26 +1,27 @@
+import { BlurView } from 'expo-blur';
+import React, { useRef } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import React, { useRef } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Ionicons } from '@expo/vector-icons';
+import { AVATAR_CATALOG, type AvatarName } from '@/constants/avatars';
+import { useI18n } from '@/i18n/useI18n';
+import { FRAME_STYLES } from '@/lib/frameStyles';
+import { useAvatarStore } from '@/store/useAvatar';
 import { usePoints } from '@/store/usePoints';
 import { useShop } from '@/store/useShop';
 import { useTheme } from '@/store/useTheme';
-import { useI18n } from '@/i18n/useI18n';
-import { useRouter } from 'expo-router';
-import type { TranslationKeys } from '@/i18n/translations';
-import { AVATAR_CATALOG, type AvatarName } from '@/constants/avatars';
-import { useAvatarStore } from '@/store/useAvatar';
 import { themes } from '@/styles/colors';
-import { FRAME_STYLES } from '@/lib/frameStyles';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const addAlpha = (hexColor: string, alpha: number) => {
   const normalized = hexColor.replace('#', '');
@@ -33,7 +34,7 @@ const addAlpha = (hexColor: string, alpha: number) => {
 
 export default function PointsScreen() {
   const router = useRouter();
-  const palette = useTheme((state) => state.palette);
+  const { palette, themeKey } = useTheme();
   const totalPoints = usePoints((state) => state.total);
   const items = useShop((state) => state.items);
   const buyWithPoints = useShop((state) => state.buyWithPoints);
@@ -46,6 +47,8 @@ export default function PointsScreen() {
     purchaseAvatar,
     selectAvatar,
   } = useAvatarStore();
+  const insets = useSafeAreaInsets();
+  const isDark = ['dark', 'ninja', 'midnight', 'neon', 'ocean', 'coffee', 'default'].includes(themeKey);
   const scrollRef = useRef<ScrollView | null>(null);
   const sectionOffsets = useRef<{ themes: number; frames: number; photos: number }>({
     themes: 0,
@@ -246,15 +249,15 @@ export default function PointsScreen() {
                   opacity: item.equipped ? 0.6 : pressed ? 0.8 : 1,
                 },
               ]}>
-                <Text
-                  style={[
-                    styles.actionText,
-                    { color: item.equipped ? text : palette.background },
-                  ]}>
-                  {item.equipped
-                    ? t((d) => d.points.button.equipped)
-                    : t((d) => d.points.button.equip)}
-                </Text>
+              <Text
+                style={[
+                  styles.actionText,
+                  { color: item.equipped ? text : palette.background },
+                ]}>
+                {item.equipped
+                  ? t((d) => d.points.button.equipped)
+                  : t((d) => d.points.button.equip)}
+              </Text>
             </Pressable>
           )}
         </View>
@@ -281,34 +284,26 @@ export default function PointsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <ScrollView
-        ref={scrollRef}
-        stickyHeaderIndices={[0]}
-        contentContainerStyle={styles.container}>
-        <View
-          style={[
-            styles.topBar,
-            {
-              backgroundColor: palette.card,
-              borderBottomColor: palette.border,
-              shadowColor: palette.text,
-            },
-          ]}>
+    <View style={[styles.safe, { backgroundColor: palette.background }]}>
+      <View style={[styles.headerWrapper, { height: 60 + insets.top }]}>
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 40 : 100}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.headerContent, { paddingTop: insets.top }]}>
           <View style={styles.leftHeaderRow}>
             <Pressable
               onPress={() => router.back()}
               style={({ pressed }) => [
                 styles.backButton,
-                {
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}>
-              <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
+                { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.1)' },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Ionicons name="arrow-back" size={24} color={themeKey === 'light' ? '#1e1b4b' : '#fff'} />
             </Pressable>
-            <Text style={[styles.sectionHeadline, { color: palette.text }]} numberOfLines={1}>
+            <Text style={[styles.sectionHeadline, { color: themeKey === 'light' ? '#5b21b6' : palette.text }]} numberOfLines={1}>
               {t((d) => d.points.title)}
             </Text>
           </View>
@@ -322,6 +317,10 @@ export default function PointsScreen() {
             </View>
           </View>
         </View>
+      </View>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.container, { paddingTop: 60 + insets.top }]}>
 
         <View style={styles.navDotsRow}>
           {[
@@ -389,7 +388,7 @@ export default function PointsScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -398,47 +397,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    paddingTop: 0,
     paddingBottom: 20,
     paddingHorizontal: 16,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 12,
-    marginTop: 0,
-    marginHorizontal: -16,
+  headerWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
     borderBottomWidth: 1,
-    paddingTop: 10,
-    paddingBottom: 12,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  headerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    borderRadius: 16,
-    zIndex: 5,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-    elevation: 3,
+    paddingBottom: 10,
   },
   backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 22,
-    borderWidth: 1,
+    width: 48,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  backIcon: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
+
   leftHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 18,
     flexShrink: 1,
-    marginLeft:1,
+    marginLeft: 1,
   },
   sectionHeadline: {
     fontSize: 20,
@@ -468,7 +463,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: 4,
-    marginTop:-34,
     flexShrink: 0,
     marginLeft: 12,
   },
@@ -490,7 +484,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginBottom: 16,
+    marginTop: 0,
+    marginBottom: 12,
     flexWrap: 'wrap',
   },
   navDot: {
