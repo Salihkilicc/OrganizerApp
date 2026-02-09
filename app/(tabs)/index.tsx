@@ -186,13 +186,12 @@ export default function HomeScreen() {
             styles.nextUpCard,
             {
               flex: 1.5,
-              borderColor: nextBlock ? (PLAN_CATEGORY_COLORS[nextBlock.category as PlanCategory]?.border || 'rgba(255,255,255,0.1)') : 'rgba(255,255,255,0.1)',
-              borderWidth: nextBlock ? 1 : 0
+              borderColor: nextBlock ? (PLAN_CATEGORY_COLORS[nextBlock.category as PlanCategory]?.border || 'rgba(255,255,255,0.1)') : undefined,
             }
           ]}>
             <Text style={[
               styles.label,
-              { color: nextBlock ? (PLAN_CATEGORY_COLORS[nextBlock.category as PlanCategory]?.border || 'rgba(255,255,255,0.5)') : 'rgba(255,255,255,0.5)' }
+              { color: nextBlock ? (PLAN_CATEGORY_COLORS[nextBlock.category as PlanCategory]?.border || 'rgba(255,255,255,0.5)') : (themeKey === 'light' ? '#5b21b6' : 'rgba(255,255,255,0.5)') }
             ]}>NEXT UP</Text>
             {nextBlock ? (
               <>
@@ -229,7 +228,7 @@ export default function HomeScreen() {
               </>
             ) : (
               <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 8 }}>No upcoming tasks</Text>
+                <Text style={{ color: themeKey === 'light' ? 'rgba(91, 33, 182, 0.6)' : 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 8 }}>No upcoming tasks</Text>
                 <Pressable onPress={() => router.push('/plan')}>
                   <Text style={{ color: palette.accent, fontWeight: 'bold' }}>+ Create Plan</Text>
                 </Pressable>

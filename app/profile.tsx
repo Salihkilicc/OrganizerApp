@@ -1,15 +1,26 @@
-import { type PlanCategory, usePlans } from '@/store/usePlans';
-import { usePoints } from '@/store/usePoints';
-import { useAuth } from '@/store/useAuth';
-import { useTheme } from '@/store/useTheme';
-import { useRouter } from 'expo-router';
-import { useProfileAppearance } from '@/store/useProfileAppearance';
-import { getFrameDecoration } from '@/lib/frameStyles';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useI18n } from '@/i18n/useI18n';
+import { Popup } from '@/components/Popup';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { GradientBackground } from '@/components/ui/GradientBackground';
+import { AVATAR_IMAGES } from '@/constants/avatars';
 import { translations, type TranslationKeys } from '@/i18n/translations';
+import { useI18n } from '@/i18n/useI18n';
+import { getFrameDecoration } from '@/lib/frameStyles';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/store/useAuth';
+import { useAvatarStore } from '@/store/useAvatar';
+import { usePlans } from '@/store/usePlans';
+import { usePoints } from '@/store/usePoints';
+import { useProfileAppearance } from '@/store/useProfileAppearance';
+import { useShop } from '@/store/useShop';
+import { useTheme } from '@/store/useTheme';
+import { Ionicons } from '@expo/vector-icons';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { BlurView } from 'expo-blur';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -22,24 +33,22 @@ import {
   ToastAndroid,
   View,
 } from 'react-native';
-import { useAvatarStore } from '@/store/useAvatar';
-import { AVATAR_IMAGES } from '@/constants/avatars';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
-import { Popup } from '@/components/Popup';
-import { useShop } from '@/store/useShop';
-import { Ionicons } from '@expo/vector-icons';
-import { Button } from '@/components/ui/Button';
-import { supabase } from '@/lib/supabase';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
-  const palette = useTheme((state) => state.palette);
+  const { palette, themeKey } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, lang } = useI18n();
   const headerHeight = useHeaderHeight();
   const user = useAuth((state) => state.user);
   const setFromSession = useAuth((state) => state.setFromSession);
   const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
+  const isDark = ['dark', 'ninja', 'midnight', 'neon', 'ocean', 'coffee', 'default'].includes(themeKey);
+
+  // Animation Refs
+  const avatarFade = React.useRef(new Animated.Value(0)).current;
+  const achievementFade = React.useRef(new Animated.Value(0)).current;
   const profilePhoto =
     (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
     (user?.user_metadata as Record<string, string | undefined> | undefined)?.picture;
@@ -50,18 +59,22 @@ export default function ProfileScreen() {
   const frameDecoration = getFrameDecoration(frameId);
   const avatarFrameStyle = frameDecoration
     ? {
-        borderWidth: frameDecoration.borderWidth,
-        borderColor: frameDecoration.borderColor,
-        shadowColor: frameDecoration.shadowColor ?? frameDecoration.borderColor,
-        shadowOpacity: frameDecoration.shadowOpacity ?? 0.4,
-        shadowOffset: frameDecoration.shadowOffset ?? { width: 0, height: 4 },
-        shadowRadius: frameDecoration.shadowRadius ?? 10,
-        elevation: frameDecoration.elevation ?? 4,
-      }
+      borderWidth: frameDecoration.borderWidth,
+      borderColor: frameDecoration.borderColor,
+      shadowColor: frameDecoration.shadowColor ?? frameDecoration.borderColor,
+      shadowOpacity: frameDecoration.shadowOpacity ?? 0.4,
+      shadowOffset: frameDecoration.shadowOffset ?? { width: 0, height: 4 },
+      shadowRadius: frameDecoration.shadowRadius ?? 10,
+      elevation: frameDecoration.elevation ?? 4,
+    }
     : {
-        borderWidth: 1,
-        borderColor: palette.border,
-      };
+      borderWidth: 2,
+      borderColor: palette.accent,
+      shadowColor: palette.accent,
+      shadowOpacity: 0.5,
+      shadowRadius: 10,
+      elevation: 5,
+    };
   const avatarSource = selectedAvatar
     ? AVATAR_IMAGES[selectedAvatar]
     : profilePhoto
@@ -84,7 +97,8 @@ export default function ProfileScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [statInfoVisible, setStatInfoVisible] = useState(false);
+  const [achievementModalVisible, setAchievementModalVisible] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<any>(null);
 
   useEffect(() => {
     setFullName(initialName);
@@ -93,6 +107,26 @@ export default function ProfileScreen() {
   useEffect(() => {
     setEmail(initialEmail);
   }, [initialEmail]);
+
+  // Handle Achievement Modal Animation
+  useEffect(() => {
+    if (achievementModalVisible) {
+      achievementFade.setValue(0);
+      Animated.timing(achievementFade, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [achievementModalVisible]);
+
+  const closeAchievementModal = () => {
+    Animated.timing(achievementFade, {
+      toValue: 0,
+      duration: 100, // Even faster close
+      useNativeDriver: true,
+    }).start(() => setAchievementModalVisible(false));
+  };
 
   useEffect(() => {
     setStatusMessage(null);
@@ -111,29 +145,6 @@ export default function ProfileScreen() {
     return `${first}${last}`.toUpperCase();
   }, [fullName]);
 
-  const streakDays = 0; // TODO: surface real streak metrics once focus tracking is wired.
-  const totalFocusMinutes = 0; // TODO: replace with actual focus minutes from the tracker.
-
-  const mostActiveCategory = useMemo<PlanCategory | null>(() => {
-    if (!blocks.length) {
-      return null;
-    }
-    const counts = blocks.reduce((acc, block) => {
-      acc[block.category] = (acc[block.category] ?? 0) + 1;
-      return acc;
-    }, {} as Record<PlanCategory, number>);
-    let bestCategory: PlanCategory | null = null;
-    let bestCount = 0;
-    (Object.keys(counts) as PlanCategory[]).forEach((category) => {
-      const count = counts[category] ?? 0;
-      if (count > bestCount) {
-        bestCount = count;
-        bestCategory = category;
-      }
-    });
-    return bestCategory;
-  }, [blocks]);
-
   const hydrateShop = useShop((state) => state.hydrate);
   const shopItems = useShop((state) => state.items);
   const badgeDetails =
@@ -142,71 +153,22 @@ export default function ProfileScreen() {
     () => shopItems.filter((item) => item.category === 'badge'),
     [shopItems],
   );
-  const categoryLabels = useMemo(
-    () => ({
-      focus: t((d) => d.plan.categories.focus),
-      study: t((d) => d.plan.categories.study),
-      work: t((d) => d.plan.categories.work),
-      gym: t((d) => d.plan.categories.gym),
-      meeting: t((d) => d.plan.categories.meeting),
-      reading: t((d) => d.plan.categories.reading),
-      break: t((d) => d.plan.categories.break),
-      personal: t((d) => d.plan.categories.personal),
-      other: t((d) => d.plan.categories.other),
-    }),
-    [t],
-  );
-  const mostActiveCategoryLabel = mostActiveCategory
-    ? categoryLabels[mostActiveCategory] ?? categoryLabels.other
-    : null;
 
-  const profileStats = useMemo(
-    () => {
-      const counters = {
-        strength: 0,
-        intelligence: 0,
-        knowledge: 0,
-      };
-
-      blocks.forEach((block) => {
-        if (!block.done) return;
-        if (block.category === 'gym') {
-          counters.strength += 1;
-        } else if (block.category === 'focus' || block.category === 'study') {
-          counters.intelligence += 1;
-        } else {
-          counters.knowledge += 1;
-        }
-      });
-
-      const computeValue = (count: number) =>
-        Math.min(
-          PROFILE_STAT_MAX,
-          Math.max(PROFILE_STAT_BASE, PROFILE_STAT_BASE + Math.floor(count / 5)),
-        );
-
-      return {
-        strength: computeValue(counters.strength),
-        intelligence: computeValue(counters.intelligence),
-        knowledge: computeValue(counters.knowledge),
-      };
-    },
-    [blocks],
-  );
-  const statLabels = useMemo(
-    () => ({
-      strength: t((d) => d.profile.strength),
-      intelligence: t((d) => d.profile.intelligence),
-      knowledge: t((d) => d.profile.knowledge),
-    }),
-    [t],
-  );
-  const statOrder = ['strength', 'intelligence', 'knowledge'] as const;
-  const statIcons = {
-    strength: 'barbell-outline',
-    intelligence: 'bulb-outline',
-    knowledge: 'book-outline',
-  } as const;
+  // Icon mapping for badges
+  const BADGE_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+    'badge-early-bird': { icon: 'rocket', color: '#FF6B6B' }, // Red/Orange
+    'badge-night-owl': { icon: 'moon', color: '#6A5ACD' }, // Slate Blue
+    'badge-streak-7': { icon: 'flame', color: '#FFD93D' }, // Yellow/Gold
+    'badge-streak-30': { icon: 'bonfire', color: '#FF4500' }, // Orange Red
+    'badge-focus-10': { icon: 'glasses', color: '#4D96FF' }, // Blue
+    'badge-focus-50': { icon: 'eye', color: '#1E90FF' }, // Darker Blue
+    'badge-plans-50': { icon: 'checkbox', color: '#6BCB77' }, // Green
+    'badge-plans-200': { icon: 'list', color: '#2ECC71' }, // Emerald
+    'badge-points-1000': { icon: 'star', color: '#FFD700' }, // Gold
+    'badge-points-5000': { icon: 'trophy', color: '#00BFFF' }, // Diamond/Blue
+    // Fallback
+    'default': { icon: 'ribbon', color: '#A06CD5' },
+  };
 
   const handleAvatarPress = () => {
     router.push('/points');
@@ -351,307 +313,282 @@ export default function ProfileScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: palette.background }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={headerHeight + 12}
-        style={styles.flex}>
-        <View style={styles.backRow}>
+    <GradientBackground>
+      <View style={[styles.headerWrapper, { height: 60 + insets.top }]}>
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 40 : 100}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.headerContent, { paddingTop: insets.top }]}>
           <Pressable
             onPress={() => router.back()}
-            style={[
-              styles.backButton,
-              {
-                borderColor: palette.border,
-                backgroundColor: palette.card,
-              },
-            ]}>
-            <Text style={[styles.backIcon, { color: palette.text }]}>‹</Text>
+            style={({ pressed }) => [
+              styles.headerButton,
+              { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.1)' },
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Ionicons name="arrow-back" size={24} color={themeKey === 'light' ? '#1e1b4b' : '#fff'} />
           </Pressable>
+          <Text style={[styles.headerTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>My Profile</Text>
+          <View style={styles.headerRight}>
+            <Text style={[styles.headerPointsLabel, { color: themeKey === 'light' ? '#2563eb' : '#fff' }]}>
+              {totalPoints} <Text style={[styles.headerPointsSuffix, { color: themeKey === 'light' ? 'rgba(37, 99, 235, 0.6)' : 'rgba(255,255,255,0.8)' }]}>pts</Text>
+            </Text>
+          </View>
         </View>
+      </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={[styles.container, { paddingTop: 60 + insets.top + 20 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets>
-          <View style={styles.headerRow}>
-            <View style={styles.avatarColumn}>
-              <Pressable
-                onPress={handleAvatarPress}
-                style={[
-                  styles.avatar,
-                  { backgroundColor: avatarSource ? palette.background : palette.accent },
-                  avatarFrameStyle,
-                ]}>
-                {avatarSource ? (
-                  <Image source={avatarSource} style={styles.avatarImage} />
-                ) : (
-                  <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
-                )}
-              </Pressable>
-            </View>
-            <View style={styles.headerRight}>
-              <View style={styles.headerStats}>
-                <Text style={[styles.headerStatValue, { color: palette.accent }]}>
-                  {t((d) => d.profile.totalPoints)}: {totalPoints} pts
-                </Text>
-                <Text style={[styles.headerStatSub, { color: palette.text }]}>
-                  {t((d) => d.profile.streak)}: {streakDays} {t((d) => d.profile.days)}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => setStatInfoVisible(true)}
-                style={({ pressed }) => [
-                  styles.profileStatsCard,
-                  styles.profileStatsInline,
-                  { backgroundColor: palette.card, borderColor: palette.border },
-                  pressed ? styles.profileStatsPressed : null,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={t((d) => d.profile.statInfoTitle)}>
-                {statOrder.map((key, index, arr) => (
-                  <View
-                    key={key}
-                    style={[styles.profileStat, index === arr.length - 1 ? styles.profileStatLast : null]}>
-                    <View style={styles.profileStatHeader}>
-                      <View style={styles.profileStatLabelRow}>
-                        <Ionicons
-                          name={statIcons[key]}
-                          size={scaleValue(14)}
-                          color={palette.accent}
-                          style={styles.profileStatIcon}
-                        />
-                        <Text style={[styles.profileStatLabel, { color: palette.text }]}>{statLabels[key]}</Text>
-                      </View>
-                      <Text style={[styles.profileStatValue, { color: palette.text }]}>
-                        {profileStats[key]}%
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.profileStatBar,
-                        { borderColor: palette.border, backgroundColor: palette.background },
-                      ]}>
-                      <View
-                        style={[
-                          styles.profileStatFill,
-                          { width: `${profileStats[key]}%`, backgroundColor: palette.accent },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                ))}
-              </Pressable>
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.sectionStack,
-              { borderColor: palette.border, backgroundColor: palette.card },
-            ]}>
-            <View style={[styles.sectionStackRow, styles.sectionStackColumn]}>
-              <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                {t((d) => d.profile.name)}
-              </Text>
-              <TextInput
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder={t((d) => d.profile.name)}
-                placeholderTextColor={palette.text + '99'}
-                editable={canEditProfile}
-                style={[
-                  styles.textInput,
-                  {
-                    borderColor: palette.border,
-                    backgroundColor: palette.background,
-                    color: palette.text,
-                  },
-                ]}
-              />
-            </View>
-
-            <View
-              style={[
-                styles.sectionStackRow,
-                styles.sectionStackColumn,
-                { borderTopWidth: 1, borderColor: palette.border },
-              ]}>
-              <Text style={[styles.fieldLabel, { color: palette.text }]}>
-                {t((d) => d.profile.email)}
-              </Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder={t((d) => d.profile.email)}
-                placeholderTextColor={palette.text + '99'}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoCorrect={false}
-                editable={canEditProfile}
-                style={[
-                  styles.textInput,
-                  {
-                    borderColor: palette.border,
-                    backgroundColor: palette.background,
-                    color: palette.text,
-                  },
-                ]}
-              />
-            </View>
-
-            {statusMessage ? (
-              <Text
-                style={[
-                  styles.statusMessage,
-                  {
-                    color: statusMessage.type === 'error' ? '#ef4444' : palette.accent,
-                  },
-                ]}>
-                {statusMessage.text}
-              </Text>
-            ) : null}
-
-            <View style={[styles.sectionStackRow, styles.saveRow]}>
-              <Button
-                title={savingProfile ? t((d) => d.common.loading) : t((d) => d.profile.saveName)}
-                onPress={handleSaveProfile}
-                loading={savingProfile}
-                disabled={!hasProfileChanges || savingProfile || !canEditProfile}
-              />
-            </View>
-
+        >
+          {/* Hero Profile Section */}
+          <GlassCard intensity={40} style={[styles.heroCard, { backgroundColor: themeKey === 'light' ? 'rgba(248, 248, 250, 0.9)' : 'rgba(255,255,255,0.05)' }]}>
             <Pressable
-              onPress={() => setPasswordModalVisible(true)}
-              disabled={!canEditProfile}
-              style={({ pressed }) => [
-                styles.sectionStackRow,
-                styles.sectionStackLastRow,
-                {
-                  borderTopWidth: 1,
-                  borderColor: palette.border,
-                  backgroundColor: palette.card,
-                  opacity: !canEditProfile ? 0.5 : pressed ? 0.85 : 1,
-                },
-              ]}>
-              <Text style={[styles.passwordText, { color: palette.text }]}>
-                {t((d) => d.profile.changePassword)}
-              </Text>
-              <Text style={[styles.passwordText, { color: palette.accent }]}>›</Text>
+              onPress={handleAvatarPress}
+              style={[styles.avatarContainer, avatarFrameStyle]}
+            >
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
+              ) : (
+                <Text style={[styles.avatarInitials, { color: palette.background }]}>{initials}</Text>
+              )}
+              <View style={[styles.editBadge, { backgroundColor: palette.accent }]}>
+                <Ionicons name="pencil" size={12} color="white" />
+              </View>
             </Pressable>
-          </View>
 
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>
-              {t((d) => d.profile.stats)}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => setStatInfoVisible(true)}
-            style={({ pressed }) => [
-              styles.statsRow,
-              pressed ? styles.statsRowPressed : null,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={t((d) => d.profile.statInfoTitle)}>
-            <View
-              style={[
-                styles.statsCard,
-                { borderColor: palette.border, backgroundColor: palette.card, marginRight: scaleValue(10) },
-              ]}>
-              <Text style={[styles.statsLabel, { color: palette.text }]}>
-                {t((d) => d.profile.mostActiveCategory)}
-              </Text>
-              <Text style={[styles.statsValue, { color: palette.text }]}>
-                {mostActiveCategoryLabel ?? t((d) => d.profile.mostActiveNone)}
+            <Text style={[styles.heroName, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>{fullName}</Text>
+            <Text style={[styles.heroEmail, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>{email}</Text>
+            <View style={[styles.memberSinceContainer, { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.05)' : 'rgba(255,255,255,0.1)' }]}>
+              <Text style={[styles.memberSinceText, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.8)' : 'rgba(255,255,255,0.8)' }]}>
+                {(() => {
+                  const level = Math.floor(totalPoints / 500) + 1;
+                  const getRank = (p: number) => {
+                    if (p < 100) return 'Novice Planner';
+                    if (p < 500) return 'Focus Initiate';
+                    if (p < 1000) return 'Productivity Enthusiast';
+                    if (p < 2500) return 'Task Master';
+                    if (p < 5000) return 'Grand Architect';
+                    return 'Time Lord';
+                  };
+                  return `Level ${level} • ${getRank(totalPoints)}`;
+                })()}
               </Text>
             </View>
-            <View
-              style={[
-                styles.statsCard,
-                { borderColor: palette.border, backgroundColor: palette.card },
-              ]}>
-              <Text style={[styles.statsLabel, { color: palette.text }]}>
-                {t((d) => d.profile.totalFocusTime)}
-              </Text>
-              <Text style={[styles.statsValue, { color: palette.text }]}>
-                {t((d) => d.profile.totalFocusMinutesLabel, { minutes: totalFocusMinutes })}
-              </Text>
-            </View>
-          </Pressable>
 
-          <View style={[styles.sectionHeader, styles.achievementHeader]}>
-            <Text style={[styles.achievementHeading, { color: palette.text }]}>
-              {t((d) => d.profile.achievements)}
-            </Text>
-          </View>
-          <View style={styles.achievementGrid}>
-            {shopBadges.map((badge) => {
-              const locked = !badge.owned;
-              return (
-                <View
-                  key={badge.id}
-                  style={[
-                    styles.achievementCard,
+            {/* Profile Editing Inputs (Collapsible or Inline) */}
+            {/* Use transparent inputs for editing */}
+            <View style={styles.editForm}>
+              <View style={styles.inputRow}>
+                <TextInput
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder={t((d) => d.profile.name)}
+                  placeholderTextColor={themeKey === 'light' ? 'rgba(30, 27, 75, 0.4)' : 'rgba(255,255,255,0.4)'}
+                  editable={canEditProfile}
+                  style={[styles.glassInput, { color: themeKey === 'light' ? '#1e1b4b' : '#fff', borderColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.1)', backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.03)' : 'rgba(0,0,0,0.2)' }]}
+                />
+              </View>
+              <View style={styles.inputRow}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={t((d) => d.profile.email)}
+                  placeholderTextColor={themeKey === 'light' ? 'rgba(30, 27, 75, 0.4)' : 'rgba(255,255,255,0.4)'}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  editable={canEditProfile}
+                  style={[styles.glassInput, { color: themeKey === 'light' ? '#1e1b4b' : '#fff', borderColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.1)', backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.03)' : 'rgba(0,0,0,0.2)' }]}
+                />
+              </View>
+
+              {statusMessage && (
+                <Text style={[
+                  styles.statusMessage,
+                  { color: statusMessage.type === 'error' ? '#ff6b6b' : '#51cf66' }
+                ]}>
+                  {statusMessage.text}
+                </Text>
+              )}
+
+              <View style={styles.actionButtons}>
+                <Pressable
+                  onPress={handleSaveProfile}
+                  disabled={!hasProfileChanges || savingProfile}
+                  style={({ pressed }) => [
+                    styles.actionButton,
                     {
-                      borderColor: palette.border,
-                      backgroundColor: palette.card,
-                      opacity: locked ? 0.75 : 1,
+                      backgroundColor: hasProfileChanges
+                        ? palette.accent
+                        : (themeKey === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)')
                     },
+                    pressed && { opacity: 0.8 }
+                  ]}
+                >
+                  <Text style={[
+                    styles.actionButtonText,
+                    !hasProfileChanges && { color: themeKey === 'light' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)' }
                   ]}>
-                  <View
+                    {savingProfile ? t((d) => d.common.loading) : t((d) => d.profile.saveName)}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setPasswordModalVisible(true)}
+                  style={styles.passwordButton}
+                >
+                  <Text style={[styles.passwordButtonText, { color: themeKey === 'light' ? palette.accent : 'rgba(255,255,255,0.5)' }]}>{t((d) => d.profile.changePassword)}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </GlassCard>
+
+          {/* Social Hub */}
+          <GlassCard intensity={30} style={[styles.socialCard, { paddingVertical: 16, backgroundColor: themeKey === 'light' ? 'rgba(248, 248, 250, 0.9)' : 'rgba(255,255,255,0.05)' }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>Community</Text>
+              <View style={styles.onlineIndicator}>
+                <View style={[styles.greenDot, { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.2)' : 'rgba(255,255,255,0.2)' }]} />
+                <Text style={[styles.onlineText, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>0 Online</Text>
+              </View>
+            </View>
+
+            <Pressable style={styles.friendRow} android_ripple={{ color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.1)' }}>
+              {/* Circle 1: Person Add */}
+              <View style={[styles.addFriendCircle, { borderColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.2)' : 'rgba(255,255,255,0.15)', backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.05)' : 'rgba(255,255,255,0.1)' }]}>
+                <Ionicons name="person-add" size={18} color={themeKey === 'light' ? '#1e1b4b' : 'rgba(255,255,255,0.8)'} />
+              </View>
+
+              {/* Circle 2: Plus */}
+              <View style={[styles.addFriendCircle, { marginLeft: 4, borderColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.2)' : 'rgba(255,255,255,0.15)', backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.05)' : 'rgba(255,255,255,0.1)' }]}>
+                <Ionicons name="add" size={18} color={themeKey === 'light' ? '#1e1b4b' : 'rgba(255,255,255,0.8)'} />
+              </View>
+
+              {/* Circle 3: Plus */}
+              <View style={[styles.addFriendCircle, { marginLeft: 4, borderColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.2)' : 'rgba(255,255,255,0.15)', backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.05)' : 'rgba(255,255,255,0.1)' }]}>
+                <Ionicons name="add" size={18} color={themeKey === 'light' ? '#1e1b4b' : 'rgba(255,255,255,0.8)'} />
+              </View>
+
+              <Text style={[styles.addFriendTextSmall, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>Add friends</Text>
+            </Pressable>
+          </GlassCard>
+
+          {/* Achievements Showcase */}
+          <View style={styles.achievementsSection}>
+            <Text style={[styles.sectionTitleWhite, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>Achievements</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.achievementsScroll}
+            >
+              {shopBadges.map((badge) => {
+                const locked = !badge.owned;
+                const iconConfig = BADGE_ICONS[badge.id] || BADGE_ICONS.default;
+
+                return (
+                  <GlassCard
+                    key={badge.id}
+                    intensity={20}
                     style={[
-                      styles.achievementIcon,
-                      { borderColor: palette.border, backgroundColor: palette.background },
-                    ]}>
-                    <Ionicons
-                      name={locked ? 'lock-closed' : 'trophy'}
-                      size={16}
-                      color={locked ? palette.border : palette.accent}
-                    />
-                  </View>
-                  <View style={styles.achievementBody}>
-                    <Text
-                      style={[
-                        styles.achievementTitle,
-                        { color: locked ? palette.text : palette.text },
-                      ]}>
-                      {badgeDetails[badge.id]?.title ?? badge.title}
-                    </Text>
-                    {(badgeDetails[badge.id]?.description ?? badge.requirementDescription) ? (
-                      <Text
-                        style={[
-                          styles.achievementSubtitle,
-                          { color: locked ? palette.text + '99' : palette.text + 'CC' },
-                        ]}>
-                        {badgeDetails[badge.id]?.description ?? badge.requirementDescription}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <View
-                    style={[
-                      styles.achievementStatus,
+                      styles.achievementCard,
+                      locked && styles.achievementCardLocked,
                       {
-                        borderColor: locked ? palette.border : palette.accent,
-                        backgroundColor: locked ? palette.background : palette.accent,
-                      },
-                    ]}>
-                    <Text
-                      style={[
-                        styles.achievementStatusText,
-                        { color: locked ? palette.text : palette.background },
+                        backgroundColor: themeKey === 'light'
+                          ? (locked ? `${iconConfig.color}10` : `${iconConfig.color}20`)
+                          : 'rgba(255,255,255,0.05)'
+                      }
+                    ]}
+                  >
+                    <Pressable
+                      style={{ flex: 1, justifyContent: 'space-between', width: '100%' }}
+                      onPress={() => {
+                        setSelectedAchievement({
+                          ...badge,
+                          title: badgeDetails[badge.id]?.title ?? badge.title,
+                          description: badge.requirementDescription,
+                          icon: iconConfig.icon,
+                          color: iconConfig.color,
+                          locked: locked
+                        });
+                        setAchievementModalVisible(true);
+                      }}
+                    >
+                      <View style={[
+                        styles.achievementIcon,
+                        {
+                          // Locked: Very subtle background of the color. Unlocked: Brighter background
+                          backgroundColor: locked ? `${iconConfig.color}15` : `${iconConfig.color}40`,
+                          // Locked: Dimmed border. Unlocked: Full bright color
+                          borderColor: locked ? `${iconConfig.color}30` : iconConfig.color,
+                          borderWidth: 1,
+                          // Add glow effect for owned items
+                          shadowColor: locked ? 'transparent' : iconConfig.color,
+                          shadowOpacity: locked ? 0 : 0.5,
+                          shadowRadius: 8,
+                          elevation: locked ? 0 : 5,
+                        }
                       ]}>
-                      {locked ? t((d) => d.profile.achievementLocked) : t((d) => d.profile.achievementUnlocked)}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
+                        <Ionicons
+                          name={iconConfig.icon}
+                          size={24} // Slightly larger for better visibility
+                          // Locked: Pale/Dimmed color. Unlocked: Bright color
+                          color={locked ? `${iconConfig.color}60` : iconConfig.color}
+                        />
+                      </View>
+
+                      {locked && (
+                        <View style={{ position: 'absolute', top: 0, right: 0 }}>
+                          <Ionicons name="lock-closed" size={14} color={themeKey === 'light' ? 'rgba(30, 27, 75, 0.4)' : 'rgba(255,255,255,0.4)'} />
+                        </View>
+                      )}
+
+                      <View>
+                        <Text
+                          numberOfLines={2}
+                          style={{
+                            fontWeight: 'bold',
+                            fontSize: 13,
+                            color: themeKey === 'light' ? '#1e1b4b' : '#fff',
+                            marginBottom: 4,
+                            height: 32, // Fixed height for alignment
+                            textAlign: 'center'
+                          }}
+                        >
+                          {badgeDetails[badge.id]?.title ?? badge.title}
+                        </Text>
+                        <View style={[styles.progressBarBg, { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.1)' }]}>
+                          <View
+                            style={[
+                              styles.progressBarFill,
+                              {
+                                width: locked ? '0%' : '100%',
+                                backgroundColor: iconConfig.color,
+                                opacity: locked ? 0 : 1
+                              }
+                            ]}
+                          />
+                        </View>
+                      </View>
+                    </Pressable>
+                  </GlassCard>
+                );
+              })}
+            </ScrollView>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Modals remain mostly the same but could be styled better if needed, keeping simple for now to match request scope */}
       <Popup
         visible={avatarModalVisible}
         title={t((d) => d.points.profilePhotos)}
@@ -661,96 +598,124 @@ export default function ProfileScreen() {
         onClose={() => setAvatarModalVisible(false)}
       />
 
-      <Popup
-        visible={statInfoVisible}
-        title={t((d) => d.profile.statInfoTitle)}
-        description={t((d) => d.profile.statInfoDescription)}
-        icon="ℹ️"
-        actionLabel={t((d) => d.today.close)}
-        onClose={() => setStatInfoVisible(false)}
-      />
 
       <Modal
         visible={passwordModalVisible}
-        animationType="slide"
+        animationType="fade"
         transparent
         onRequestClose={closePasswordModal}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalCardWrapper}>
-            <View
-              style={[
-                styles.modalCard,
-                { backgroundColor: palette.card, borderColor: palette.border },
-              ]}>
-              <Text style={[styles.modalTitle, { color: palette.text }]}>
-                {t((d) => d.profile.changePassword)}
-              </Text>
-              <Text style={[styles.modalDescription, { color: palette.text + 'CC' }]}>
-                {t((d) => d.profile.changePasswordMessage)}
-              </Text>
-              <TextInput
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder={t((d) => d.auth.passwordPlaceholder)}
-                placeholderTextColor={palette.text + '88'}
-                secureTextEntry
-                style={[
-                  styles.modalInput,
-                  { borderColor: palette.border, backgroundColor: palette.background, color: palette.text },
-                ]}
-              />
-              <TextInput
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder={t((d) => d.auth.confirmPassword)}
-                placeholderTextColor={palette.text + '88'}
-                secureTextEntry
-                style={[
-                  styles.modalInput,
-                  { borderColor: palette.border, backgroundColor: palette.background, color: palette.text },
-                ]}
-              />
-              {passwordError ? (
-                <Text style={[styles.statusMessage, { color: '#ef4444' }]}>{passwordError}</Text>
-              ) : null}
-              <View style={styles.modalActions}>
-                <Button
-                  title={t((d) => d.common.cancel)}
-                  onPress={closePasswordModal}
-                  disabled={passwordLoading}
-                  type="ghost"
-                />
-                <View style={styles.modalActionSpacing} />
-                <Button
-                  title={passwordLoading ? t((d) => d.common.loading) : t((d) => d.profile.changePassword)}
-                  onPress={handlePasswordSubmit}
-                  loading={passwordLoading}
-                  disabled={passwordLoading}
-                />
-              </View>
+          <GlassCard style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {t((d) => d.profile.changePassword)}
+            </Text>
+            <Text style={styles.modalDescription}>
+              {t((d) => d.profile.changePasswordMessage)}
+            </Text>
+            <TextInput
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder={t((d) => d.auth.passwordPlaceholder)}
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              secureTextEntry
+              style={styles.glassInput}
+            />
+            <TextInput
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder={t((d) => d.auth.confirmPassword)}
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              secureTextEntry
+              style={[styles.glassInput, { marginTop: 10 }]}
+            />
+            {passwordError ? (
+              <Text style={[styles.statusMessage, { color: '#ff6b6b' }]}>{passwordError}</Text>
+            ) : null}
+            <View style={styles.modalActions}>
+              <Pressable onPress={closePasswordModal} style={[styles.modalButtonGhost, { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.05)' : 'rgba(255,255,255,0.05)' }]}>
+                <Text style={[styles.modalButtonGhostText, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>{t((d) => d.common.cancel)}</Text>
+              </Pressable>
+              <Pressable onPress={handlePasswordSubmit} style={[styles.modalButtonPrimary, { backgroundColor: palette.accent }]}>
+                <Text style={styles.modalButtonPrimaryText}>
+                  {passwordLoading ? t((d) => d.common.loading) : t((d) => d.profile.changePassword)}
+                </Text>
+              </Pressable>
             </View>
-          </KeyboardAvoidingView>
+          </GlassCard>
         </View>
       </Modal>
-    </SafeAreaView>
+      <Modal
+        visible={achievementModalVisible}
+        animationType="none"
+        transparent
+        onRequestClose={closeAchievementModal}
+      >
+        <Animated.View style={{ flex: 1, opacity: achievementFade }}>
+          <Pressable
+            style={[styles.modalOverlay, { backgroundColor: themeKey === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.6)' }]}
+            onPress={closeAchievementModal}
+          >
+            <GlassCard style={[styles.modalCard, { backgroundColor: themeKey === 'light' ? 'rgba(255,255,255,0.95)' : undefined }]} intensity={themeKey === 'light' ? 60 : 40}>
+              {selectedAchievement && (
+                <View style={{ alignItems: 'center' }}>
+                  <View style={[
+                    styles.achievementIcon,
+                    {
+                      width: 80, height: 80, borderRadius: 40,
+                      backgroundColor: selectedAchievement.locked
+                        ? `${selectedAchievement.color}15`
+                        : `${selectedAchievement.color}40`,
+                      borderColor: selectedAchievement.locked
+                        ? `${selectedAchievement.color}30`
+                        : selectedAchievement.color,
+                      borderWidth: 2,
+                      shadowColor: selectedAchievement.locked ? 'transparent' : selectedAchievement.color,
+                      shadowOpacity: selectedAchievement.locked ? 0 : 0.6,
+                      shadowRadius: 15,
+                      marginBottom: 20
+                    }
+                  ]}>
+                    <Ionicons
+                      name={selectedAchievement.icon}
+                      size={40}
+                      color={selectedAchievement.locked
+                        ? `${selectedAchievement.color}60`
+                        : selectedAchievement.color}
+                    />
+                  </View>
+
+                  <Text style={[styles.modalTitle, { fontSize: 22, height: 'auto', color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>
+                    {selectedAchievement.title}
+                  </Text>
+
+                  <Text style={[styles.modalDescription, { marginTop: 10, color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>
+                    {selectedAchievement.description || "Unlock this achievement to earn rewards!"}
+                  </Text>
+
+                  {selectedAchievement.locked && (
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.05)' : 'rgba(255,255,255,0.05)',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 12,
+                      marginTop: 10
+                    }}>
+                      <Ionicons name="lock-closed" size={14} color={themeKey === 'light' ? 'rgba(30, 27, 75, 0.5)' : 'rgba(255,255,255,0.5)'} style={{ marginRight: 6 }} />
+                      <Text style={{ color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.5)' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Locked</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </GlassCard>
+          </Pressable>
+        </Animated.View>
+      </Modal>
+
+    </GradientBackground >
   );
 }
-
-const SIZE_SCALE = 0.9;
-const scaleValue = (value: number) => value * SIZE_SCALE;
-const AVATAR_BASE_SIZE = 112;
-const AVATAR_SIZE = Math.round(AVATAR_BASE_SIZE * 1.5 * 0.9 * 1.05);
-const AVATAR_RADIUS = AVATAR_SIZE / 2;
-const PROFILE_STAT_BASE = 20;
-const PROFILE_STAT_MAX = 100;
-const SF_MEDIUM_FONT_FAMILY =
-  Platform.select({
-    ios: 'SF Pro Display',
-    web: '"SF Pro Display", "SF Pro Text", "-apple-system", "BlinkMacSystemFont", "Segoe UI", system-ui, sans-serif',
-    default: 'SF Pro Display',
-  }) ?? 'System';
 
 const styles = StyleSheet.create({
   safe: {
@@ -760,326 +725,340 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flexGrow: 1,
-    padding: scaleValue(16),
-    paddingBottom: scaleValue(34),
+    padding: 20,
+    paddingBottom: 40,
   },
-  backRow: {
+  headerWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  headerContent: {
+    flex: 1,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: scaleValue(6),
-    marginTop: scaleValue(4),
-    marginLeft: scaleValue(10),
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: scaleValue(12),
+  headerButton: {
+    width: 48, // Wider
+    height: 36, // Slightly shorter
+    borderRadius: 12, // Rectangular with rounded corners
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  avatarColumn: {
-    marginRight: scaleValue(10),
-    marginTop: -scaleValue(6),
-    marginLeft: scaleValue(6),
+  // Removed old header style
+  backButton: {
+    width: 40,
+    height: 40,
+  },
+  backButtonCard: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+
+  headerTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   headerRight: {
-    flex: 1,
-    marginLeft: scaleValue(6),
-  },
-  backButton: {
-    width: scaleValue(36),
-    height: scaleValue(36),
-    borderRadius: scaleValue(18),
-    alignItems: 'center',
+    minWidth: 40,
+    alignItems: 'flex-end',
     justifyContent: 'center',
-    borderWidth: 1,
   },
-  backIcon: {
-    fontSize: scaleValue(20),
-    fontWeight: '700',
+  headerPointsLabel: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '800', // Bold as requested
+    letterSpacing: 0.5,
   },
-  headerStats: {
-    alignItems: 'flex-start',
-    marginLeft: scaleValue(10),
-    marginBottom: scaleValue(6),
+  headerPointsSuffix: {
+    fontWeight: '400',
+    fontSize: 12,
+    opacity: 0.8,
   },
-  headerStatValue: {
-    fontSize: scaleValue(13),
-    fontWeight: '500',
-    fontFamily: SF_MEDIUM_FONT_FAMILY,
-  },
-  headerStatSub: {
-    fontSize: scaleValue(11),
-    fontWeight: '500',
-    fontFamily: SF_MEDIUM_FONT_FAMILY,
-    marginTop: scaleValue(2),
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_RADIUS,
+
+  // Hero Section
+  heroCard: {
+    padding: 24,
     alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    marginBottom: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  avatarInitials: {
-    fontSize: scaleValue(32),
-    fontWeight: '700',
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   avatarImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  avatarInitials: {
+    fontSize: 36,
+    fontWeight: 'bold',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#1a1a1a', // Dark border to separate from avatar
+  },
+  heroName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  heroEmail: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 8,
+  },
+  memberSinceContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 20,
+  },
+  memberSinceText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+  },
+  editForm: {
     width: '100%',
-    height: '100%',
+    marginTop: 10,
   },
-  profileStatsCard: {
-    marginTop: scaleValue(12),
-    padding: scaleValue(10),
+  inputRow: {
+    marginBottom: 12,
+  },
+  glassInput: {
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.2)',
     borderWidth: 1,
-    borderRadius: scaleValue(14),
-    width: AVATAR_SIZE,
-  },
-  profileStatsInline: {
-    alignSelf: 'flex-start',
-  },
-  profileStatsPressed: {
-    opacity: 0.94,
-  },
-  profileStat: {
-    marginBottom: scaleValue(8),
-  },
-  profileStatLast: {
-    marginBottom: 0,
-  },
-  profileStatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  profileStatLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileStatIcon: {
-    marginRight: scaleValue(6),
-  },
-  profileStatLabel: {
-    fontSize: scaleValue(12),
-    fontWeight: '700',
-  },
-  profileStatValue: {
-    fontSize: scaleValue(12),
-    fontWeight: '700',
-  },
-  profileStatBar: {
-    height: scaleValue(8),
-    borderRadius: scaleValue(999),
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginTop: scaleValue(4),
-  },
-  profileStatFill: {
-    height: '100%',
-    borderRadius: scaleValue(999),
-  },
-  sectionStack: {
-    borderWidth: 1,
-    borderRadius: scaleValue(18),
-    marginBottom: scaleValue(16),
-    overflow: 'hidden',
-    alignSelf: 'flex-start',
-    width: '95%',
-  },
-  sectionStackRow: {
-    paddingHorizontal: scaleValue(14),
-    paddingVertical: scaleValue(10),
-  },
-  sectionStackColumn: {
-    flexDirection: 'column',
-  },
-  sectionStackLastRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  fieldLabel: {
-    fontSize: scaleValue(12),
-    fontWeight: '600',
-    marginBottom: scaleValue(6),
-    textTransform: 'uppercase',
-    letterSpacing: scaleValue(0.4),
-  },
-  textInput: {
-    height: scaleValue(42),
-    borderWidth: 1,
-    borderRadius: scaleValue(12),
-    paddingHorizontal: scaleValue(14),
-    fontSize: scaleValue(14),
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 16,
+    color: 'white',
+    fontSize: 16,
   },
   statusMessage: {
-    paddingHorizontal: scaleValue(14),
-    marginTop: scaleValue(6),
-    fontSize: scaleValue(13),
-    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontSize: 14,
   },
-  saveRow: {
-    alignItems: 'flex-end',
+  actionButtons: {
+    gap: 12,
+    marginTop: 8,
   },
-  passwordText: {
-    fontSize: scaleValue(15),
-    fontWeight: '600',
+  actionButton: {
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  passwordButton: {
+    alignItems: 'center',
+    padding: 8,
+  },
+  passwordButtonText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+  },
+
+  // Social Hub
+  socialCard: {
+    padding: 20,
+    marginBottom: 24,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   sectionHeader: {
-    marginBottom: scaleValue(12),
-  },
-  sectionTitle: {
-    fontSize: scaleValue(15),
-    fontWeight: '700',
-  },
-  achievementHeader: {
-    marginTop: scaleValue(18),
-  },
-  achievementHeading: {
-    fontSize: scaleValue(24), // 60% larger than base section title
-    fontWeight: '800',
-  },
-  achievementSubheading: {
-    fontSize: scaleValue(14.5), // ~20% larger than previous subtitle
-    opacity: 0.85,
-    marginTop: scaleValue(6),
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: scaleValue(14),
-    paddingHorizontal: scaleValue(10),
-    paddingVertical: scaleValue(6),
-    marginRight: scaleValue(8),
-    marginBottom: scaleValue(8),
-  },
-  badgeIcon: {
-    fontSize: scaleValue(16),
-    marginRight: scaleValue(6),
-  },
-  badgeLabel: {
-    fontSize: scaleValue(13),
-    fontWeight: '600',
-  },
-  statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  statsRowPressed: {
-    opacity: 0.96,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
   },
-  statsCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: scaleValue(16),
-    padding: scaleValue(12),
+  sectionTitleWhite: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginLeft: 4,
+    marginBottom: 12,
   },
-  statsLabel: {
-    fontSize: scaleValue(11),
-    letterSpacing: scaleValue(0.4),
-    textTransform: 'uppercase',
-    marginBottom: scaleValue(6),
-    fontWeight: '600',
-  },
-  statsValue: {
-    fontSize: scaleValue(15),
-    fontWeight: '700',
-  },
-  achievementGrid: {
-    marginTop: scaleValue(4),
-  },
-  achievementCard: {
+  onlineIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  greenDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#51cf66', // Default green
+    marginRight: 6,
+  },
+  onlineText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  friendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // gap: 0, // We use negative margins for overlap
+  },
+  addFriendCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderRadius: scaleValue(14),
-    paddingVertical: scaleValue(10),
-    paddingHorizontal: scaleValue(12),
-    marginBottom: scaleValue(10),
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  addFriendTextSmall: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    fontWeight: '400', // Thin/Regular
+    marginLeft: 12,
+  },
+
+
+  // Achievements
+  achievementsSection: {
+    marginBottom: 20,
+  },
+  achievementsScroll: {
+    paddingRight: 20,
+    gap: 12,
+  },
+  achievementCard: {
+    width: 120,
+    height: 140, // Square-ish
+    padding: 12,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  achievementCardLocked: {
+    // opacity: 0.6, // Removed to keep the card visible, we dim content instead
+    backgroundColor: 'rgba(255,255,255,0.03)', // Slightly darker bg for locked
   },
   achievementIcon: {
-    width: scaleValue(32),
-    height: scaleValue(32),
-    borderRadius: scaleValue(10),
-    alignItems: 'center',
+    width: 44, // Slightly larger container
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
-    borderWidth: 1,
-    marginRight: scaleValue(10),
-  },
-  achievementBody: {
-    flex: 1,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   achievementTitle: {
-    fontSize: scaleValue(14),
-    fontWeight: '700',
+    color: 'white',
+    fontSize: 12, // Slightly smaller to fit 2 lines
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center', // Center text
+    height: 32, // Fixed height for 2 lines
   },
-  achievementSubtitle: {
-    fontSize: scaleValue(12),
-    marginTop: scaleValue(2),
+  progressBarBg: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: '100%',
   },
-  achievementStatus: {
-    paddingHorizontal: scaleValue(10),
-    paddingVertical: scaleValue(4),
-    borderRadius: scaleValue(10),
-    borderWidth: 1,
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 2,
   },
-  achievementStatusText: {
-    fontSize: scaleValue(11),
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: scaleValue(0.4),
-  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
-    padding: scaleValue(16),
-  },
-  modalCardWrapper: {
-    flex: 1,
-    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalCard: {
-    borderWidth: 1,
-    borderRadius: scaleValue(18),
-    padding: scaleValue(16),
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 18,
-    elevation: 10,
+    padding: 24,
+    backgroundColor: '#1a1a1a', // Fallback
+    borderRadius: 24,
   },
   modalTitle: {
-    fontSize: scaleValue(18),
-    fontWeight: '700',
-    marginBottom: scaleValue(6),
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   modalDescription: {
-    fontSize: scaleValue(13),
-    lineHeight: scaleValue(18),
-    marginBottom: scaleValue(10),
-  },
-  modalInput: {
-    height: scaleValue(44),
-    borderWidth: 1,
-    borderRadius: scaleValue(12),
-    paddingHorizontal: scaleValue(12),
-    fontSize: scaleValue(14),
-    marginBottom: scaleValue(10),
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginTop: scaleValue(4),
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
   },
-  modalActionSpacing: {
-    width: scaleValue(10),
+  modalButtonGhost: {
+    flex: 1,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  modalButtonGhostText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 22,
+  },
+  modalButtonPrimaryText: {
+    color: 'white',
+    fontWeight: '600',
   },
 });
