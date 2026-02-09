@@ -205,8 +205,13 @@ export function AiPlanModal(props: AiPlanModalProps) {
   const placeholderColor = `${palette.text}88`;
   const inputTextColor = `${palette.text}dd`;
 
+  // Dynamic Colors for Light Mode Refinement
+  const titleColor = !isDark ? '#5b21b6' : palette.text;
+  const subTitleColor = !isDark ? '#007AFF' : palette.text;
+  const contentColor = !isDark ? '#000000' : palette.text;
+
   // Note: aiUsageColor was not returned by hook, need to derive it or check if I missed it.
-  const derivedAiUsageColor = isLimitReached || isGuestUser ? palette.accent : palette.text;
+  const derivedAiUsageColor = isLimitReached || isGuestUser ? palette.accent : subTitleColor;
 
   return (
     <Modal
@@ -246,10 +251,10 @@ export function AiPlanModal(props: AiPlanModalProps) {
                 />
               </Animated.View>
 
-              <Text style={[styles.loadingText, { color: '#000000', marginTop: 40 }]}>
+              <Text style={[styles.loadingText, { color: !isDark ? titleColor : '#000000', marginTop: 40 }]}>
                 {isRegenerating ? 'Refining your plan...' : 'AI is crafting your plan...'}
               </Text>
-              <Text style={[styles.loadingSub, { color: '#666666' }]}>
+              <Text style={[styles.loadingSub, { color: !isDark ? subTitleColor : '#666666' }]}>
                 {isRegenerating ? 'Applying your feedback' : 'Analyzing your habits & goals'}
               </Text>
             </View>
@@ -281,8 +286,8 @@ export function AiPlanModal(props: AiPlanModalProps) {
                   <Ionicons name="arrow-back" size={24} color={palette.text} />
                 </Pressable>
                 <View style={styles.headerTitles}>
-                  <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.aiPlanner.title)}</Text>
-                  <Text style={[styles.subTitle, { color: palette.text }]}>{dateLabel}</Text>
+                  <Text style={[styles.title, { color: titleColor }]}>{t((d) => d.aiPlanner.title)}</Text>
+                  <Text style={[styles.subTitle, { color: subTitleColor }]}>{dateLabel}</Text>
                 </View>
               </View>
 
@@ -299,7 +304,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                     showsVerticalScrollIndicator={false}
                   >
                     <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
                         {t((d) => d.aiPlanner.wakeTime)}
                       </Text>
                       <TextInput
@@ -307,7 +312,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         onChangeText={(value) => setWakeTime(sanitizeTimeInput(value))}
                         style={[
                           styles.input,
-                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                          { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder="07:30"
                         placeholderTextColor={placeholderColor}
@@ -315,7 +320,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                       />
                     </View>
                     <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
                         {t((d) => d.aiPlanner.sleepTime)}
                       </Text>
                       <TextInput
@@ -323,7 +328,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         onChangeText={(value) => setSleepTime(sanitizeTimeInput(value))}
                         style={[
                           styles.input,
-                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                          { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder="23:30"
                         placeholderTextColor={placeholderColor}
@@ -332,7 +337,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                     </View>
                     <View style={styles.field}>
                       <View style={styles.workToggleRow}>
-                        <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                        <Text style={[styles.fieldLabel, { color: titleColor }]}>
                           {t((d) => d.aiPlanner.workToggle)}
                         </Text>
                         <Switch
@@ -346,7 +351,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         <>
                           <View style={styles.fieldRow}>
                             <View style={styles.fieldHalf}>
-                              <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                              <Text style={[styles.fieldLabel, { color: titleColor }]}>
                                 {t((d) => d.aiPlanner.workStart)}
                               </Text>
                               <TextInput
@@ -354,7 +359,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                                 onChangeText={(value) => setWorkStart(sanitizeTimeInput(value))}
                                 style={[
                                   styles.input,
-                                  { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                                  { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                                 ]}
                                 placeholder="09:00"
                                 placeholderTextColor={placeholderColor}
@@ -362,7 +367,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                               />
                             </View>
                             <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
-                              <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                              <Text style={[styles.fieldLabel, { color: titleColor }]}>
                                 {t((d) => d.aiPlanner.workEnd)}
                               </Text>
                               <TextInput
@@ -370,7 +375,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                                 onChangeText={(value) => setWorkEnd(sanitizeTimeInput(value))}
                                 style={[
                                   styles.input,
-                                  { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                                  { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                                 ]}
                                 placeholder="17:00"
                                 placeholderTextColor={placeholderColor}
@@ -387,7 +392,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                       )}
                     </View>
                     <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
                         {t((d) => d.aiPlanner.priorities)}
                       </Text>
                       <TextInput
@@ -396,19 +401,19 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         style={[
                           styles.input,
                           styles.multiline,
-                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                          { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder={t((d) => d.aiPlanner.prioritiesPlaceholder)}
                         placeholderTextColor={placeholderColor}
                         multiline
                         numberOfLines={3}
                       />
-                      <Text style={[styles.helperText, { color: palette.text }]}>
+                      <Text style={[styles.helperText, { color: subTitleColor }]}>
                         {helperTexts.priorities}
                       </Text>
                     </View>
                     <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
                         {t((d) => d.aiPlanner.habits)}
                       </Text>
                       <TextInput
@@ -417,19 +422,19 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         style={[
                           styles.input,
                           styles.multiline,
-                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                          { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder={t((d) => d.aiPlanner.habitsPlaceholder)}
                         placeholderTextColor={placeholderColor}
                         multiline
                         numberOfLines={3}
                       />
-                      <Text style={[styles.helperText, { color: palette.text }]}>
+                      <Text style={[styles.helperText, { color: subTitleColor }]}>
                         {helperTexts.habits}
                       </Text>
                     </View>
                     <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
                         {t((d) => d.aiPlanner.notes)}
                       </Text>
                       <TextInput
@@ -438,14 +443,14 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         style={[
                           styles.input,
                           styles.multiline,
-                          { backgroundColor: palette.background, borderColor: palette.border, color: inputTextColor },
+                          { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder={t((d) => d.aiPlanner.notesPlaceholder)}
                         placeholderTextColor={placeholderColor}
                         multiline
                         numberOfLines={3}
                       />
-                      <Text style={[styles.helperText, { color: palette.text }]}>
+                      <Text style={[styles.helperText, { color: subTitleColor }]}>
                         {helperTexts.feedbackExamples}
                       </Text>
                     </View>
@@ -496,7 +501,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                   </ScrollView>
                 ) : (
                   <View style={styles.previewContainer}>
-                    <Text style={[styles.previewTitle, { color: palette.text }]}>
+                    <Text style={[styles.previewTitle, { color: titleColor }]}>
                       {t((d) => d.aiPlanner.suggestedBlocks)}
                     </Text>
                     <View style={styles.limitRow}>
@@ -531,11 +536,11 @@ export function AiPlanModal(props: AiPlanModalProps) {
                                 shadowColor: palette.text,
                               },
                             ]}>
-                            <Text style={[styles.previewTime, { color: palette.text }]}>
+                            <Text style={[styles.previewTime, { color: subTitleColor }]}>
                               {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
                             </Text>
-                            <Text style={[styles.previewTitleRow, { color: palette.text }]}>{block.title}</Text>
-                            <Text style={[styles.previewCategory, { color: palette.text }]}>{block.category}</Text>
+                            <Text style={[styles.previewTitleRow, { color: contentColor }]}>{block.title}</Text>
+                            <Text style={[styles.previewCategory, { color: subTitleColor }]}>{block.category}</Text>
                           </View>
                         ))
                       )}
@@ -544,7 +549,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                     {/* Fixed footer section */}
                     {stage === 'preview' && (
                       <View style={styles.feedbackSection}>
-                        <Text style={[styles.feedbackLabel, { color: palette.text }]}>
+                        <Text style={[styles.feedbackLabel, { color: titleColor }]}>
                           {t((d) => d.aiPlanner.feedbackLabel)}
                         </Text>
                         <TextInput
@@ -552,7 +557,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                             styles.feedbackInput,
                             {
                               borderColor: palette.border,
-                              color: inputTextColor,
+                              color: contentColor,
                               backgroundColor: palette.background,
                             },
                           ]}
