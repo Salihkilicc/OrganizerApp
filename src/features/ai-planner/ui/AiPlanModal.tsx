@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AiLimitOverlay } from '@/components/AiLimitOverlay';
+import { PLAN_CATEGORY_COLORS } from '@/constants/categoryColors';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { useI18n } from '@/i18n/useI18n';
 import { useSettings } from '@/store/useSettings';
@@ -31,12 +32,26 @@ const AppIcon = require('@/assets/images/icon.png');
 
 export type AiPlanModalProps = UseAiPlannerProps;
 
-// --- Helper: Time Manipulation ---
+// --- Helper: Time Display ---
 const pad = (n: number | string) => n.toString().padStart(2, '0');
 const sanitize = (val: string) => val.replace(/[^0-9]/g, '').slice(0, 2);
 
+// Converts minutes (e.g. 540) to "09:00" or "9:00 AM"
+const formatTimeDisplay = (minutes: number, is24Hour: boolean) => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const mStr = m.toString().padStart(2, '0');
+
+  if (is24Hour) {
+    return `${pad(h)}:${mStr}`;
+  } else {
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${mStr} ${period}`;
+  }
+};
+
 const parseTimeParts = (timeStr: string, is24Hour: boolean) => {
-  // timeStr is always "HH:mm" (24h format) from the hook
   const [hStr, mStr] = (timeStr || '00:00').split(':');
   let h = parseInt(hStr, 10) || 0;
   const m = mStr || '00';
@@ -57,7 +72,7 @@ const formatTimeBack = (h: string, m: string, p: string | null, is24Hour: boolea
     if (p === 'AM' && hour === 12) hour = 0;
   }
   hour = Math.min(23, Math.max(0, hour));
-  return `${pad(hour)}:${pad(m)}`; // Always returns HH:mm string for the hook
+  return `${pad(hour)}:${pad(m)}`;
 };
 
 // --- Helper Component: Time Input Group ---
@@ -76,7 +91,6 @@ const TimeInputGroup = ({
 }) => {
   const [parts, setParts] = useState(parseTimeParts(value, is24Hour));
 
-  // Sync internal state if value changes externally
   useEffect(() => {
     setParts(parseTimeParts(value, is24Hour));
   }, [value, is24Hour]);
@@ -336,7 +350,9 @@ export function AiPlanModal(props: AiPlanModalProps) {
                   <Ionicons name="arrow-back" size={24} color={palette.text} />
                 </Pressable>
                 <View style={styles.headerTitles}>
-                  <Text style={[styles.title, { color: titleColor }]}>{t((d) => d.aiPlanner.title)}</Text>
+                  <Text style={[styles.title, { color: titleColor }]}>
+                    {stage === 'preview' ? 'Your AI Plan' : t((d) => d.aiPlanner.title)}
+                  </Text>
                   <Text style={[styles.subTitle, { color: subTitleColor }]}>{dateLabel}</Text>
                 </View>
               </View>
@@ -351,7 +367,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                   >
                     {/* Daily Routine Section */}
                     <Text style={[styles.sectionTitle, { color: titleColor }]}>
-                      {t((d) => d.aiPlanner.dailyRoutine || 'Daily Routine')}
+                      Daily Routine
                     </Text>
                     <View style={styles.timeRowContainer}>
                       <TimeInputGroup
@@ -526,25 +542,27 @@ export function AiPlanModal(props: AiPlanModalProps) {
                           {error ?? t((d) => d.aiPlanner.noBlocks)}
                         </Text>
                       ) : (
-                        previewList.map((block, index) => (
-                          <View
-                            key={`${block.startMin}-${block.title}-${index}`}
-                            style={[
-                              styles.previewItem,
-                              {
-                                borderColor: palette.border,
-                                backgroundColor: palette.background,
-                                shadowColor: palette.text,
-                              },
-                            ]}
-                          >
-                            <Text style={[styles.previewTime, { color: subTitleColor }]}>
-                              {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
-                            </Text>
-                            <Text style={[styles.previewTitleRow, { color: contentColor }]}>{block.title}</Text>
-                            <Text style={[styles.previewCategory, { color: subTitleColor }]}>{block.category}</Text>
-                          </View>
-                        ))
+                        previewList.map((block, index) => {
+                          const color = PLAN_CATEGORY_COLORS[block.category] || PLAN_CATEGORY_COLORS.other;
+                          return (
+                            <View
+                              key={`${block.startMin}-${block.title}-${index}`}
+                              style={[
+                                styles.previewItem,
+                                {
+                                  borderColor: color.border,
+                                  backgroundColor: color.background,
+                                },
+                              ]}
+                            >
+                              <Text style={[styles.previewTime, { color: subTitleColor }]}>
+                                {formatTimeDisplay(block.startMin, is24Hour)} – {formatTimeDisplay(block.endMin, is24Hour)}
+                              </Text>
+                              <Text style={[styles.previewTitleRow, { color: contentColor }]}>{block.title}</Text>
+                              <Text style={[styles.previewCategory, { color: subTitleColor }]}>{block.category}</Text>
+                            </View>
+                          );
+                        })
                       )}
                     </ScrollView>
 
