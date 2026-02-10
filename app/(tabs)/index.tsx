@@ -376,23 +376,7 @@ export default function HomeScreen() {
         </View>
 
         {/* RESET TOUR BUTTON (TEMPORARY) */}
-        <Pressable
-          onPress={() => {
-            // Only reset the tour, let it reappear
-            useSettings.setState({ hasSeenInteractiveTour: false });
-          }}
-          style={{
-            marginTop: 40,
-            backgroundColor: '#7c3aed',
-            padding: 12,
-            borderRadius: 12,
-            alignItems: 'center',
-            alignSelf: 'center',
-            marginBottom: 40
-          }}
-        >
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Reset Tour Only</Text>
-        </Pressable>
+
 
       </ScrollView>
 

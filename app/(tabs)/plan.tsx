@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Dimensions,
   Modal,
   Pressable,
   ScrollView,
@@ -8,7 +9,7 @@ import {
   Text,
   View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AiLimitOverlay } from '@/components/AiLimitOverlay';
 import { CopyDayModal } from '@/components/CopyDayModal';
@@ -17,6 +18,7 @@ import { FocusModeOverlay } from '@/components/FocusModeOverlay';
 import { HourColumn } from '@/components/HourColumn';
 import { PlanEditor } from '@/components/PlanEditor';
 import { PlanGrid } from '@/components/PlanGrid';
+import { PlanTour } from '@/components/ui/PlanTour';
 import { AiPlanModal } from '@/features/ai-planner';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { useI18n } from '@/i18n/useI18n';
@@ -36,6 +38,7 @@ import {
 } from '@/store/usePlans';
 import { usePoints } from '@/store/usePoints';
 import { usePremium } from '@/store/usePremium';
+import { useSettings } from '@/store/useSettings';
 import { useTheme } from '@/store/useTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -71,6 +74,8 @@ const LANGUAGE_LOCALE: Record<SupportedLanguage, string> = {
   pl: 'pl-PL',
 };
 
+const { width } = Dimensions.get('window');
+
 const getLocaleForLanguage = (lang: SupportedLanguage) => LANGUAGE_LOCALE[lang] ?? lang;
 
 const toISO = (date: Date) => {
@@ -103,6 +108,7 @@ type EditorValues = {
 
 export default function PlanScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { palette } = useTheme();
   const { t, lang } = useI18n();
   const locale = useMemo(() => getLocaleForLanguage(lang), [lang]);
@@ -173,6 +179,8 @@ export default function PlanScreen() {
   const blocks = usePlans((state) => state.blocks);
   const pruneBeforeToday = usePlans((state) => state.pruneBeforeToday);
   const isPremium = usePremium((state) => state.isPremium);
+  const hasSeenPlanTour = useSettings((state) => state.hasSeenPlanTour);
+  const completePlanTour = useSettings((state) => state.completePlanTour);
   const isPast = isBeforeToday(selectedDate);
   const isToday = isDateToday(selectedDate);
   const isFuture = isAfterToday(selectedDate);
@@ -511,8 +519,33 @@ export default function PlanScreen() {
   );
 
   const scrollRef = useRef<ScrollView>(null);
-  /* Increase to approx 120 mins extra space */
   const contentHeight = DAY_HEIGHT + 120 * PX_PER_MIN;
+
+  const headerHeight = 60 + insets.top; // Define headerHeight
+  // Calculate precise tour positions
+  const tourPositions = useMemo(() => ({
+    // Step 1: Month Selector (Top Left - Slightly Up)
+    month: {
+      top: headerHeight - 25,
+      left: 20,
+    },
+    // Step 2: Day Selector (Top Center - Up & Left between days)
+    day: {
+      top: headerHeight + 50,
+      left: (width / 2) - 60,
+    },
+    // Step 3: Add FAB (Bottom Right - Dot over Icon, Text Left)
+    addFab: {
+      bottom: 102, // Vertically centered with FAB (90 + 32 = 122 - 20 (half target) = 102)
+      right: 16,   // Aligns right edge of target container with right edge of FAB container
+      alignItems: 'flex-end', // Ensures target is at the right edge
+    },
+    // Step 4: AI Button (Top Right - Up over button)
+    ai: {
+      top: headerHeight - 15,
+      right: 20,
+    },
+  }), [headerHeight, insets.bottom]);
 
   return (
     <GestureHandlerRootView style={styles.flex}>
@@ -692,6 +725,8 @@ export default function PlanScreen() {
                 />
               </View>
             </View>
+
+
           </ScrollView>
         </View>
         <AiPlanModal
@@ -737,6 +772,13 @@ export default function PlanScreen() {
         onClose={handleOverlayClose}
         onWatchAd={handleWatchAd}
         onGoPremium={handleGoPremium}
+      />
+
+      {/* Plan Tour */}
+      <PlanTour
+        visible={!hasSeenPlanTour}
+        onComplete={completePlanTour}
+        positions={tourPositions}
       />
     </GestureHandlerRootView>
   );

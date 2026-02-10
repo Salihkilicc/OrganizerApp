@@ -22,6 +22,7 @@ type SettingsState = {
   hasSeenOnboarding: boolean;
   hasSeenCoachmarks: boolean;
   hasSeenInteractiveTour: boolean;
+  hasSeenPlanTour: boolean;
   userId?: string;
   loadFromServer: (userId: string) => Promise<void>;
   resetToGuest: () => void;
@@ -33,6 +34,7 @@ type SettingsState = {
   completeOnboarding: () => void;
   completeCoachmarks: () => void;
   completeInteractiveTour: () => void;
+  completePlanTour: () => void;
   resetOnboarding: () => void;
 };
 
@@ -101,6 +103,7 @@ export const useSettings = create<SettingsState>()(
         hasSeenOnboarding: false,
         hasSeenCoachmarks: false,
         hasSeenInteractiveTour: false,
+        hasSeenPlanTour: false,
         userId: undefined,
         loadFromServer,
         resetToGuest,
@@ -139,8 +142,11 @@ export const useSettings = create<SettingsState>()(
         completeInteractiveTour: () => {
           set({ hasSeenInteractiveTour: true });
         },
+        completePlanTour: () => {
+          set({ hasSeenPlanTour: true });
+        },
         resetOnboarding: () => {
-          set({ hasSeenOnboarding: false, hasSeenInteractiveTour: false, hasSeenCoachmarks: false });
+          set({ hasSeenOnboarding: false, hasSeenInteractiveTour: false, hasSeenCoachmarks: false, hasSeenPlanTour: false });
         },
       };
     },
