@@ -127,6 +127,8 @@ const parseRequest = async (req: Request) => {
     previous_plan,
     previousPlan,
     previousBlocks: rawPreviousBlocks,
+    userLanguage,
+    timeFormat,
   } = json as Record<string, unknown>;
 
   if (typeof date !== 'string' || !date) {
@@ -142,34 +144,34 @@ const parseRequest = async (req: Request) => {
 
   const normalizedPreviousBlocks: NormalizedBlock[] = Array.isArray(rawPreviousBlocks)
     ? rawPreviousBlocks
-        .map((value) => {
-          if (!value || typeof value !== 'object') return null;
-          const block = value as Record<string, unknown>;
-          const title = typeof block.title === 'string' ? block.title.trim() : '';
-          const category = typeof block.category === 'string' ? block.category.trim() : undefined;
-          const note = typeof block.note === 'string' ? block.note.trim() : undefined;
-          const { minutes: startMin, text: start } = parseTimeField(
-            block.start ?? block.startTime ?? block.start_min ?? block.startMin,
-          );
-          const { minutes: endMin, text: end } = parseTimeField(
-            block.end ?? block.endTime ?? block.end_min ?? block.endMin,
-          );
-          if (!title || startMin === undefined || endMin === undefined) return null;
-          if (startMin < 0 || endMin < 0 || startMin > 1439 || endMin > 1439) {
-            return null;
-          }
-          if (endMin <= startMin) return null;
-          return {
-            title,
-            category,
-            note,
-            startMin,
-            endMin,
-            start: start ?? formatMinutes(startMin),
-            end: end ?? formatMinutes(endMin),
-          };
-        })
-        .filter((value): value is NormalizedBlock => Boolean(value))
+      .map((value) => {
+        if (!value || typeof value !== 'object') return null;
+        const block = value as Record<string, unknown>;
+        const title = typeof block.title === 'string' ? block.title.trim() : '';
+        const category = typeof block.category === 'string' ? block.category.trim() : undefined;
+        const note = typeof block.note === 'string' ? block.note.trim() : undefined;
+        const { minutes: startMin, text: start } = parseTimeField(
+          block.start ?? block.startTime ?? block.start_min ?? block.startMin,
+        );
+        const { minutes: endMin, text: end } = parseTimeField(
+          block.end ?? block.endTime ?? block.end_min ?? block.endMin,
+        );
+        if (!title || startMin === undefined || endMin === undefined) return null;
+        if (startMin < 0 || endMin < 0 || startMin > 1439 || endMin > 1439) {
+          return null;
+        }
+        if (endMin <= startMin) return null;
+        return {
+          title,
+          category,
+          note,
+          startMin,
+          endMin,
+          start: start ?? formatMinutes(startMin),
+          end: end ?? formatMinutes(endMin),
+        };
+      })
+      .filter((value): value is NormalizedBlock => Boolean(value))
     : [];
 
   return {
@@ -189,6 +191,8 @@ const parseRequest = async (req: Request) => {
         ? previousPlanTextRaw.trim()
         : undefined,
     previousBlocks: normalizedPreviousBlocks,
+    userLanguage: typeof userLanguage === 'string' ? userLanguage : 'en',
+    timeFormat: typeof timeFormat === 'string' && (timeFormat === '12h' || timeFormat === '24h') ? timeFormat : '24h',
   };
 };
 
@@ -197,6 +201,14 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
     payload.workStart && payload.workEnd
       ? `${payload.workStart} - ${payload.workEnd}`
       : 'not provided (the user does not have fixed work hours)';
+
+  // Language and time format instruction
+  const languageInstruction = [
+    `CRITICAL: The user speaks "${payload.userLanguage}". ALL task titles and notes MUST be written in "${payload.userLanguage}".`,
+    `Time format preference: ${payload.timeFormat}. Use this format for any time descriptions in notes.`,
+    'Output ONLY valid JSON with NO commentary or explanations.',
+    '',
+  ];
 
   const userContextPart = [
     'You create a deterministic daily schedule for the Organizer app.',
@@ -232,7 +244,7 @@ const buildPrompt = (payload: Awaited<ReturnType<typeof parseRequest>>) => {
     previousPlanInstruction,
   ];
 
-  return [...userContextPart, ...strictRulesPart].join('\n');
+  return [...languageInstruction, ...userContextPart, ...strictRulesPart].join('\n');
 };
 
 const buildMessages = (
@@ -541,20 +553,19 @@ serve(async (req) => {
     const clampedWork =
       hasWorkSchedule && typeof workStartMinutes === 'number' && typeof workEndMinutes === 'number'
         ? {
-            startMin:
-              typeof wakeMinutes === 'number'
-                ? Math.max(workStartMinutes, wakeMinutes)
-                : workStartMinutes,
-            endMin:
-              typeof sleepMinutes === 'number'
-                ? Math.min(workEndMinutes, sleepMinutes)
-                : workEndMinutes,
-          }
+          startMin:
+            typeof wakeMinutes === 'number'
+              ? Math.max(workStartMinutes, wakeMinutes)
+              : workStartMinutes,
+          endMin:
+            typeof sleepMinutes === 'number'
+              ? Math.min(workEndMinutes, sleepMinutes)
+              : workEndMinutes,
+        }
         : null;
 
-    const allowanceText = `${payload.priorities ?? ''} ${payload.habits ?? ''} ${
-      payload.feedback ?? ''
-    }`.toLowerCase();
+    const allowanceText = `${payload.priorities ?? ''} ${payload.habits ?? ''} ${payload.feedback ?? ''
+      }`.toLowerCase();
 
     const previousSanitized = sanitizeBlocks(payload.previousBlocks, {
       allowanceText,
@@ -584,13 +595,13 @@ serve(async (req) => {
     const workBlock =
       clampedWork && clampedWork.endMin > clampedWork.startMin
         ? ({
-            title: 'WORK',
-            category: 'work',
-            startMin: clampedWork.startMin,
-            endMin: clampedWork.endMin,
-            start: formatMinutes(clampedWork.startMin),
-            end: formatMinutes(clampedWork.endMin),
-          } as NormalizedBlock)
+          title: 'WORK',
+          category: 'work',
+          startMin: clampedWork.startMin,
+          endMin: clampedWork.endMin,
+          start: formatMinutes(clampedWork.startMin),
+          end: formatMinutes(clampedWork.endMin),
+        } as NormalizedBlock)
         : null;
 
     const finalBlocks = [

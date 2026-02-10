@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -23,19 +23,116 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AiLimitOverlay } from '@/components/AiLimitOverlay';
 import { useRewardedAd } from '@/hooks/useRewardedAd';
 import { useI18n } from '@/i18n/useI18n';
+import { useSettings } from '@/store/useSettings';
 import { useTheme } from '@/store/useTheme';
 import { useAiPlanner, type UseAiPlannerProps } from '../hooks/useAiPlanner';
 
-export type AiPlanModalProps = UseAiPlannerProps;
-
 const AppIcon = require('@/assets/images/icon.png');
 
+export type AiPlanModalProps = UseAiPlannerProps;
 
+// --- Helper: Time Manipulation ---
+const pad = (n: number | string) => n.toString().padStart(2, '0');
+const sanitize = (val: string) => val.replace(/[^0-9]/g, '').slice(0, 2);
+
+const parseTimeParts = (timeStr: string, is24Hour: boolean) => {
+  // timeStr is always "HH:mm" (24h format) from the hook
+  const [hStr, mStr] = (timeStr || '00:00').split(':');
+  let h = parseInt(hStr, 10) || 0;
+  const m = mStr || '00';
+
+  if (is24Hour) {
+    return { hour: pad(h), minute: pad(m), period: null };
+  } else {
+    const period = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return { hour: pad(h), minute: pad(m), period };
+  }
+};
+
+const formatTimeBack = (h: string, m: string, p: string | null, is24Hour: boolean) => {
+  let hour = parseInt(h, 10) || 0;
+  if (!is24Hour && p) {
+    if (p === 'PM' && hour < 12) hour += 12;
+    if (p === 'AM' && hour === 12) hour = 0;
+  }
+  hour = Math.min(23, Math.max(0, hour));
+  return `${pad(hour)}:${pad(m)}`; // Always returns HH:mm string for the hook
+};
+
+// --- Helper Component: Time Input Group ---
+const TimeInputGroup = ({
+  label,
+  value,
+  onChange,
+  is24Hour,
+  palette,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  is24Hour: boolean;
+  palette: any;
+}) => {
+  const [parts, setParts] = useState(parseTimeParts(value, is24Hour));
+
+  // Sync internal state if value changes externally
+  useEffect(() => {
+    setParts(parseTimeParts(value, is24Hour));
+  }, [value, is24Hour]);
+
+  const update = (newParts: { hour: string; minute: string; period: string | null }) => {
+    setParts(newParts);
+    onChange(formatTimeBack(newParts.hour, newParts.minute, newParts.period, is24Hour));
+  };
+
+  return (
+    <View style={styles.timeGroup}>
+      <Text style={[styles.label, { color: palette.text }]}>{label}</Text>
+      <View style={styles.timeRow}>
+        <TextInput
+          style={[
+            styles.timeInput,
+            { color: palette.text, borderColor: palette.border, backgroundColor: palette.background },
+          ]}
+          value={parts.hour}
+          onChangeText={(t) => update({ ...parts, hour: sanitize(t) })}
+          placeholder="HH"
+          placeholderTextColor={`${palette.text}40`}
+          keyboardType="number-pad"
+          maxLength={2}
+        />
+        <Text style={[styles.colon, { color: palette.text }]}>:</Text>
+        <TextInput
+          style={[
+            styles.timeInput,
+            { color: palette.text, borderColor: palette.border, backgroundColor: palette.background },
+          ]}
+          value={parts.minute}
+          onChangeText={(t) => update({ ...parts, minute: sanitize(t) })}
+          placeholder="MM"
+          placeholderTextColor={`${palette.text}40`}
+          keyboardType="number-pad"
+          maxLength={2}
+        />
+        {!is24Hour && (
+          <Pressable
+            style={[styles.periodBtn, { borderColor: palette.border, backgroundColor: palette.background }]}
+            onPress={() => update({ ...parts, period: parts.period === 'AM' ? 'PM' : 'AM' })}
+          >
+            <Text style={{ color: palette.accent, fontWeight: 'bold', fontSize: 12 }}>{parts.period}</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+};
 
 export function AiPlanModal(props: AiPlanModalProps) {
   const { visible } = props;
   const { palette, themeKey } = useTheme();
   const { t } = useI18n();
+  const { is24Hour } = useSettings();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -97,6 +194,54 @@ export function AiPlanModal(props: AiPlanModalProps) {
     setShowAdOverlay,
   } = useAiPlanner(props);
 
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Load ad when modal opens
+  useEffect(() => {
+    if (visible && !adLoaded) {
+      loadAd();
+    }
+  }, [visible, adLoaded, loadAd]);
+
+  // Animation Logic
+  useEffect(() => {
+    if (isGenerating || isRegenerating) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(floatAnim, {
+            toValue: -15,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(floatAnim, {
+            toValue: 0,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.1,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 1500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [isGenerating, isRegenerating]);
+
   const onGeneratePress = async () => {
     await handleGenerate();
   };
@@ -106,21 +251,11 @@ export function AiPlanModal(props: AiPlanModalProps) {
   };
 
   const onWatchAdPress = async () => {
-    // Close overlay first
     setShowAdOverlay(false);
-
-    // Show real rewarded ad (this will be full screen)
-    console.log('[AiPlanModal] Showing rewarded ad...');
     const rewarded = await showAd();
-
     if (rewarded) {
-      // User watched ad and earned reward
-      console.log('[AiPlanModal] Ad completed successfully');
       await handleWatchAd();
     } else {
-      // Ad failed or user didn't complete it
-      console.warn('[AiPlanModal] Ad not completed');
-      // Show overlay again so user can retry
       setShowAdOverlay(true);
     }
   };
@@ -134,121 +269,38 @@ export function AiPlanModal(props: AiPlanModalProps) {
     setShowAdOverlay(false);
   };
 
-  // Load ad when modal opens
-  useEffect(() => {
-    if (visible && !adLoaded) {
-      loadAd();
-    }
-  }, [visible, adLoaded, loadAd]);
-
-  // Animation refs
-  const translateXAnim = React.useRef(new Animated.Value(20)).current;
-  const translateYAnim = React.useRef(new Animated.Value(-20)).current;
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (isGenerating || isRegenerating) {
-      Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(translateXAnim, {
-              toValue: -20,
-              duration: 1500, // Faster fly
-              easing: Easing.inOut(Easing.sin),
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateXAnim, {
-              toValue: 20,
-              duration: 1500,
-              easing: Easing.inOut(Easing.sin),
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(translateYAnim, {
-              toValue: 20,
-              duration: 1500,
-              easing: Easing.inOut(Easing.sin),
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateYAnim, {
-              toValue: -20,
-              duration: 1500,
-              easing: Easing.inOut(Easing.sin),
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(scaleAnim, {
-              toValue: 1.1,
-              duration: 1500,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-              toValue: 1,
-              duration: 1500,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-          ]),
-        ])
-      ).start();
-    } else {
-      translateXAnim.setValue(20);
-      translateYAnim.setValue(-20);
-      scaleAnim.setValue(1);
-    }
-  }, [isGenerating, isRegenerating]);
-
-  // Constants used in JSX
-  const placeholderColor = `${palette.text}88`;
-  const inputTextColor = `${palette.text}dd`;
-
-  // Dynamic Colors for Light Mode Refinement
   const titleColor = !isDark ? '#5b21b6' : palette.text;
   const subTitleColor = !isDark ? '#007AFF' : palette.text;
   const contentColor = !isDark ? '#000000' : palette.text;
-
-  // Note: aiUsageColor was not returned by hook, need to derive it or check if I missed it.
   const derivedAiUsageColor = isLimitReached || isGuestUser ? palette.accent : subTitleColor;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={handleClose}>
       <AiLimitOverlay
         visible={showAdOverlay}
         onWatchAd={onWatchAdPress}
         onGoPremium={onGoPremium}
         onClose={onCloseOverlay}
       />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + 24}
-        style={styles.flex}>
+        style={styles.flex}
+      >
         {(isGenerating || isRegenerating) && (
           <View style={[styles.loadingOverlay, { backgroundColor: '#FFFFFF' }]}>
             <View style={styles.loadingContainer}>
-              <Animated.View style={{
-                transform: [
-                  { translateX: translateXAnim },
-                  { translateY: translateYAnim },
-                  { scale: scaleAnim }
-                ],
-                shadowColor: '#000',
-                shadowOpacity: 0.15,
-                shadowRadius: 15,
-                shadowOffset: { width: 0, height: 10 }
-              }}>
-                <Image
-                  source={AppIcon}
-                  style={{ width: 100, height: 100, borderRadius: 20 }}
-                />
+              <Animated.View
+                style={{
+                  transform: [{ translateY: floatAnim }, { scale: scaleAnim }],
+                  shadowColor: '#000',
+                  shadowOpacity: 0.15,
+                  shadowRadius: 15,
+                  shadowOffset: { width: 0, height: 10 },
+                }}
+              >
+                <Image source={AppIcon} style={styles.loadingIcon} />
               </Animated.View>
 
               <Text style={[styles.loadingText, { color: !isDark ? titleColor : '#000000', marginTop: 40 }]}>
@@ -260,6 +312,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
             </View>
           </View>
         )}
+
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={handleClose} />
           <View style={styles.modalContainer}>
@@ -278,10 +331,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
               <View style={[styles.header, { borderBottomColor: palette.border }]}>
                 <Pressable
                   onPress={handleClose}
-                  style={({ pressed }) => [
-                    styles.backButton,
-                    { opacity: pressed ? 0.6 : 1 },
-                  ]}
+                  style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.6 : 1 }]}
                 >
                   <Ionicons name="arrow-back" size={24} color={palette.text} />
                 </Pressable>
@@ -293,104 +343,70 @@ export function AiPlanModal(props: AiPlanModalProps) {
 
               {/* Scrollable Content */}
               <View style={styles.scrollContainer}>
-
                 {stage === 'form' ? (
                   <ScrollView
                     keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={[
-                      styles.formContent,
-                      { paddingBottom: 18 },
-                    ]}
+                    contentContainerStyle={[styles.formContent, { paddingBottom: 18 }]}
                     showsVerticalScrollIndicator={false}
                   >
-                    <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
-                        {t((d) => d.aiPlanner.wakeTime)}
-                      </Text>
-                      <TextInput
+                    {/* Daily Routine Section */}
+                    <Text style={[styles.sectionTitle, { color: titleColor }]}>
+                      {t((d) => d.aiPlanner.dailyRoutine || 'Daily Routine')}
+                    </Text>
+                    <View style={styles.timeRowContainer}>
+                      <TimeInputGroup
+                        label={t((d) => d.aiPlanner.wakeTime)}
                         value={wakeTime}
-                        onChangeText={(value) => setWakeTime(sanitizeTimeInput(value))}
-                        style={[
-                          styles.input,
-                          { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
-                        ]}
-                        placeholder="07:30"
-                        placeholderTextColor={placeholderColor}
-                        maxLength={5}
+                        onChange={setWakeTime}
+                        is24Hour={is24Hour}
+                        palette={palette}
                       />
-                    </View>
-                    <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
-                        {t((d) => d.aiPlanner.sleepTime)}
-                      </Text>
-                      <TextInput
+                      <TimeInputGroup
+                        label={t((d) => d.aiPlanner.sleepTime)}
                         value={sleepTime}
-                        onChangeText={(value) => setSleepTime(sanitizeTimeInput(value))}
-                        style={[
-                          styles.input,
-                          { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
-                        ]}
-                        placeholder="23:30"
-                        placeholderTextColor={placeholderColor}
-                        maxLength={5}
+                        onChange={setSleepTime}
+                        is24Hour={is24Hour}
+                        palette={palette}
                       />
                     </View>
-                    <View style={styles.field}>
-                      <View style={styles.workToggleRow}>
-                        <Text style={[styles.fieldLabel, { color: titleColor }]}>
-                          {t((d) => d.aiPlanner.workToggle)}
-                        </Text>
-                        <Switch
-                          value={works}
-                          onValueChange={setWorks}
-                          trackColor={{ true: palette.accent, false: palette.border }}
-                          thumbColor={palette.background}
-                        />
-                      </View>
-                      {works && (
-                        <>
-                          <View style={styles.fieldRow}>
-                            <View style={styles.fieldHalf}>
-                              <Text style={[styles.fieldLabel, { color: titleColor }]}>
-                                {t((d) => d.aiPlanner.workStart)}
-                              </Text>
-                              <TextInput
-                                value={workStart}
-                                onChangeText={(value) => setWorkStart(sanitizeTimeInput(value))}
-                                style={[
-                                  styles.input,
-                                  { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
-                                ]}
-                                placeholder="09:00"
-                                placeholderTextColor={placeholderColor}
-                                maxLength={5}
-                              />
-                            </View>
-                            <View style={[styles.fieldHalf, styles.fieldHalfLast]}>
-                              <Text style={[styles.fieldLabel, { color: titleColor }]}>
-                                {t((d) => d.aiPlanner.workEnd)}
-                              </Text>
-                              <TextInput
-                                value={workEnd}
-                                onChangeText={(value) => setWorkEnd(sanitizeTimeInput(value))}
-                                style={[
-                                  styles.input,
-                                  { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
-                                ]}
-                                placeholder="17:00"
-                                placeholderTextColor={placeholderColor}
-                                maxLength={5}
-                              />
-                            </View>
-                          </View>
-                          {workValidationError ? (
-                            <Text style={[styles.errorText, { color: palette.accent }]}>
-                              {workValidationError}
-                            </Text>
-                          ) : null}
-                        </>
-                      )}
+
+                    {/* Work/Study Section */}
+                    <View style={styles.workToggleRow}>
+                      <Text style={[styles.sectionTitle, { color: titleColor, marginBottom: 0, flex: 1 }]}>
+                        {t((d) => d.aiPlanner.workToggle)}
+                      </Text>
+                      <Switch
+                        value={works}
+                        onValueChange={setWorks}
+                        trackColor={{ true: palette.accent, false: palette.border }}
+                        thumbColor={palette.background}
+                      />
                     </View>
+                    {works && (
+                      <>
+                        <View style={styles.timeRowContainer}>
+                          <TimeInputGroup
+                            label={t((d) => d.aiPlanner.workStart)}
+                            value={workStart}
+                            onChange={setWorkStart}
+                            is24Hour={is24Hour}
+                            palette={palette}
+                          />
+                          <TimeInputGroup
+                            label={t((d) => d.aiPlanner.workEnd)}
+                            value={workEnd}
+                            onChange={setWorkEnd}
+                            is24Hour={is24Hour}
+                            palette={palette}
+                          />
+                        </View>
+                        {workValidationError ? (
+                          <Text style={[styles.errorText, { color: palette.accent }]}>{workValidationError}</Text>
+                        ) : null}
+                      </>
+                    )}
+
+                    {/* Priorities */}
                     <View style={styles.field}>
                       <Text style={[styles.fieldLabel, { color: titleColor }]}>
                         {t((d) => d.aiPlanner.priorities)}
@@ -404,18 +420,16 @@ export function AiPlanModal(props: AiPlanModalProps) {
                           { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder={t((d) => d.aiPlanner.prioritiesPlaceholder)}
-                        placeholderTextColor={placeholderColor}
+                        placeholderTextColor={`${palette.text}88`}
                         multiline
                         numberOfLines={3}
                       />
-                      <Text style={[styles.helperText, { color: subTitleColor }]}>
-                        {helperTexts.priorities}
-                      </Text>
+                      <Text style={[styles.helperText, { color: subTitleColor }]}>{helperTexts.priorities}</Text>
                     </View>
+
+                    {/* Habits */}
                     <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
-                        {t((d) => d.aiPlanner.habits)}
-                      </Text>
+                      <Text style={[styles.fieldLabel, { color: titleColor }]}>{t((d) => d.aiPlanner.habits)}</Text>
                       <TextInput
                         value={habits}
                         onChangeText={setHabits}
@@ -425,18 +439,16 @@ export function AiPlanModal(props: AiPlanModalProps) {
                           { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder={t((d) => d.aiPlanner.habitsPlaceholder)}
-                        placeholderTextColor={placeholderColor}
+                        placeholderTextColor={`${palette.text}88`}
                         multiline
                         numberOfLines={3}
                       />
-                      <Text style={[styles.helperText, { color: subTitleColor }]}>
-                        {helperTexts.habits}
-                      </Text>
+                      <Text style={[styles.helperText, { color: subTitleColor }]}>{helperTexts.habits}</Text>
                     </View>
+
+                    {/* Notes */}
                     <View style={styles.field}>
-                      <Text style={[styles.fieldLabel, { color: titleColor }]}>
-                        {t((d) => d.aiPlanner.notes)}
-                      </Text>
+                      <Text style={[styles.fieldLabel, { color: titleColor }]}>{t((d) => d.aiPlanner.notes)}</Text>
                       <TextInput
                         value={feedback}
                         onChangeText={setFeedback}
@@ -446,7 +458,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                           { backgroundColor: palette.background, borderColor: palette.border, color: contentColor },
                         ]}
                         placeholder={t((d) => d.aiPlanner.notesPlaceholder)}
-                        placeholderTextColor={placeholderColor}
+                        placeholderTextColor={`${palette.text}88`}
                         multiline
                         numberOfLines={3}
                       />
@@ -454,24 +466,19 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         {helperTexts.feedbackExamples}
                       </Text>
                     </View>
+
                     <View style={styles.limitRow}>
                       {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
-                      <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>
-                        {aiUsageText}
-                      </Text>
+                      <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>{aiUsageText}</Text>
                     </View>
-                    {error ? (
-                      <Text style={[styles.errorText, { color: palette.accent }]}>{error}</Text>
-                    ) : null}
+                    {error ? <Text style={[styles.errorText, { color: palette.accent }]}>{error}</Text> : null}
+
                     <View style={styles.buttonRow}>
                       <Pressable
                         onPress={handleClose}
                         style={({ pressed }) => [
                           styles.outlineButton,
-                          {
-                            borderColor: palette.border,
-                            opacity: pressed ? 0.7 : 1,
-                          },
+                          { borderColor: palette.border, opacity: pressed ? 0.7 : 1 },
                         ]}
                       >
                         <Text style={[styles.buttonLabel, { color: palette.text }]}>
@@ -506,18 +513,12 @@ export function AiPlanModal(props: AiPlanModalProps) {
                     </Text>
                     <View style={styles.limitRow}>
                       {showLimitSpinner ? <ActivityIndicator size="small" color={palette.accent} /> : null}
-                      <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>
-                        {aiUsageText}
-                      </Text>
+                      <Text style={[styles.limitText, { color: derivedAiUsageColor }]}>{aiUsageText}</Text>
                     </View>
 
-                    {/* Scrollable plan blocks */}
                     <ScrollView
                       style={styles.previewList}
-                      contentContainerStyle={[
-                        styles.previewListContent,
-                        { paddingBottom: 18 },
-                      ]}
+                      contentContainerStyle={[styles.previewListContent, { paddingBottom: 18 }]}
                       showsVerticalScrollIndicator={false}
                     >
                       {previewList.length === 0 ? (
@@ -535,7 +536,8 @@ export function AiPlanModal(props: AiPlanModalProps) {
                                 backgroundColor: palette.background,
                                 shadowColor: palette.text,
                               },
-                            ]}>
+                            ]}
+                          >
                             <Text style={[styles.previewTime, { color: subTitleColor }]}>
                               {formatMinutes(block.startMin)} – {formatMinutes(block.endMin)}
                             </Text>
@@ -546,7 +548,6 @@ export function AiPlanModal(props: AiPlanModalProps) {
                       )}
                     </ScrollView>
 
-                    {/* Fixed footer section */}
                     {stage === 'preview' && (
                       <View style={styles.feedbackSection}>
                         <Text style={[styles.feedbackLabel, { color: titleColor }]}>
@@ -562,7 +563,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                             },
                           ]}
                           placeholder={t((d) => d.aiPlanner.feedbackPlaceholder)}
-                          placeholderTextColor={placeholderColor}
+                          placeholderTextColor={`${palette.text}88`}
                           multiline
                           value={feedback}
                           onChangeText={setFeedback}
@@ -591,10 +592,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
                         onPress={() => setStage('form')}
                         style={({ pressed }) => [
                           styles.outlineButton,
-                          {
-                            borderColor: palette.border,
-                            opacity: pressed ? 0.7 : 1,
-                          },
+                          { borderColor: palette.border, opacity: pressed ? 0.7 : 1 },
                         ]}
                       >
                         <Text style={[styles.buttonLabel, { color: palette.text }]}>
@@ -629,9 +627,7 @@ export function AiPlanModal(props: AiPlanModalProps) {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
   overlay: {
     flex: 1,
     justifyContent: 'center',
@@ -689,6 +685,40 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   formContent: {},
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    opacity: 0.7,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  timeRowContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  timeGroup: { flex: 1 },
+  label: { fontSize: 12, marginBottom: 4, opacity: 0.6 },
+  timeRow: { flexDirection: 'row', alignItems: 'center' },
+  timeInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: 10,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  colon: { marginHorizontal: 4, fontSize: 18, fontWeight: 'bold' },
+  periodBtn: {
+    width: 36,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
   field: {
     marginBottom: 12,
   },
@@ -696,17 +726,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  fieldRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  fieldHalf: {
-    flex: 1,
-    marginRight: 8,
-  },
-  fieldHalfLast: {
-    marginRight: 0,
+    marginTop: 12,
+    marginBottom: 8,
   },
   fieldLabel: {
     fontSize: 12,
@@ -734,21 +755,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 16,
+    gap: 12,
   },
   primaryButton: {
+    flex: 1,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    minWidth: 140,
     alignItems: 'center',
     justifyContent: 'center',
   },
   outlineButton: {
+    flex: 1,
     borderRadius: 14,
     borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    minWidth: 120,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -859,6 +881,11 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     alignItems: 'center',
+  },
+  loadingIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 20,
   },
   loadingText: {
     marginTop: 32,
