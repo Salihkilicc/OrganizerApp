@@ -176,18 +176,18 @@ export default function FocusScreen() {
           <View style={[styles.statsRow, { backgroundColor: isLightTheme ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.2)' }]}>
             <View style={styles.statItem}>
               <Ionicons name="time-outline" size={20} color={isLightTheme ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'} />
-              <Text style={[styles.statLabel, { color: isLightTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>{displayMinutes} min left</Text>
+              <Text style={[styles.statLabel, { color: isLightTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>{t((d) => d.focus.minutesLabel, { minutes: displayMinutes })}</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)' }]} />
             <View style={styles.statItem}>
               <Ionicons name="trophy-outline" size={20} color={isLightTheme ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'} />
-              <Text style={[styles.statLabel, { color: isLightTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>+{displayMinutes} pts</Text>
+              <Text style={[styles.statLabel, { color: isLightTheme ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>{t((d) => d.focus.pointsLabel, { points: displayMinutes })}</Text>
             </View>
           </View>
 
           {/* Description */}
           <Text style={[styles.description, { color: isLightTheme ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)' }]}>
-            Stay focused. You're earning 1 point per minute.
+            {t((d) => d.focus.description)}
           </Text>
 
           {/* Action Buttons */}
@@ -205,7 +205,7 @@ export default function FocusScreen() {
               ]}
             >
               <Ionicons name="stop-circle-outline" size={20} color={textColor} />
-              <Text style={[styles.buttonLabel, { color: textColor }]}>End Session</Text>
+              <Text style={[styles.buttonLabel, { color: textColor }]}>{t((d) => d.focus.endSession)}</Text>
             </Pressable>
 
             <Pressable
@@ -220,7 +220,7 @@ export default function FocusScreen() {
               ]}
             >
               <Ionicons name="add-circle-outline" size={20} color="#fff" />
-              <Text style={styles.buttonLabel}>+{EXTEND_MINUTES} min</Text>
+              <Text style={styles.buttonLabel}>{t((d) => d.focus.buttons.add15)}</Text>
             </Pressable>
           </View>
         </View>

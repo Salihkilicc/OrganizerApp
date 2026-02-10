@@ -163,7 +163,8 @@ export const fetchUserPremiumStatus = async (userId: string): Promise<PremiumSta
     .eq('id', userId)
     .maybeSingle();
   if (error) {
-    throw error;
+    console.warn('[fetchUserPremiumStatus] error:', error);
+    return { manualActive: false, expiresAt: null };
   }
   return {
     manualActive: data?.manual_active ?? false,

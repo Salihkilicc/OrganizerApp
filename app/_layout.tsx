@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  LogBox,
   Platform,
   StyleSheet,
   Text,
@@ -102,6 +103,12 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren<unknown>, Er
 
 export default function RootLayout() {
   const router = useRouter();
+  // Suppress specific warnings
+  LogBox.ignoreLogs([
+    '[RevenueCat] 🍎‼️',
+    'Error fetching offerings',
+    'The operation couldn’t be completed.',
+  ]);
   const segments = useSegments();
   const user = useAuth((state) => state.user);
   const status = useAuth((state) => state.status);
@@ -320,7 +327,6 @@ export default function RootLayout() {
           <ThemeProvider value={navigatorTheme}>
             <GradientBackground style={{ flex: 1 }}>
               <Stack>
-                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="points" options={{ headerShown: false }} />

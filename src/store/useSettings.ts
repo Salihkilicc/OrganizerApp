@@ -15,11 +15,11 @@ type AppLanguage = SupportedLanguage;
 
 type SettingsState = {
   language: AppLanguage;
+  isLanguageManuallySet: boolean;
   waterReminderEnabled: boolean;
   vibrationEnabled: boolean;
   notificationTypes: NotificationTypes;
   is24Hour: boolean;
-  hasSeenOnboarding: boolean;
   hasSeenCoachmarks: boolean;
   hasSeenInteractiveTour: boolean;
   hasSeenPlanTour: boolean;
@@ -31,11 +31,10 @@ type SettingsState = {
   toggleVibration: () => void;
   toggleNotificationType: (key: keyof NotificationTypes) => void;
   toggleIs24Hour: () => void;
-  completeOnboarding: () => void;
   completeCoachmarks: () => void;
   completeInteractiveTour: () => void;
   completePlanTour: () => void;
-  resetOnboarding: () => void;
+  resetTours: () => void;
 };
 
 const STORAGE_KEY = 'organizer-settings';
@@ -62,8 +61,18 @@ export const useSettings = create<SettingsState>()(
         try {
           const payload = await fetchUserSettings(userId);
           if (payload) {
-            const lang = isSupportedLanguage(payload.language) ? payload.language : 'en';
-            useLanguage.getState().setLanguage(lang);
+            let lang = isSupportedLanguage(payload.language) ? payload.language : 'en';
+
+            // Critical Fix: Do NOT overwrite language if the user has manually set it locally.
+            // This prevents the app from reverting to 'en' (or server value) right after login/signup.
+            if (get().isLanguageManuallySet) {
+              // Keep the local language
+              lang = get().language;
+            } else {
+              // Sync from server (e.g. first login on new device)
+              useLanguage.getState().setLanguage(lang);
+            }
+
             set({
               language: lang,
               waterReminderEnabled: payload.waterReminderEnabled,
@@ -85,6 +94,7 @@ export const useSettings = create<SettingsState>()(
         set({
           userId: undefined,
           language: useLanguage.getState().language,
+          isLanguageManuallySet: false,
           waterReminderEnabled: true,
           vibrationEnabled: true,
           notificationTypes: DEFAULT_NOTIFICATION_TYPES,
@@ -96,11 +106,11 @@ export const useSettings = create<SettingsState>()(
 
       return {
         language: useLanguage.getState().language,
+        isLanguageManuallySet: false,
         waterReminderEnabled: true,
         vibrationEnabled: true,
         notificationTypes: DEFAULT_NOTIFICATION_TYPES,
         is24Hour: defaultIs24Hour,
-        hasSeenOnboarding: false,
         hasSeenCoachmarks: false,
         hasSeenInteractiveTour: false,
         hasSeenPlanTour: false,
@@ -109,7 +119,11 @@ export const useSettings = create<SettingsState>()(
         resetToGuest,
         setLanguage: (language) => {
           useLanguage.getState().setLanguage(language);
-          set({ language });
+          set({
+            language,
+            isLanguageManuallySet: true,
+            is24Hour: language === 'tr',
+          });
           void persistToServer();
         },
         toggleWaterReminder: () => {
@@ -133,9 +147,6 @@ export const useSettings = create<SettingsState>()(
           set((state) => ({ is24Hour: !state.is24Hour }));
           void persistToServer();
         },
-        completeOnboarding: () => {
-          set({ hasSeenOnboarding: true });
-        },
         completeCoachmarks: () => {
           set({ hasSeenCoachmarks: true });
         },
@@ -145,8 +156,8 @@ export const useSettings = create<SettingsState>()(
         completePlanTour: () => {
           set({ hasSeenPlanTour: true });
         },
-        resetOnboarding: () => {
-          set({ hasSeenOnboarding: false, hasSeenInteractiveTour: false, hasSeenCoachmarks: false, hasSeenPlanTour: false });
+        resetTours: () => {
+          set({ hasSeenInteractiveTour: false, hasSeenPlanTour: false });
         },
       };
     },

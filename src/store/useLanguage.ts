@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocales } from 'expo-localization';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type SupportedLanguage =
   | 'en'
@@ -22,6 +24,7 @@ export type SupportedLanguage =
 type LanguageState = {
   language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
+  // hydrate is handled automatically by persist, but we keep the type for backward compatibility if needed
   hydrate: () => Promise<void>;
 };
 
@@ -34,32 +37,28 @@ export const isSupportedLanguage = (value: unknown): value is SupportedLanguage 
   );
 
 const detectDeviceLanguage = (): SupportedLanguage => {
-  const locale = (Intl.DateTimeFormat().resolvedOptions().locale || '').toLowerCase();
-  const candidates = locale ? [locale, locale.split('-')[0]] : [];
-  const match = candidates.find((code) => isSupportedLanguage(code));
-  return match ?? 'en';
+  const method1 = getLocales()[0]?.languageCode;
+  const method2 = Intl.DateTimeFormat().resolvedOptions().locale.split('-')[0];
+  const candidate = method1 || method2 || 'en';
+
+  return isSupportedLanguage(candidate) ? candidate : 'en';
 };
 
-export const useLanguage = create<LanguageState>((set) => ({
-  language: 'en',
-  setLanguage: (lang) => {
-    set({ language: lang });
-    void AsyncStorage.setItem(STORAGE_KEY, lang).catch((error) => {
-      console.warn('[Language] persist failed', error);
-    });
-  },
-  hydrate: async () => {
-    try {
-      const saved = await AsyncStorage.getItem(STORAGE_KEY);
-      if (isSupportedLanguage(saved)) {
-        set({ language: saved });
-        return;
-      }
-    } catch (e) {
-      console.warn('[Language] hydrate failed', e);
+export const useLanguage = create<LanguageState>()(
+  persist(
+    (set) => ({
+      language: detectDeviceLanguage(),
+      setLanguage: (lang) => set({ language: lang }),
+      hydrate: async () => { }, // No-op, handled by persist
+    }),
+    {
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        console.log('[useLanguage] Rehydrated language:', state?.language);
+      },
     }
-    set({ language: detectDeviceLanguage() });
-  },
-}));
+  )
+);
 
 export const getCurrentLanguage = () => useLanguage.getState().language;

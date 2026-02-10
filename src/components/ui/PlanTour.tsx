@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useI18n } from '@/i18n';
 import { useTheme } from '@/store/useTheme';
 
 const { width, height } = Dimensions.get('window');
@@ -49,6 +50,7 @@ interface PlanTourProps {
 
 export const PlanTour = ({ visible, onComplete, positions }: PlanTourProps) => {
     const { palette } = useTheme();
+    const { t } = useI18n();
     const [step, setStep] = useState(1); // 1: Month, 2: Day, 3: Add FAB, 4: AI
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -79,26 +81,26 @@ export const PlanTour = ({ visible, onComplete, positions }: PlanTourProps) => {
                 <Pressable style={StyleSheet.absoluteFill} onPress={handleNext}>
                     {step === 1 && (
                         <CompactCoachmark
-                            text="Swipe or tap to change the month."
+                            text={t(d => d.tour.planMonth)}
                             positionStyle={positions?.month || { top: 60, left: 20 }}
                         />
                     )}
                     {step === 2 && (
                         <CompactCoachmark
-                            text="Select a day to view or edit tasks."
+                            text={t(d => d.tour.planDay)}
                             positionStyle={positions?.day || { top: 120, left: width / 2 - 100 }}
                         />
                     )}
                     {step === 3 && (
                         <CompactCoachmark
-                            text="Tap '+' to manually add a new task."
+                            text={t(d => d.tour.planAdd)}
                             positionStyle={positions?.addFab || { bottom: 100, right: 30 }}
                             horizontal={true}
                         />
                     )}
                     {step === 4 && (
                         <CompactCoachmark
-                            text="Let AI generate a full schedule for this day."
+                            text={t(d => d.tour.planAI)}
                             positionStyle={positions?.ai || { top: 60, right: 20 }}
                         />
                     )}

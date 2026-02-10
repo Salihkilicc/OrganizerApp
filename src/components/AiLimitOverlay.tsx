@@ -1,4 +1,5 @@
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useI18n } from '@/i18n/useI18n';
 import { useTheme } from '@/store/useTheme';
 import { gradients } from '@/styles/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ export function AiLimitOverlay({
     onClose,
 }: AiLimitOverlayProps) {
     const { palette, themeKey } = useTheme();
+    const { t } = useI18n();
     const isLight = themeKey === 'light';
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -87,10 +89,9 @@ export function AiLimitOverlay({
                             </View>
 
                             {/* Texts */}
-                            <Text style={[styles.title, { color: palette.text }]}>Unlock AI Power</Text>
+                            <Text style={[styles.title, { color: palette.text }]}>{t((d) => d.aiPlanner.limitOverlay.title)}</Text>
                             <Text style={[styles.subtitle, { color: palette.text, opacity: 0.8 }]}>
-                                You've reached your free daily limit. Watch a short ad to continue or
-                                unlock unlimited access with Premium.
+                                {t((d) => d.aiPlanner.limitOverlay.description)}
                             </Text>
 
                             {/* Buttons */}
@@ -115,7 +116,7 @@ export function AiLimitOverlay({
                                             style={{ marginRight: 8 }}
                                         />
                                         <Text style={styles.primaryButtonText}>
-                                            Watch Ad & Generate
+                                            {t((d) => d.aiPlanner.limitOverlay.watchAd)}
                                         </Text>
                                     </LinearGradient>
                                 </Pressable>
@@ -137,7 +138,7 @@ export function AiLimitOverlay({
                                         color={isLight ? palette.text : "#FFFFFF"}
                                         style={{ marginRight: 8 }}
                                     />
-                                    <Text style={[styles.secondaryButtonText, { color: palette.text }]}>Get Premium</Text>
+                                    <Text style={[styles.secondaryButtonText, { color: palette.text }]}>{t((d) => d.aiPlanner.limitOverlay.goPremium)}</Text>
                                 </Pressable>
 
                                 <Pressable
@@ -147,7 +148,7 @@ export function AiLimitOverlay({
                                         { opacity: pressed ? 0.6 : 1 },
                                     ]}
                                 >
-                                    <Text style={[styles.cancelText, { color: palette.text, opacity: 0.5 }]}>Maybe Later</Text>
+                                    <Text style={[styles.cancelText, { color: palette.text, opacity: 0.5 }]}>{t((d) => d.aiPlanner.limitOverlay.maybeLater)}</Text>
                                 </Pressable>
                             </View>
                         </GlassCard>

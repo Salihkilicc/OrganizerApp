@@ -331,10 +331,10 @@ export default function ProfileScreen() {
           >
             <Ionicons name="arrow-back" size={24} color={themeKey === 'light' ? '#1e1b4b' : '#fff'} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>My Profile</Text>
+          <Text style={[styles.headerTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>{t((d) => d.profile.title)}</Text>
           <View style={styles.headerRight}>
             <Text style={[styles.headerPointsLabel, { color: themeKey === 'light' ? '#2563eb' : '#fff' }]}>
-              {totalPoints} <Text style={[styles.headerPointsSuffix, { color: themeKey === 'light' ? 'rgba(37, 99, 235, 0.6)' : 'rgba(255,255,255,0.8)' }]}>pts</Text>
+              {totalPoints} <Text style={[styles.headerPointsSuffix, { color: themeKey === 'light' ? 'rgba(37, 99, 235, 0.6)' : 'rgba(255,255,255,0.8)' }]}>{t((d) => d.profile.pointsSuffix)}</Text>
             </Text>
           </View>
         </View>
@@ -373,14 +373,14 @@ export default function ProfileScreen() {
                 {(() => {
                   const level = Math.floor(totalPoints / 500) + 1;
                   const getRank = (p: number) => {
-                    if (p < 100) return 'Novice Planner';
-                    if (p < 500) return 'Focus Initiate';
-                    if (p < 1000) return 'Productivity Enthusiast';
-                    if (p < 2500) return 'Task Master';
-                    if (p < 5000) return 'Grand Architect';
-                    return 'Time Lord';
+                    if (p < 100) return t((d) => d.profile.ranks.rank1);
+                    if (p < 500) return t((d) => d.profile.ranks.rank2);
+                    if (p < 1000) return t((d) => d.profile.ranks.rank3);
+                    if (p < 2500) return t((d) => d.profile.ranks.rank4);
+                    if (p < 5000) return t((d) => d.profile.ranks.rank5);
+                    return t((d) => d.profile.ranks.rank6);
                   };
-                  return `Level ${level} • ${getRank(totalPoints)}`;
+                  return `${t((d) => d.profile.level, { level })} • ${getRank(totalPoints)}`;
                 })()}
               </Text>
             </View>
@@ -455,10 +455,10 @@ export default function ProfileScreen() {
           {/* Social Hub */}
           <GlassCard intensity={30} style={[styles.socialCard, { paddingVertical: 16, backgroundColor: themeKey === 'light' ? 'rgba(248, 248, 250, 0.9)' : 'rgba(255,255,255,0.05)' }]}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>Community</Text>
+              <Text style={[styles.sectionTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>{t((d) => d.profile.community.title)}</Text>
               <View style={styles.onlineIndicator}>
                 <View style={[styles.greenDot, { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.2)' : 'rgba(255,255,255,0.2)' }]} />
-                <Text style={[styles.onlineText, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>0 Online</Text>
+                <Text style={[styles.onlineText, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>{t((d) => d.profile.community.online, { count: 0 })}</Text>
               </View>
             </View>
 
@@ -478,13 +478,13 @@ export default function ProfileScreen() {
                 <Ionicons name="add" size={18} color={themeKey === 'light' ? '#1e1b4b' : 'rgba(255,255,255,0.8)'} />
               </View>
 
-              <Text style={[styles.addFriendTextSmall, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>Add friends</Text>
+              <Text style={[styles.addFriendTextSmall, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>{t((d) => d.profile.community.addFriend)}</Text>
             </Pressable>
           </GlassCard>
 
           {/* Achievements Showcase */}
           <View style={styles.achievementsSection}>
-            <Text style={[styles.sectionTitleWhite, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>Achievements</Text>
+            <Text style={[styles.sectionTitleWhite, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>{t((d) => d.profile.achievements)}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}

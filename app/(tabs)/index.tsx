@@ -20,8 +20,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AVATAR_IMAGES } from '@/constants/avatars';
 import { PLAN_CATEGORY_COLORS } from '@/constants/categoryColors';
+import { type TranslationKeys } from '@/i18n/translations';
 import { useI18n } from '@/i18n/useI18n';
 import { notifyFocusStarted } from '@/lib/notifications';
+import { useAuth } from '@/store/useAuth';
 import { useAvatarStore } from '@/store/useAvatar';
 import { PlanBlock, PlanCategory, usePlans } from '@/store/usePlans';
 import { useSettings } from '@/store/useSettings';
@@ -44,6 +46,7 @@ export default function HomeScreen() {
   const { palette, themeKey } = useTheme();
   const { t } = useI18n();
   const { blocks, load, addMany } = usePlans();
+  const user = useAuth((state) => state.user);
   const { selectedAvatar } = useAvatarStore();
   const { streakDays } = useStreak();
   const { water, drinkBottle } = useWater();
@@ -52,7 +55,7 @@ export default function HomeScreen() {
   const completeCoachmarks = useSettings((state) => state.completeCoachmarks);
   const hasSeenInteractiveTour = useSettings((state) => state.hasSeenInteractiveTour);
   const completeInteractiveTour = useSettings((state) => state.completeInteractiveTour);
-  const resetOnboarding = useSettings((state) => state.resetOnboarding);
+  const resetTours = useSettings((state) => state.resetTours);
 
   const [refreshing, setRefreshing] = useState(false);
   const [aiModalVisible, setAiModalVisible] = useState(false);
@@ -116,7 +119,11 @@ export default function HomeScreen() {
 
   const getGreeting = () => {
     const h = new Date().getHours();
-    return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
+    return h < 12
+      ? t((d) => d.today.greetings.morning)
+      : h < 18
+        ? t((d) => d.today.greetings.afternoon)
+        : t((d) => d.today.greetings.evening);
   };
 
   const getCategoryIcon = (cat: string) => {
@@ -180,7 +187,9 @@ export default function HomeScreen() {
             <View style={{ marginLeft: 12 }}>
               <Text style={[styles.greeting, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : 'rgba(255,255,255,0.6)' }]}>{getGreeting()},</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={[styles.username, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>Salih</Text>
+                <Text style={[styles.username, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>
+                  {user?.user_metadata?.full_name?.split(' ')[0] ?? t((d) => d.common.user)}
+                </Text>
                 {/* Friends Button */}
                 <Pressable style={[styles.friendsBadge, { backgroundColor: themeKey === 'light' ? 'rgba(30, 27, 75, 0.1)' : 'rgba(255,255,255,0.2)' }]} onPress={() => {/* Friends Logic */ }}>
                   <Ionicons name="people" size={14} color={themeKey === 'light' ? '#1e1b4b' : '#fff'} />
@@ -217,7 +226,7 @@ export default function HomeScreen() {
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Ionicons name="water" size={18} color="#06b6d4" />
-              <Text style={[styles.cardTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>Hydration</Text>
+              <Text style={[styles.cardTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>{t((d) => d.today.hydration)}</Text>
             </View>
             <Text style={[styles.waterCount, { color: themeKey === 'light' ? 'rgba(91, 33, 182, 0.6)' : 'rgba(255,255,255,0.5)' }]}>{Object.values(water).filter(Boolean).length} / {WATER_BOTTLE_COUNT}</Text>
           </View>
@@ -241,7 +250,7 @@ export default function HomeScreen() {
             <Text style={[
               styles.label,
               { color: nextBlock ? (PLAN_CATEGORY_COLORS[nextBlock.category as PlanCategory]?.border || 'rgba(255,255,255,0.5)') : (themeKey === 'light' ? '#5b21b6' : 'rgba(255,255,255,0.5)') }
-            ]}>NEXT UP</Text>
+            ]}>{t((d) => d.today.nextUp).toUpperCase()}</Text>
             {nextBlock ? (
               <>
                 <Text numberOfLines={1} style={[styles.nextTitle, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>{nextBlock.title}</Text>
@@ -253,7 +262,7 @@ export default function HomeScreen() {
                     { backgroundColor: PLAN_CATEGORY_COLORS[nextBlock.category as PlanCategory]?.background || 'rgba(255,255,255,0.1)' }
                   ]}>
                     <Ionicons name={getCategoryIcon(nextBlock.category) as any} size={12} color="#fff" />
-                    <Text style={styles.tagText}>{nextBlock.category}</Text>
+                    <Text style={styles.tagText}>{t((d) => d.plan.categories[nextBlock.category as keyof TranslationKeys['plan']['categories']] ?? nextBlock.category)}</Text>
                   </View>
                   <Text style={[styles.nextTime, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : 'rgba(255,255,255,0.8)' }]}>
                     {formatTime(nextBlock.startMin, is24Hour)}
@@ -271,15 +280,15 @@ export default function HomeScreen() {
                     router.push({ pathname: '/focus', params: { id: nextBlock.id } });
                   }}
                 >
-                  <Text style={[styles.focusBtnText, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>FOCUS</Text>
+                  <Text style={[styles.focusBtnText, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>{t((d) => d.today.startFocus).toUpperCase()}</Text>
                   <Ionicons name="play" size={14} color={themeKey === 'light' ? '#1e1b4b' : '#fff'} />
                 </Pressable>
               </>
             ) : (
               <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                <Text style={{ color: themeKey === 'light' ? 'rgba(91, 33, 182, 0.6)' : 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 8 }}>No upcoming tasks</Text>
+                <Text style={{ color: themeKey === 'light' ? 'rgba(91, 33, 182, 0.6)' : 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 8 }}>{t((d) => d.today.noNextBlock)}</Text>
                 <Pressable onPress={() => router.push('/plan')}>
-                  <Text style={{ color: palette.accent, fontWeight: 'bold' }}>+ Create Plan</Text>
+                  <Text style={{ color: palette.accent, fontWeight: 'bold' }}>+ {t((d) => d.today.createPlan)}</Text>
                 </Pressable>
               </View>
             )}
@@ -299,7 +308,7 @@ export default function HomeScreen() {
             <GlassCard style={styles.aiCard}>
               <Ionicons name="sparkles" size={32} color="#FFD700" />
               <Text style={[styles.aiText, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>
-                Generate Plan
+                {t((d) => d.today.openPlanner)}
               </Text>
             </GlassCard>
           </Pressable>
@@ -307,19 +316,19 @@ export default function HomeScreen() {
 
         {/* 4. YOUR SCHEDULE - Modern List View */}
         <View style={{ marginTop: 20 }}>
-          <Text style={[styles.sectionTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>Your Schedule</Text>
+          <Text style={[styles.sectionTitle, { color: themeKey === 'light' ? '#5b21b6' : '#fff' }]}>{t((d) => d.today.planSectionTitle)}</Text>
 
           {blocks.filter((b: PlanBlock) => b.date === todayDateStr).length === 0 ? (
             <GlassCard style={{ padding: 30, alignItems: 'center' }}>
               <Ionicons name="calendar-outline" size={48} color="#007AFF" />
               <Text style={{ color: '#007AFF', fontSize: 14, marginTop: 12, opacity: 0.8 }}>
-                No tasks scheduled for today
+                {t((d) => d.today.noTasks)}
               </Text>
               <Pressable
                 onPress={() => router.push('/plan')}
                 style={{ marginTop: 16, backgroundColor: palette.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
               >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Add Task</Text>
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t((d) => d.today.addTask)}</Text>
               </Pressable>
             </GlassCard>
           ) : (
@@ -368,7 +377,7 @@ export default function HomeScreen() {
                 }}
               >
                 <Text style={{ color: '#007AFF', fontSize: 14, fontWeight: '600' }}>
-                  + Draft your next move
+                  {t((d) => d.today.draftNextMove)}
                 </Text>
               </Pressable>
             </View>
@@ -393,7 +402,7 @@ export default function HomeScreen() {
       {/* Coachmark Tutorial */}
       <Coachmark
         visible={coachmarkVisible && hasSeenInteractiveTour}
-        text="Tap here to generate your perfect schedule with AI! ✨"
+        text={t((d) => d.today.coachmark)}
         targetPosition={{
           top: headerHeight + 20 + 16 + 160 + 12 + 50, // Header + padding + hydration card + gap + center of AI card
           right: 20 + 50, // Right padding + center of AI card
@@ -407,7 +416,7 @@ export default function HomeScreen() {
       {/* Welcome Flow */}
       <WelcomeFlow
         visible={!hasSeenInteractiveTour}
-        userName="Salih"
+        userName={user?.user_metadata?.full_name?.split(' ')[0] ?? 'User'}
         positions={tourPositions}
         onComplete={completeInteractiveTour}
       />
@@ -478,6 +487,7 @@ function TaskCard({
   const checkboxRotate = useRef(new Animated.Value(0)).current;
   const [isChecked, setIsChecked] = useState(block.done || false);
   const is24Hour = useSettings((state) => state.is24Hour);
+  const { t } = useI18n();
 
   const handleCheck = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -544,7 +554,7 @@ function TaskCard({
                 <Text style={[styles.taskTime, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : 'rgba(255,255,255,0.7)' }]}>
                   {formatTime(block.startMin, is24Hour)} - {formatTime(block.endMin, is24Hour)}
                 </Text>
-                <Text style={[styles.taskCategory, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.5)' : 'rgba(255,255,255,0.5)' }]}>{block.category}</Text>
+                <Text style={[styles.taskCategory, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.5)' : 'rgba(255,255,255,0.5)' }]}>{t((d) => d.plan.categories[block.category as keyof TranslationKeys['plan']['categories']] ?? block.category)}</Text>
               </View>
             </View>
 

@@ -1,6 +1,8 @@
 import { memo, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useI18n } from '@/i18n/useI18n';
+import type { SupportedLanguage } from '@/store/useLanguage';
 import { useTheme } from '@/store/useTheme';
 
 type Props = {
@@ -21,6 +23,25 @@ const getDaysInMonth = (year: number, month: number) => {
   return new Date(year, month + 1, 0).getDate();
 };
 
+const LANGUAGE_LOCALE: Record<SupportedLanguage, string> = {
+  en: 'en-US',
+  tr: 'tr-TR',
+  de: 'de-DE',
+  fr: 'fr-FR',
+  es: 'es-ES',
+  it: 'it-IT',
+  pt: 'pt-PT',
+  ru: 'ru-RU',
+  ar: 'ar-SA',
+  zh: 'zh-CN',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  hi: 'hi-IN',
+  nl: 'nl-NL',
+  sv: 'sv-SE',
+  pl: 'pl-PL',
+};
+
 export const DayStrip = memo(function DayStrip({
   selected,
   year,
@@ -30,6 +51,9 @@ export const DayStrip = memo(function DayStrip({
   maxDate,
 }: Props) {
   const { palette } = useTheme();
+  const { lang } = useI18n();
+  const locale = useMemo(() => LANGUAGE_LOCALE[lang] ?? 'en-US', [lang]);
+
   const todayISO = useMemo(() => toISO(new Date()), []);
   const daysInMonth = useMemo(() => getDaysInMonth(year, month), [year, month]);
   const clampedSelected = useMemo(() => {
@@ -83,7 +107,7 @@ export const DayStrip = memo(function DayStrip({
                 pressed && styles.dayPressed,
               ]}>
               <Text style={[styles.weekday, { color: textColor }]}>
-                {day.toLocaleDateString(undefined, { weekday: 'short' })}
+                {day.toLocaleDateString(locale, { weekday: 'short' })}
               </Text>
               <Text style={[styles.date, { color: textColor }]}>{day.getDate()}</Text>
               {!isSelected && isToday && (

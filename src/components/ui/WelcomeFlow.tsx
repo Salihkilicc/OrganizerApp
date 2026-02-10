@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useI18n } from '@/i18n';
 import { useTheme } from '@/store/useTheme';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useRef, useState } from 'react';
@@ -39,6 +40,7 @@ const CompactCoachmark = ({ text, style, positionStyle }: any) => {
 
 export const WelcomeFlow = ({ visible, onComplete, userName, positions }: any) => {
     const { palette } = useTheme();
+    const { t } = useI18n();
     const [step, setStep] = useState(0); // 0: Greeting, 1: AI, 2: Water, 3: Shop
     const [goalInput, setGoalInput] = useState('');
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -74,21 +76,21 @@ export const WelcomeFlow = ({ visible, onComplete, userName, positions }: any) =
                         {Platform.OS === 'ios' && <BlurView intensity={20} style={StyleSheet.absoluteFill} tint="dark" />}
                         <GlassCard style={styles.greetingCard}>
                             <Text style={[styles.greetingTitle, { color: palette.accent }]}>
-                                Hi {userName || 'there'}!
+                                {t(d => d.tour.greetingTitle).replace('{name}', userName || 'there')}
                             </Text>
                             <Text style={[styles.greetingSubtitle, { color: palette.text }]}>
-                                I'm Planora. Tell me briefly about your main focus right now.
+                                {t(d => d.tour.greetingSubtitle)}
                             </Text>
 
                             <TextInput
                                 style={[styles.glassInput, { color: palette.text, borderColor: palette.border, backgroundColor: palette.background }]}
-                                placeholder="e.g. Crush my exams..."
+                                placeholder={t(d => d.tour.goalPlaceholder)}
                                 placeholderTextColor="rgba(255,255,255,0.5)"
                                 value={goalInput}
                                 onChangeText={setGoalInput}
                             />
 
-                            <Button title="Let's Start Tour" onPress={handleNext} style={{ marginTop: 20, width: '100%' }} />
+                            <Button title={t(d => d.tour.startTour)} onPress={handleNext} style={{ marginTop: 20, width: '100%' }} />
                         </GlassCard>
                     </View>
                 )}
@@ -98,19 +100,19 @@ export const WelcomeFlow = ({ visible, onComplete, userName, positions }: any) =
                     <Pressable style={StyleSheet.absoluteFill} onPress={handleNext}>
                         {step === 1 && (
                             <CompactCoachmark
-                                text="Tap here to let AI organize your entire day instantly."
+                                text={t(d => d.tour.homeAI)}
                                 positionStyle={positions?.ai || { top: 180, alignSelf: 'center' }}
                             />
                         )}
                         {step === 2 && (
                             <CompactCoachmark
-                                text="Keep track of your daily hydration right here."
+                                text={t(d => d.tour.homeWater)}
                                 positionStyle={positions?.water || { top: height / 2 - 50, alignSelf: 'center' }}
                             />
                         )}
                         {step === 3 && (
                             <CompactCoachmark
-                                text="Use your hard-earned XP to unlock premium themes in the Shop."
+                                text={t(d => d.tour.homeShop)}
                                 positionStyle={positions?.shop || { bottom: 120, alignSelf: 'center' }}
                             />
                         )}

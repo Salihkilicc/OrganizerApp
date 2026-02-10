@@ -152,12 +152,12 @@ export default function PlanScreen() {
         setAiVisible(true);
       } else {
         console.warn('[PlanScreen] Failed to grant AI credit');
-        Alert.alert('Error', 'Failed to grant reward. Please try again.');
+        Alert.alert(t((d) => d.common.error), t((d) => d.common.adRewardError));
         setShowLimitOverlay(false);
       }
     } catch (error) {
       console.error('[PlanScreen] Error granting credit:', error);
-      Alert.alert('Error', 'Failed to grant reward. Please try again.');
+      Alert.alert(t((d) => d.common.error), t((d) => d.common.adRewardError));
       setShowLimitOverlay(false);
     } finally {
       setAdRewardPending(false);
@@ -381,7 +381,7 @@ export default function PlanScreen() {
         console.log('[PlanScreen] Ad not loaded, loading now...');
         loadAd();
       }
-      Alert.alert(t((d) => d.common.loading), 'Please wait, loading ad...');
+      Alert.alert(t((d) => d.common.loading), t((d) => d.common.adLoading));
       return;
     }
 
@@ -678,7 +678,7 @@ export default function PlanScreen() {
             >
               <View style={styles.summaryIconContent}>
                 <Ionicons name="copy-outline" size={20} color={palette.accent} />
-                <Text style={[styles.summaryIconLabel, { color: palette.text }]}>Copy days</Text>
+                <Text style={[styles.summaryIconLabel, { color: palette.text }]}>{t((d) => d.plan.summary.copyDays)}</Text>
               </View>
             </Pressable>
             <Pressable
@@ -694,7 +694,7 @@ export default function PlanScreen() {
             >
               <View style={styles.summaryIconContent}>
                 <Ionicons name="trash-outline" size={20} color={palette.text} />
-                <Text style={[styles.summaryIconLabel, { color: palette.text }]}>Delete plans</Text>
+                <Text style={[styles.summaryIconLabel, { color: palette.text }]}>{t((d) => d.plan.summary.deletePlans)}</Text>
               </View>
             </Pressable>
           </View>

@@ -30,6 +30,8 @@ export type TranslationKeys = {
     notImplemented: string;
     modalTitle: string;
     modalGoHome: string;
+    adRewardError: string;
+    adLoading: string;
   };
   tabs: {
     today: string;
@@ -127,6 +129,16 @@ export type TranslationKeys = {
     weeklyWeatherSubtitle: string;
     weeklyUnavailable: string;
     close: string;
+    hydration: string;
+    greetings: {
+      morning: string;
+      afternoon: string;
+      evening: string;
+    };
+    draftNextMove: string;
+    coachmark: string;
+    noTasks: string;
+    addTask: string;
   };
   plan: {
     title: string;
@@ -144,6 +156,8 @@ export type TranslationKeys = {
     summary: {
       withPlans: string;
       noPlans: string;
+      copyDays: string;
+      deletePlans: string;
     };
     categories: {
       focus: string;
@@ -206,6 +220,13 @@ export type TranslationKeys = {
     habitsHelper: string;
     feedbackExamples: string;
     existingBlocksError: string;
+    limitOverlay: {
+      title: string;
+      description: string;
+      watchAd: string;
+      goPremium: string;
+      maybeLater: string;
+    };
   };
   focus: {
     title: string;
@@ -220,6 +241,13 @@ export type TranslationKeys = {
     overlayDescription: string;
     overlayExit: string;
     overlayAddMinutes: string;
+    pointsLabel: string;
+    endSession: string;
+    buttons: {
+      add15: string;
+      add30: string;
+      add60: string;
+    };
   };
   points: {
     title: string;
@@ -341,6 +369,24 @@ export type TranslationKeys = {
     totalFocusMinutesLabel: string;
     statInfoTitle: string;
     statInfoDescription: string;
+    pointsSuffix: string;
+    level: string;
+    ranks: {
+      title: string;
+      rank1: string;
+      rank2: string;
+      rank3: string;
+      rank4: string;
+      rank5: string;
+      rank6: string;
+    };
+    community: {
+      title: string;
+      friends: string;
+      addFriend: string;
+      leaderboard: string;
+      online: string;
+    };
   };
   settings: {
     title: string;
@@ -445,6 +491,19 @@ export type TranslationKeys = {
     focusStartTitle: string;
     focusStartBody: string;
   };
+  tour: {
+    greetingTitle: string;
+    greetingSubtitle: string;
+    goalPlaceholder: string;
+    startTour: string;
+    homeAI: string;
+    homeWater: string;
+    homeShop: string;
+    planMonth: string;
+    planDay: string;
+    planAI: string;
+    planAdd: string;
+  };
 };
 
 const languageNames: Record<SupportedLanguage, string> = {
@@ -496,6 +555,8 @@ const en: TranslationKeys = {
     notImplemented: 'Not implemented yet.',
     modalTitle: 'This is a modal',
     modalGoHome: 'Go to home screen',
+    adRewardError: 'Failed to grant reward. Please try again.',
+    adLoading: 'Please wait, loading ad...',
   },
   tabs: {
     today: 'Today',
@@ -594,6 +655,16 @@ const en: TranslationKeys = {
     weeklyWeatherSubtitle: 'A quick look at the next 7 days',
     weeklyUnavailable: 'Weather unavailable',
     close: 'Close',
+    hydration: 'Hydration',
+    greetings: {
+      morning: 'Good Morning',
+      afternoon: 'Good Afternoon',
+      evening: 'Good Evening',
+    },
+    draftNextMove: '+ Draft your next move',
+    coachmark: 'Tap here to generate your perfect schedule with AI! ✨',
+    noTasks: 'No tasks scheduled for today',
+    addTask: 'Add Task',
   },
   plan: {
     title: 'Plan',
@@ -611,6 +682,8 @@ const en: TranslationKeys = {
     summary: {
       withPlans: '{{total}} plan{{plural}} • {{hours}} hours total',
       noPlans: 'No plan for this day yet. Add your first plan.',
+      copyDays: 'Copy days',
+      deletePlans: 'Delete plans',
     },
     categories: {
       focus: 'Focus',
@@ -645,6 +718,22 @@ const en: TranslationKeys = {
       copy: 'Copy',
     },
   },
+  tour: {
+    // Welcome Flow (Home)
+    greetingTitle: "Hi {name}!",
+    greetingSubtitle: "I'm Planora. Tell me briefly about your main focus right now.",
+    goalPlaceholder: "e.g. Crush my exams...",
+    startTour: "Let's Start Tour",
+    homeAI: "Tap here to let AI organize your entire day instantly.",
+    homeWater: "Keep track of your daily hydration right here.",
+    homeShop: "Use your hard-earned XP to unlock premium themes in the Shop.",
+
+    // Plan Tour
+    planMonth: "Swipe or tap here to change the month.",
+    planDay: "Select a day to view or edit your plans.",
+    planAI: "Let AI generate a full schedule for this specific day.",
+    planAdd: "Tap '+' to manually add a new task."
+  },
   aiPlanner: {
     title: 'AI Plan',
     wakeTime: 'Wake time',
@@ -673,6 +762,13 @@ const en: TranslationKeys = {
     habitsHelper: 'Use commas or new lines to separate habits (e.g. water, meditation)',
     feedbackExamples: 'Examples: "extend 1 hour", "put gym at night", "run in morning"',
     existingBlocksError: 'There should not be any plan for this day',
+    limitOverlay: {
+      title: 'Unlock AI Power',
+      description: 'You\'ve reached your free daily limit. Watch a short ad to continue or unlock unlimited access with Premium.',
+      watchAd: 'Watch Ad & Generate',
+      goPremium: 'Get Premium',
+      maybeLater: 'Maybe Later',
+    },
   },
   focus: {
     title: 'Focus mode engaged',
@@ -689,6 +785,13 @@ const en: TranslationKeys = {
       "This app can’t block calls or system notifications. For full silence, also enable your phone’s Focus / Do Not Disturb mode.",
     overlayExit: 'Exit mode',
     overlayAddMinutes: 'Add +15 minutes',
+    pointsLabel: '+{{points}} pts',
+    endSession: 'End Session',
+    buttons: {
+      add15: '+15 min',
+      add30: '+30 min',
+      add60: '+60 min',
+    },
   },
   points: {
     title: 'Points shop',
@@ -769,194 +872,224 @@ const en: TranslationKeys = {
     },
     info: 'Pause anytime; your AI plan stays ready when you return.',
     cta: 'Unlock Premium',
-    footerNote: 'AI planning + focus mode integrations',
-    subscriptionStatusTitle: 'Subscription status',
-    statusActiveLabel: 'Organizer Pro',
-    statusInactiveLabel: 'Free',
-    entitlementsLabel: 'Entitlements',
-    expiresLabel: 'Expires',
-    activeSubscriptionsLabel: 'Active subscriptions',
-    lastProductLabel: 'Last product',
-    refreshing: 'Refreshing subscription info...',
-    subscriptionOptionsTitle: 'Subscription options',
+    footerNote: 'Terms & Conditions apply.',
+    subscriptionStatusTitle: 'Subscription Status',
+    statusActiveLabel: 'Active',
+    statusInactiveLabel: 'Inactive',
+    entitlementsLabel: 'Entitlements:',
+    expiresLabel: 'Expires:',
+    activeSubscriptionsLabel: 'Active Subscriptions:',
+    lastProductLabel: 'Last Product:',
+    refreshing: 'Refreshing...',
+    subscriptionOptionsTitle: 'Subscription Options',
     loadingPlans: 'Loading plans...',
-    noProducts: 'No products are configured yet.',
-    toolsTitle: 'RevenueCat tools',
-    openPaywall: 'Open paywall (Organizer Pro)',
-    restorePurchases: 'Restore purchases',
-    paywallResultTitle: 'RevenueCat Paywall',
+    noProducts: 'No products found.',
+    toolsTitle: 'Tools',
+    openPaywall: 'Open Paywall',
+    restorePurchases: 'Restore Purchases',
+    paywallResultTitle: 'Purchase Result',
     paywallResult: {
-      purchased: 'Purchase confirmed via RevenueCat paywall.',
-      restored: 'Restored entitlements via RevenueCat paywall.',
-      cancelled: 'Paywall closed without action.',
-      error: 'Paywall encountered an error.',
-      notPresented: 'Paywall was not presented because entitlement is already active.',
+      purchased: 'Purchased!',
+      restored: 'Restored!',
+      cancelled: 'Cancelled',
+      error: 'Error',
+      notPresented: 'Paywall not presented',
     },
-    purchaseCompleteTitle: 'Purchase complete',
-    purchaseCompleteEntitled: 'Organizer Pro is unlocked.',
-    purchaseCompletePending: 'Purchase succeeded, RevenueCat is syncing your entitlement.',
-    purchaseFailedTitle: 'Could not purchase',
-    restoreCompleteTitle: 'Restore complete',
-    restoreCompleteEntitled: 'Restored purchases and refreshed entitlements.',
-    restoreCompleteNone: 'No purchases were restored.',
-    restoreFailedTitle: 'Restore failed',
-    purchaseCancelled: 'The purchase was cancelled.',
-    purchaseGenericError: 'Unable to complete the transaction.',
+    purchaseCompleteTitle: 'Purchase Complete',
+    purchaseCompleteEntitled: 'You are now Premium!',
+    purchaseCompletePending: 'Your purchase is pending.',
+    purchaseFailedTitle: 'Purchase Failed',
+    restoreCompleteTitle: 'Restore Complete',
+    restoreCompleteEntitled: 'Your purchases have been restored.',
+    restoreCompleteNone: 'No purchases to restore found.',
+    restoreFailedTitle: 'Restore Failed',
+    purchaseCancelled: 'Purchase cancelled',
+    purchaseGenericError: 'Purchase failed',
     lifetime: 'Lifetime',
     never: 'Never',
   },
   profile: {
     title: 'Profile',
-    name: 'Full name',
+    name: 'Name',
     email: 'Email',
-    changeEmail: 'Change email',
-    changePassword: 'Change password',
+    changeEmail: 'Change Email',
+    changePassword: 'Change Password',
     badges: 'Badges',
-    totalPoints: 'Total points',
+    totalPoints: 'Total Points',
     streak: 'Streak',
     strength: 'Strength',
     intelligence: 'Intelligence',
     knowledge: 'Knowledge',
-    mostActiveCategory: 'Most active category',
-    totalFocusTime: 'Total focus time',
-    saveName: 'Save profile',
+    mostActiveCategory: 'Most Active',
+    totalFocusTime: 'Focus Time',
+    saveName: 'Save Changes',
     stats: 'Stats',
     current: 'Current',
     days: 'days',
-    guestLabel: 'guest',
+    guestLabel: 'Guest',
     userPlaceholder: 'User',
     badgeStarter: 'Starter',
-    badgeFocus60: 'Focus 60m',
-    badgePlanner: 'Planner',
-    badgeConsistency: 'Consistency',
+    badgeFocus60: 'Focus Master (60m)',
+    badgePlanner: 'Planner (7 days)',
+    badgeConsistency: 'Consistency (30 days)',
     achievements: 'Achievements',
-    achievementsSubtitle: 'Badges from the Points Shop',
+    achievementsSubtitle: 'Badges you have unlocked',
     achievementLocked: 'Locked',
     achievementUnlocked: 'Unlocked',
-    changePhotoTitle: 'Change photo',
-    changePhotoMessage: 'Not implemented yet.',
-    changeEmailTitle: 'Check your inbox',
-    changeEmailMessage: 'We sent a confirmation link to {{email}}. Finish the change from your inbox.',
-    changePasswordTitle: 'Password updated',
-    changePasswordMessage: 'Set a new password (minimum 8 characters). You will stay signed in.',
-    saveNameTitle: 'Profile updated',
-    saveNameMessage: 'Profile details updated successfully.',
-    mostActiveNone: 'None yet',
-    totalFocusMinutesLabel: '{{minutes}} min',
+    changePhotoTitle: 'Change Photo',
+    changePhotoMessage: 'Select a new avatar or upload a photo.',
+    changeEmailTitle: 'Change Email',
+    changeEmailMessage: 'Your email has been updated to {{email}}.',
+    changePasswordTitle: 'Password Changed',
+    changePasswordMessage: 'Enter a new password (min. 8 characters).',
+    saveNameTitle: 'Profile Saved',
+    saveNameMessage: 'Your profile details have been updated.',
+    mostActiveNone: 'None',
+    totalFocusMinutesLabel: 'm',
     statInfoTitle: 'How stats grow',
     statInfoDescription:
       'Every 5 completed plans add +1% to the linked attribute: Gym → Strength, Focus/Study → Intelligence, everything else → Knowledge.',
+    pointsSuffix: 'pts',
+    level: 'Level {{level}}',
+    ranks: {
+      title: 'Ranks',
+      rank1: 'Novice Planner',
+      rank2: 'Apprentice',
+      rank3: 'Journeyman',
+      rank4: 'Expert',
+      rank5: 'Grand Architect',
+      rank6: 'Time Lord',
+    },
+    community: {
+      title: 'Community',
+      friends: 'Friends',
+      addFriend: 'Add friends',
+      leaderboard: 'Leaderboard',
+      online: '{{count}} Online',
+    },
   },
   settings: {
     title: 'Settings',
-    profile: 'Profile & account',
+    profile: 'Profile',
     languageTitle: 'Language',
-    languageDescription: 'Change the app language to keep the UI readable for you.',
+    languageDescription: 'Change app language',
     account: 'Account',
-    deleteAccount: 'Delete account',
-    deleteAccountWarning:
-      'Deleting your account removes your plans, streaks, and points forever.',
-    deleteAccountConfirm: 'Delete account',
+    deleteAccount: 'Delete Account',
+    deleteAccountWarning: 'This action cannot be undone.',
+    deleteAccountConfirm: 'Delete',
     deleteAccountCancel: 'Cancel',
-    deleteAccountSupport: 'Contact support to permanently delete your account.',
+    deleteAccountSupport: 'Contact Support',
     notifications: 'Notifications',
     vibration: 'Vibration',
-    vibrationDescription: 'Allow brief vibration whenever you receive an alert.',
-    notificationTypes: 'Notification types',
-    notificationCenter: 'All notifications',
-    notificationCount: '{{count}} enabled',
+    vibrationDescription: 'Enable haptic feedback',
+    notificationTypes: 'Notification Types',
+    notificationCenter: 'Notification Center',
+    notificationCount: '{{count}} active',
     notificationType: {
-      planReminders: 'Plan reminders',
-      focusMode: 'Focus mode',
-      dailySummary: 'Daily summary',
-      streakWarning: 'Streak warning',
-      nextUp: 'Next-up plans',
-      focusNotifications: 'Focus start/end',
-      missedPlans: 'Missed plan reminders',
-      streakRescue: 'Streak rescue',
-      middayMilestone: 'Midday milestone',
-      badgeNotifications: 'Badge unlocked',
-      weeklySummary: 'Weekly summary',
-      waterReminders: 'Water reminders',
-      reflection: 'Evening reflection',
+      planReminders: 'Plan Reminders',
+      focusMode: 'Focus Mode',
+      dailySummary: 'Daily Summary',
+      streakWarning: 'Streak Warning',
+      nextUp: 'Next Up',
+      focusNotifications: 'Focus Start/End',
+      missedPlans: 'Missed Plans',
+      streakRescue: 'Streak Rescue',
+      middayMilestone: 'Midday Milestone',
+      badgeNotifications: 'Badge Unlocks',
+      weeklySummary: 'Weekly Summary',
+      waterReminders: 'Water Reminders',
+      reflection: 'Evening Reflection',
     },
-    waterReminder: 'Water reminder',
-    waterReminderDescription: 'Gentle nudges to stay hydrated during the day.',
-    focus: 'Focus mode',
-    pointsShop: 'Points shop',
-    signOut: 'Sign out',
+    waterReminder: 'Water Reminder',
+    waterReminderDescription: 'Get gentle reminders to drink water',
+    focus: 'Focus',
+    pointsShop: 'Points Shop',
+    signOut: 'Sign Out',
     appearance: 'Appearance',
     themeLight: 'Light',
     themeDark: 'Dark',
     themeNinja: 'Ninja',
-    yourSettings: 'Your settings',
-    personalDetails: 'Personal details',
-    personalDetailsDescription: 'Update name, email, and avatar',
-    premiumActiveTitle: 'Premium',
-    premiumActiveSubtitle: 'You already have access to premium features',
+    yourSettings: 'Your Settings',
+    personalDetails: 'Personal Details',
+    personalDetailsDescription: 'Update name, email, avatar',
+    premiumActiveTitle: 'Premium Active',
+    premiumActiveSubtitle: 'You have access to all features',
     unlockPremiumTitle: 'Unlock Premium',
-    unlockPremiumSubtitle: 'Tap to unlock powerful focus tools',
-    terms: 'Terms and Conditions',
+    unlockPremiumSubtitle: 'Upgrade for more features',
+    terms: 'Terms of Service',
     privacy: 'Privacy Policy',
     supportEmail: 'Support Email',
   },
   legal: {
     privacyTitle: 'Privacy Policy',
-    privacyIntro: 'This Privacy Policy explains how Planora: AI Organizer handles your data, the information we collect, and your choices.',
-    termsTitle: 'Terms of Use',
-    termsIntro: 'These Terms of Use govern your access to and use of Planora: AI Organizer. By using the app, you agree to these terms.',
+    privacyIntro: 'Privacy Policy content...',
+    termsTitle: 'Terms of Service',
+    termsIntro: 'Terms of Service content...',
     supportTitle: 'Support',
-    supportIntro: 'If you have questions, feedback, or need help with Planora, you can reach us at:',
-    supportEmailLabel: 'Contact us via email',
+    supportIntro: 'Contact us for help.',
+    supportEmailLabel: 'Email us',
   },
   paywall: {
-    title: 'Unlock Planora Premium',
+    title: 'Unlock Premium',
     subtitle: 'AI planning, focus mode, weekly summaries, and custom themes in one plan.',
-    badge: 'Planora',
-    planYearly: '1 YEAR',
-    planMonthly: '1 MONTH',
-    planYearlyBadge: 'Popular',
-    planMonthlyBadge: 'Flexible',
-    saveMore: 'Save more versus monthly.',
-    tryPro: 'Start monthly, cancel anytime.',
-    featuresTitle: 'What’s Inside',
-    features: ['AI-built daily plans', 'Unlimited Focus Mode + streak rescue', 'Weekly summaries and premium themes'],
+    badge: 'PRO',
+    planYearly: 'YEARLY',
+    planMonthly: 'MONTHLY',
+    planYearlyBadge: 'BEST VALUE',
+    planMonthlyBadge: 'FLEXIBLE',
+    saveMore: 'Save {{percent}}%',
+    tryPro: 'Try Pro',
+    featuresTitle: 'Features',
+    features: ['Unlimited AI Plans', 'Advanced Stats', 'Custom Themes'],
     continueCta: 'Continue',
-    processing: 'Processing your purchase...',
-    renewalNote: 'Auto-renews. Cancel anytime.',
-    terms: 'Terms of Use',
-    privacy: 'Privacy Policy',
-    restore: 'Restore purchases',
-    errorNoPackage:
-      'The selected package could not be loaded right now. Please check your internet connection.',
-    thanks: 'Thanks! Your Planora Premium is active.',
-    purchaseFailed: 'Purchase failed',
-    restoreSuccess: 'Previous purchases restored.',
-    restoreFailed: 'Restore failed. Please try again.',
+    processing: 'Processing...',
+    renewalNote: 'Auto-renews, cancel anytime.',
+    terms: 'Terms',
+    privacy: 'Privacy',
+    restore: 'Restore Purchases',
+    errorNoPackage: 'No packages found.',
+    thanks: 'Thank you for subscribing!',
+    purchaseFailed: 'Purchase failed. Please try again.',
+    restoreSuccess: 'Purchases restored successfully.',
+    restoreFailed: 'Failed to restore purchases.',
   },
   notifications: {
-    nextUpTitle: 'Next up: {{title}}',
-    nextUpBody: 'Starts at {{time}}',
-    missedTitle: 'Did you complete it?',
+    nextUpTitle: 'Next Up: {{title}}',
+    nextUpBody: 'Starting at {{time}}',
+    missedTitle: 'Did you finish this?',
     missedBody: 'Did you complete "{{title}}"?',
-    middayTitle: 'Midday milestone',
-    middayBody: 'Nice! You’ve already completed {{count}} plans today.',
-    streakTitle: 'Streak rescue',
-    streakBody: 'Your streak is about to break, mark at least one plan as done to save it.',
-    reflectionTitle: 'Take 30 seconds to reflect',
-    reflectionBody: 'Close your day in Planora with a quick check-in.',
-    waterTitle: 'Time for a glass of water 💧',
-    waterBody: 'Tap in the app to log it.',
-    weeklyTitle: 'Weekly summary',
-    weeklyBody:
-      'Weekly summary: {{plans}} plans completed • {{hours}} focus hours • {{streak}}-day streak',
-    focusStartTitle: 'Focus started',
-    focusStartBody:
-      'We will stay quiet until you finish. Turn this off in Settings > Notifications.',
+    middayTitle: 'Halfway there!',
+    middayBody: "You've completed {{count}} plans.",
+    streakTitle: 'Streak at risk!',
+    streakBody: 'Complete a plan to keep your streak.',
+    reflectionTitle: 'Evening Reflection',
+    reflectionBody: 'How was your day? Take a moment to reflect.',
+    waterTitle: 'Drink Water 💧',
+    waterBody: 'Stay hydrated!',
+    weeklyTitle: 'Weekly Report',
+    weeklyBody: 'Check out your progress this week.',
+    focusStartTitle: 'Time to Focus',
+    focusStartBody: 'Your focus session is starting.',
   },
 };
 
 const tr: TranslationKeys = {
+  tour: {
+    // Welcome Flow (Home)
+    greetingTitle: "Merhaba {name}!",
+    greetingSubtitle: "Ben Planora. Şu anki ana odağından kısaca bahset.",
+    goalPlaceholder: "örn. Sınavları halletmek...",
+    startTour: "Turu Başlat",
+    homeAI: "Yapay zekanın gününü anında planlaması için buraya dokun.",
+    homeWater: "Günlük su tüketimini buradan takip edebilirsin.",
+    homeShop: "Kazandığın XP'lerle Mağaza'dan yeni temalar al.",
+
+    // Plan Tour
+    planMonth: "Ayları değiştirmek için burayı kaydır veya tıkla.",
+    planDay: "Planlarını görmek veya düzenlemek için bir gün seç.",
+    planAI: "Yapay zeka bugünü senin için komple planlasın.",
+    planAdd: "Yeni görev eklemek için '+' butonuna dokun."
+  },
   common: {
     ok: 'Tamam',
     cancel: 'Vazgeç',
@@ -986,6 +1119,8 @@ const tr: TranslationKeys = {
     notImplemented: 'Henüz uygulanmadı.',
     modalTitle: 'Bu bir modal',
     modalGoHome: 'Ana ekrana dön',
+    adRewardError: 'Ödül verilemedi. Lütfen tekrar dene.',
+    adLoading: 'Lütfen bekle, reklam yükleniyor...',
   },
   tabs: {
     today: 'Bugün',
@@ -1084,6 +1219,16 @@ const tr: TranslationKeys = {
     weeklyWeatherSubtitle: 'Önümüzdeki 7 güne hızlı bakış',
     weeklyUnavailable: 'Hava durumu kullanılamıyor',
     close: 'Kapat',
+    hydration: 'Su Takibi',
+    greetings: {
+      morning: 'Günaydın',
+      afternoon: 'Tünaydın',
+      evening: 'İyi Akşamlar',
+    },
+    draftNextMove: '+ Bir sonraki hamleni planla',
+    coachmark: 'Yapay zeka ile mükemmel programını oluşturmak için buraya dokun! ✨',
+    noTasks: 'Bugün için planlanmış görev yok',
+    addTask: 'Görev Ekle',
   },
   plan: {
     title: 'Plan',
@@ -1101,6 +1246,8 @@ const tr: TranslationKeys = {
     summary: {
       withPlans: '{{total}} plan • {{hours}} saat toplam',
       noPlans: 'Bugün için plan yok. İlk planını ekle.',
+      copyDays: 'Günleri kopyala',
+      deletePlans: 'Planları sil',
     },
     categories: {
       focus: 'Fokus',
@@ -1163,6 +1310,13 @@ const tr: TranslationKeys = {
     habitsHelper: 'Virgül veya yeni satırla ayır (örn. su, meditasyon)',
     feedbackExamples: 'Örnekler: "1 saat uzat", "sporu geceye al", "sabah koşu"',
     existingBlocksError: 'Bu gün için mevcut plan olmamalı',
+    limitOverlay: {
+      title: 'AI ile Plan Oluştur',
+      description: 'Günlük ücretsiz limitine ulaştın. Devam etmek için kısa bir reklam izle veya Premium ile sınırsız erişim kazan.',
+      watchAd: 'Reklam İzle & Oluştur',
+      goPremium: 'Premium Al',
+      maybeLater: 'Belki Sonra',
+    },
   },
   focus: {
     title: 'Fokus modu etkin',
@@ -1179,6 +1333,13 @@ const tr: TranslationKeys = {
       'Bu uygulama aramaları veya sistem bildirimlerini engelleyemez. Tam sessizlik için telefonunun Fokus / Rahatsız etme modunu da aç.',
     overlayExit: 'Moddan çık',
     overlayAddMinutes: '15 dakika ekle',
+    pointsLabel: '+{{points}} puan',
+    endSession: 'Oturumu Bitir',
+    buttons: {
+      add15: '+15 dk',
+      add30: '+30 dk',
+      add60: '+60 dk',
+    },
   },
   points: {
     title: 'Puan dükkanı',
@@ -1334,9 +1495,27 @@ const tr: TranslationKeys = {
     saveNameMessage: 'Profil bilgilerin kaydedildi.',
     mostActiveNone: 'Henüz yok',
     totalFocusMinutesLabel: '{{minutes}} dk',
-    statInfoTitle: 'İstatistikler nasıl artar',
+    statInfoTitle: 'İstatistikler nasıl gelişir?',
     statInfoDescription:
-      'Tamamlanan her 5 plan ilgili değere +%1 ekler: Spor → Güç, Odak/Çalışma → Zeka, diğerleri → Bilgi.',
+      'Her tamamlanan 5 plan, ilgili özelliğe +%1 ekler: Spor → Güç, Fokus/Ders → Zeka, diğerleri → Bilgi.',
+    pointsSuffix: 'puan',
+    level: 'Seviye {{level}}',
+    ranks: {
+      title: 'Rütbeler',
+      rank1: 'Acemi Planlayıcı',
+      rank2: 'Çırak',
+      rank3: 'Kalfa',
+      rank4: 'Uzman',
+      rank5: 'Büyük Mimar',
+      rank6: 'Zaman Lordu',
+    },
+    community: {
+      title: 'Topluluk',
+      friends: 'Arkadaşlar',
+      addFriend: 'Arkadaş ekle',
+      leaderboard: 'Sıralama',
+      online: '{{count}} Çevrimiçi',
+    },
   },
   settings: {
     title: 'Ayarlar',
@@ -1453,7 +1632,7 @@ const cloneFromEnglish = (): TranslationKeys =>
   JSON.parse(JSON.stringify(en)) as TranslationKeys;
 
 type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+  [K in keyof T]?: T[K] extends Array<any> ? T[K] : T[K] extends object ? DeepPartial<T[K]> : T[K];
 };
 
 const applyOverrides = (overrides: DeepPartial<TranslationKeys>): TranslationKeys => {
@@ -1477,38 +1656,27 @@ const applyOverrides = (overrides: DeepPartial<TranslationKeys>): TranslationKey
     points: {
       ...base.points,
       ...overrides.points,
-      profilePhotos: overrides.points?.profilePhotos ?? base.points.profilePhotos,
-      profilePhotosDescription:
-        overrides.points?.profilePhotosDescription ?? base.points.profilePhotosDescription,
-      badgeDetails: {
-        ...base.points.badgeDetails,
-        ...(overrides.points?.badgeDetails ?? {}),
-      },
       status: { ...base.points.status, ...(overrides.points?.status ?? {}) },
       button: { ...base.points.button, ...(overrides.points?.button ?? {}) },
+      badgeDetails: { ...base.points.badgeDetails, ...(overrides.points?.badgeDetails ?? {}) },
     },
     premium: {
       ...base.premium,
       ...overrides.premium,
       feature: { ...base.premium.feature, ...(overrides.premium?.feature ?? {}) },
-      paywallResult: {
-        ...base.premium.paywallResult,
-        ...(overrides.premium?.paywallResult ?? {}),
-      },
+      paywallResult: { ...base.premium.paywallResult, ...(overrides.premium?.paywallResult ?? {}) },
     },
     profile: { ...base.profile, ...overrides.profile },
     settings: {
       ...base.settings,
       ...overrides.settings,
-      notificationType: {
-        ...base.settings.notificationType,
-        ...(overrides.settings?.notificationType ?? {}),
-      },
+      notificationType: { ...base.settings.notificationType, ...(overrides.settings?.notificationType ?? {}) },
     },
     legal: { ...base.legal, ...overrides.legal },
     paywall: { ...base.paywall, ...overrides.paywall },
     notifications: { ...base.notifications, ...overrides.notifications },
-  };
+    tour: { ...base.tour, ...overrides.tour },
+  } as TranslationKeys;
 };
 
 const de = applyOverrides({
@@ -5416,8 +5584,6 @@ const nl = applyOverrides({
 
 const ko = applyOverrides({
   plan: {
-    copyDaysLabel: '일자 복사',
-    deletePlansLabel: '계획 삭제',
   },
   notifications: {
     nextUpTitle: 'Next up: {{title}}',
@@ -5443,8 +5609,6 @@ const ko = applyOverrides({
 
 const hi = applyOverrides({
   plan: {
-    copyDaysLabel: 'दिन कॉपी करें',
-    deletePlansLabel: 'योजनाएँ हटाएँ',
   },
   notifications: {
     nextUpTitle: 'Next up: {{title}}',
@@ -5470,8 +5634,6 @@ const hi = applyOverrides({
 
 const sv = applyOverrides({
   plan: {
-    copyDaysLabel: 'Kopiera dagar',
-    deletePlansLabel: 'Ta bort planer',
   },
   notifications: {
     nextUpTitle: 'Next up: {{title}}',
