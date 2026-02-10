@@ -1,3 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,14 +15,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
-import { Ionicons } from '@expo/vector-icons';
 
+import { availableLanguages, getLanguageName, useI18n } from '@/i18n/useI18n';
 import { useAuth } from '@/store/useAuth';
-import { useI18n } from '@/i18n/useI18n';
-import { availableLanguages, getLanguageName } from '@/i18n/useI18n';
 import { useLanguage } from '@/store/useLanguage';
 import { useSettings } from '@/store/useSettings';
 
@@ -36,7 +35,6 @@ export default function LoginScreen() {
   const signInWithGoogle = useAuth((state) => state.signInWithGoogle);
   const signInWithApple = useAuth((state) => state.signInWithApple);
   const signInWithEmail = useAuth((state) => state.signInWithEmail);
-  const continueAsGuest = useAuth((state) => state.continueAsGuest);
   const loading = useAuth((state) => state.loading);
   const headerHeight = useHeaderHeight();
   const [email, setEmail] = useState('');
@@ -87,10 +85,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGuestMode = () => {
-    continueAsGuest();
-    router.replace('/(tabs)');
-  };
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -220,9 +215,6 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/register')}
               style={styles.registerLink}>
               <Text style={styles.registerText}>{t((d) => d.auth.createAccount)}</Text>
-            </Pressable>
-            <Pressable style={styles.guestButton} onPress={handleGuestMode}>
-              <Text style={styles.guestText}>{t((d) => d.auth.continueAsGuest)}</Text>
             </Pressable>
           </View>
         </ScrollView>

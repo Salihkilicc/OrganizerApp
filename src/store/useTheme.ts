@@ -1,5 +1,5 @@
-import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
 
 import { themes, type Palette } from '@/styles/colors';
 
@@ -15,15 +15,15 @@ type ThemeState = {
 const STORAGE_KEY = 'app_theme';
 
 export const useTheme = create<ThemeState>((set) => ({
-  themeKey: 'classic' as ThemeId,
-  palette: themes.classic,
+  themeKey: 'light' as ThemeId,
+  palette: themes.light,
   setTheme: async (key) => {
     await AsyncStorage.setItem(STORAGE_KEY, key);
     set({ themeKey: key, palette: themes[key] });
   },
   load: async () => {
     const stored = (await AsyncStorage.getItem(STORAGE_KEY)) as ThemeId | null;
-    const nextKey: ThemeId = stored && stored in themes ? stored : 'classic';
+    const nextKey: ThemeId = stored && stored in themes ? stored : 'light';
     set({ themeKey: nextKey, palette: themes[nextKey] });
   },
 }));
