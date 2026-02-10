@@ -83,7 +83,7 @@ type Props = {
 };
 
 const MIN_DURATION = 30;
-const ANIMATION_DURATION = 220;
+const ANIMATION_DURATION = 150; // Faster animation for snappier feel
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const CATEGORY_OPTIONS: { value: PlanCategory }[] = [
@@ -187,7 +187,8 @@ export const PlanEditor = ({ visible, initial, date, onCancel, onSave, onDelete 
     }
   };
 
-  if (!modalVisible && !visible) return null;
+  // Removed conditional return null to keep component mounted
+  // if (!modalVisible && !visible) return null;
 
   return (
     <Modal visible={modalVisible || visible} animationType="none" transparent>
