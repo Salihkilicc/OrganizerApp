@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Platform,
   Pressable,
   RefreshControl,
@@ -29,9 +30,13 @@ import { useTheme } from '@/store/useTheme';
 import { useWater, WATER_BOTTLE_COUNT } from '@/store/useWater';
 import { formatTime } from '@/utils/time';
 
+import { Coachmark } from '@/components/ui/Coachmark';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientBackground } from '@/components/ui/GradientBackground';
+import { WelcomeFlow } from '@/components/ui/WelcomeFlow';
 import { AiPlanModal } from '@/features/ai-planner/ui/AiPlanModal';
+
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -43,9 +48,15 @@ export default function HomeScreen() {
   const { streakDays } = useStreak();
   const { water, drinkBottle } = useWater();
   const is24Hour = useSettings((state) => state.is24Hour);
+  const hasSeenCoachmarks = useSettings((state) => state.hasSeenCoachmarks);
+  const completeCoachmarks = useSettings((state) => state.completeCoachmarks);
+  const hasSeenInteractiveTour = useSettings((state) => state.hasSeenInteractiveTour);
+  const completeInteractiveTour = useSettings((state) => state.completeInteractiveTour);
+  const resetOnboarding = useSettings((state) => state.resetOnboarding);
 
   const [refreshing, setRefreshing] = useState(false);
   const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [coachmarkVisible, setCoachmarkVisible] = useState(false);
 
   // Animation Values
   const fireScale = useRef(new Animated.Value(1)).current;
@@ -93,6 +104,16 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  // Show coachmark after a short delay if user hasn't seen it
+  useEffect(() => {
+    if (!hasSeenCoachmarks && !hasSeenInteractiveTour) {
+      const timer = setTimeout(() => {
+        setCoachmarkVisible(true);
+      }, 1000); // Show after 1 second
+      return () => clearTimeout(timer);
+    }
+  }, [hasSeenCoachmarks, hasSeenInteractiveTour]);
+
   const getGreeting = () => {
     const h = new Date().getHours();
     return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
@@ -111,6 +132,31 @@ export default function HomeScreen() {
 
   const isDark = ['dark', 'ninja', 'midnight', 'neon', 'ocean', 'coffee', 'default'].includes(themeKey);
   const headerHeight = 60 + insets.top;
+
+  // Precision Coordinate Calculation for Tour
+  const scrollViewPadding = 20;
+  const waterCardHeight = 150;
+  const gap = 12;
+  const aiCardHeight = 160;
+
+  const tourPositions = useMemo(() => ({
+    // Step 1: AI (Middle Right - Higher)
+    ai: {
+      top: headerHeight + scrollViewPadding + waterCardHeight + gap + (aiCardHeight / 2) - 85,
+      right: 10,
+    },
+    // Step 2: Water (Top Center - Kept Same)
+    water: {
+      top: headerHeight + scrollViewPadding + (waterCardHeight / 2) - 20,
+      left: (width / 2) - 60,
+    },
+    // Step 3: Shop (Header Right - Align End)
+    shop: {
+      top: insets.top + 10,
+      right: 20,
+      alignItems: 'flex-end', // Aligns target circle to the right edge (over the button)
+    }
+  }), [headerHeight, insets.top]);
 
   return (
     <GradientBackground>
@@ -240,10 +286,21 @@ export default function HomeScreen() {
           </GlassCard>
 
           {/* Quick AI Action - Opens AI Modal with Ad System */}
-          <Pressable style={{ flex: 1 }} onPress={() => setAiModalVisible(true)}>
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => {
+              setAiModalVisible(true);
+              if (coachmarkVisible) {
+                setCoachmarkVisible(false);
+                completeCoachmarks();
+              }
+            }}
+          >
             <GlassCard style={styles.aiCard}>
               <Ionicons name="sparkles" size={32} color="#FFD700" />
-              <Text style={[styles.aiText, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>Generate Plan</Text>
+              <Text style={[styles.aiText, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]}>
+                Generate Plan
+              </Text>
             </GlassCard>
           </Pressable>
         </View>
@@ -318,6 +375,25 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* RESET TOUR BUTTON (TEMPORARY) */}
+        <Pressable
+          onPress={() => {
+            // Only reset the tour, let it reappear
+            useSettings.setState({ hasSeenInteractiveTour: false });
+          }}
+          style={{
+            marginTop: 40,
+            backgroundColor: '#7c3aed',
+            padding: 12,
+            borderRadius: 12,
+            alignItems: 'center',
+            alignSelf: 'center',
+            marginBottom: 40
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Reset Tour Only</Text>
+        </Pressable>
+
       </ScrollView>
 
       <AiPlanModal
@@ -328,6 +404,28 @@ export default function HomeScreen() {
           addMany(newBlocks);
           setAiModalVisible(false);
         }}
+      />
+
+      {/* Coachmark Tutorial */}
+      <Coachmark
+        visible={coachmarkVisible && hasSeenInteractiveTour}
+        text="Tap here to generate your perfect schedule with AI! ✨"
+        targetPosition={{
+          top: headerHeight + 20 + 16 + 160 + 12 + 50, // Header + padding + hydration card + gap + center of AI card
+          right: 20 + 50, // Right padding + center of AI card
+        }}
+        onDismiss={() => {
+          setCoachmarkVisible(false);
+          completeCoachmarks();
+        }}
+      />
+
+      {/* Welcome Flow */}
+      <WelcomeFlow
+        visible={!hasSeenInteractiveTour}
+        userName="Salih"
+        positions={tourPositions}
+        onComplete={completeInteractiveTour}
       />
     </GradientBackground>
   );

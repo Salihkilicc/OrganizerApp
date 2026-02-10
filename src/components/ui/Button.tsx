@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
 
 import { useTheme } from '@/store/useTheme';
 
@@ -10,6 +10,7 @@ export interface ButtonProps {
   type?: ButtonType;
   loading?: boolean;
   disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Button({
@@ -18,6 +19,7 @@ export function Button({
   type = 'primary',
   loading,
   disabled,
+  style,
 }: ButtonProps) {
   const { palette } = useTheme();
   const isDisabled = Boolean(disabled || loading);
@@ -26,8 +28,8 @@ export function Button({
     type === 'primary'
       ? palette.accent
       : type === 'secondary'
-      ? palette.card
-      : 'transparent';
+        ? palette.card
+        : 'transparent';
 
   const borderColor = type === 'ghost' ? 'transparent' : palette.border;
   const textColor = type === 'primary' ? '#fff' : palette.accent;
@@ -43,6 +45,7 @@ export function Button({
           borderColor,
           opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1,
         },
+        style,
       ]}>
       {loading ? (
         <ActivityIndicator color={textColor} />

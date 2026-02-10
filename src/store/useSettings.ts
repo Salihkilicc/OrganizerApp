@@ -19,6 +19,9 @@ type SettingsState = {
   vibrationEnabled: boolean;
   notificationTypes: NotificationTypes;
   is24Hour: boolean;
+  hasSeenOnboarding: boolean;
+  hasSeenCoachmarks: boolean;
+  hasSeenInteractiveTour: boolean;
   userId?: string;
   loadFromServer: (userId: string) => Promise<void>;
   resetToGuest: () => void;
@@ -27,6 +30,10 @@ type SettingsState = {
   toggleVibration: () => void;
   toggleNotificationType: (key: keyof NotificationTypes) => void;
   toggleIs24Hour: () => void;
+  completeOnboarding: () => void;
+  completeCoachmarks: () => void;
+  completeInteractiveTour: () => void;
+  resetOnboarding: () => void;
 };
 
 const STORAGE_KEY = 'organizer-settings';
@@ -91,6 +98,9 @@ export const useSettings = create<SettingsState>()(
         vibrationEnabled: true,
         notificationTypes: DEFAULT_NOTIFICATION_TYPES,
         is24Hour: defaultIs24Hour,
+        hasSeenOnboarding: false,
+        hasSeenCoachmarks: false,
+        hasSeenInteractiveTour: false,
         userId: undefined,
         loadFromServer,
         resetToGuest,
@@ -119,6 +129,18 @@ export const useSettings = create<SettingsState>()(
         toggleIs24Hour: () => {
           set((state) => ({ is24Hour: !state.is24Hour }));
           void persistToServer();
+        },
+        completeOnboarding: () => {
+          set({ hasSeenOnboarding: true });
+        },
+        completeCoachmarks: () => {
+          set({ hasSeenCoachmarks: true });
+        },
+        completeInteractiveTour: () => {
+          set({ hasSeenInteractiveTour: true });
+        },
+        resetOnboarding: () => {
+          set({ hasSeenOnboarding: false, hasSeenInteractiveTour: false, hasSeenCoachmarks: false });
         },
       };
     },

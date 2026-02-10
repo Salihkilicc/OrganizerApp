@@ -209,10 +209,17 @@ export default function RootLayout() {
       return;
     }
 
-    const inAuthGroup = segments?.[0] === '(auth)';
+    // Wait for router to be fully mounted
+    if (!segments) {
+      return;
+    }
+
+    const inAuthGroup = segments[0] === '(auth)';
+    const inTabs = segments[0] === '(tabs)';
     const isAuthenticated = status === 'authenticated';
     const isGuestMode = status === 'guest' && isGuest;
 
+    // Auth routing
     if (!isAuthenticated && !isGuestMode && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
@@ -313,6 +320,7 @@ export default function RootLayout() {
           <ThemeProvider value={navigatorTheme}>
             <GradientBackground style={{ flex: 1 }}>
               <Stack>
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="points" options={{ headerShown: false }} />

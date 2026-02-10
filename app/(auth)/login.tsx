@@ -468,20 +468,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  guestButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: palette.border,
-    marginHorizontal: 6,
-    marginBottom: 10,
-  },
-  guestText: {
-    color: palette.text,
-    fontWeight: '600',
-    fontSize: 14,
-  },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
