@@ -27,6 +27,8 @@ export type AiPlanRequest = {
   feedback?: string | null;
   previousBlocks?: AiPlanRequestBlock[] | null;
   previousPlanString?: string | null;
+  userLanguage?: string;
+  timeFormat?: '12h' | '24h';
 };
 
 export type AiPlanResponse = {
@@ -117,7 +119,7 @@ const normalizeRequestBlocks = (blocks?: AiPlanRequestBlock[] | null) => {
         note,
       };
     })
-    .filter((value): value is { title: string; start: string; end: string; category?: string; note?: string | null } =>
+    .filter((value): value is { title: string; start: string; end: string; category: AiPlanBlock['category'] | undefined; note: string | undefined } =>
       Boolean(value),
     );
   return normalized.length > 0 ? normalized : undefined;
@@ -136,10 +138,10 @@ const normalizeResponseBlocks = (blocks: unknown): AiPlanBlock[] => {
     const rawCategory = typeof block.category === 'string' ? block.category.trim() : '';
     const category: AiPlanBlock['category'] =
       rawCategory === 'focus' ||
-      rawCategory === 'study' ||
-      rawCategory === 'work' ||
-      rawCategory === 'gym' ||
-      rawCategory === 'other'
+        rawCategory === 'study' ||
+        rawCategory === 'work' ||
+        rawCategory === 'gym' ||
+        rawCategory === 'other'
         ? (rawCategory as AiPlanBlock['category'])
         : 'other';
     const startMin =
@@ -205,6 +207,8 @@ export async function generatePlanFromAI(
       ...payload,
       previousBlocks: normalizeRequestBlocks(payload.previousBlocks),
       previous_plan: payload.previousPlanString ?? undefined,
+      userLanguage: payload.userLanguage,
+      timeFormat: payload.timeFormat,
     }),
   });
 

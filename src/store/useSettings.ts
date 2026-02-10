@@ -9,7 +9,7 @@ import {
   NotificationTypes,
   saveUserSettings,
 } from '@/lib/account';
-import { isSupportedLanguage, SupportedLanguage, useLanguage } from '@/store/useLanguage';
+import { getCurrentLanguage, isSupportedLanguage, SupportedLanguage, useLanguage } from '@/store/useLanguage';
 
 type AppLanguage = SupportedLanguage;
 
@@ -18,6 +18,7 @@ type SettingsState = {
   waterReminderEnabled: boolean;
   vibrationEnabled: boolean;
   notificationTypes: NotificationTypes;
+  is24Hour: boolean;
   userId?: string;
   loadFromServer: (userId: string) => Promise<void>;
   resetToGuest: () => void;
@@ -25,6 +26,7 @@ type SettingsState = {
   toggleWaterReminder: () => void;
   toggleVibration: () => void;
   toggleNotificationType: (key: keyof NotificationTypes) => void;
+  toggleIs24Hour: () => void;
 };
 
 const STORAGE_KEY = 'organizer-settings';
@@ -70,20 +72,25 @@ export const useSettings = create<SettingsState>()(
       };
 
       const resetToGuest = () => {
+        const defaultIs24Hour = getCurrentLanguage() !== 'en';
         set({
           userId: undefined,
           language: useLanguage.getState().language,
           waterReminderEnabled: true,
           vibrationEnabled: true,
           notificationTypes: DEFAULT_NOTIFICATION_TYPES,
+          is24Hour: defaultIs24Hour,
         });
       };
+
+      const defaultIs24Hour = getCurrentLanguage() !== 'en';
 
       return {
         language: useLanguage.getState().language,
         waterReminderEnabled: true,
         vibrationEnabled: true,
         notificationTypes: DEFAULT_NOTIFICATION_TYPES,
+        is24Hour: defaultIs24Hour,
         userId: undefined,
         loadFromServer,
         resetToGuest,
@@ -107,6 +114,10 @@ export const useSettings = create<SettingsState>()(
               [key]: !state.notificationTypes[key],
             },
           }));
+          void persistToServer();
+        },
+        toggleIs24Hour: () => {
+          set((state) => ({ is24Hour: !state.is24Hour }));
           void persistToServer();
         },
       };

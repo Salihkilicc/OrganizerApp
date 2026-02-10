@@ -411,14 +411,7 @@ export const PlanGrid = memo(function PlanGrid({
   );
 });
 
-const formatTime = (minutes: number) => {
-  const clamped = clamp(minutes, 0, 24 * 60);
-  const hour = Math.floor(clamped / 60);
-  const minute = clamped % 60;
-  const hourLabel = hour.toString().padStart(2, '0');
-  const minuteLabel = minute.toString().padStart(2, '0');
-  return `${hourLabel}:${minuteLabel}`;
-};
+
 
 const styles = StyleSheet.create({
   wrapper: {

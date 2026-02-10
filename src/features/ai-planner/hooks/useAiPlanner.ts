@@ -5,8 +5,10 @@ import { AiPlanBlock, AiPlanRequest, generatePlanFromAI } from '@/lib/aiPlan';
 import { checkAiLimit, type AiLimitResult } from '@/lib/aiUsage';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/store/useAuth';
+import { useLanguage } from '@/store/useLanguage';
 import { PlanBlock, usePlans } from '@/store/usePlans';
 import { usePremium } from '@/store/usePremium';
+import { useSettings } from '@/store/useSettings';
 
 // --- Helpers moved from AiPlanModal.tsx ---
 
@@ -112,6 +114,8 @@ export function useAiPlanner({
     const status = useAuth((state) => state.status);
     const isGuest = useAuth((state) => state.isGuest);
     const isPremium = usePremium((state) => state.isPremium);
+    const language = useLanguage((state) => state.language);
+    const is24Hour = useSettings((state) => state.is24Hour);
     const isAuthenticatedUser = status === 'authenticated' && !!user && !isGuest;
     const isGuestUser = !isAuthenticatedUser;
 
@@ -370,6 +374,8 @@ export function useAiPlanner({
                 feedback: normalizedFeedback || undefined,
                 previousBlocks: previousBlocks && previousBlocks.length > 0 ? previousBlocks : undefined,
                 previousPlanString: options?.includePreviousPlanString ? getPreviousPlanString() : undefined,
+                userLanguage: language,
+                timeFormat: is24Hour ? '24h' : '12h',
             };
         },
         [
@@ -385,6 +391,8 @@ export function useAiPlanner({
             previousBlocks,
             getPreviousPlanString,
             formatListInput,
+            language,
+            is24Hour,
         ],
     );
 

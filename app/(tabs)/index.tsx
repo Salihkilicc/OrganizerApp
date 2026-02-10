@@ -23,9 +23,11 @@ import { useI18n } from '@/i18n/useI18n';
 import { notifyFocusStarted } from '@/lib/notifications';
 import { useAvatarStore } from '@/store/useAvatar';
 import { PlanBlock, PlanCategory, usePlans } from '@/store/usePlans';
+import { useSettings } from '@/store/useSettings';
 import { useStreak } from '@/store/useStreak';
 import { useTheme } from '@/store/useTheme';
 import { useWater, WATER_BOTTLE_COUNT } from '@/store/useWater';
+import { formatTime } from '@/utils/time';
 
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientBackground } from '@/components/ui/GradientBackground';
@@ -40,6 +42,7 @@ export default function HomeScreen() {
   const { selectedAvatar } = useAvatarStore();
   const { streakDays } = useStreak();
   const { water, drinkBottle } = useWater();
+  const is24Hour = useSettings((state) => state.is24Hour);
 
   const [refreshing, setRefreshing] = useState(false);
   const [aiModalVisible, setAiModalVisible] = useState(false);
@@ -207,7 +210,7 @@ export default function HomeScreen() {
                     <Text style={styles.tagText}>{nextBlock.category}</Text>
                   </View>
                   <Text style={[styles.nextTime, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : 'rgba(255,255,255,0.8)' }]}>
-                    {Math.floor(nextBlock.startMin / 60).toString().padStart(2, '0')}:{(nextBlock.startMin % 60).toString().padStart(2, '0')}
+                    {formatTime(nextBlock.startMin, is24Hour)}
                   </Text>
                 </View>
 
@@ -392,6 +395,7 @@ function TaskCard({
   const checkboxScale = useRef(new Animated.Value(1)).current;
   const checkboxRotate = useRef(new Animated.Value(0)).current;
   const [isChecked, setIsChecked] = useState(block.done || false);
+  const is24Hour = useSettings((state) => state.is24Hour);
 
   const handleCheck = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -429,12 +433,6 @@ function TaskCard({
     }
   };
 
-  const formatTime = (min: number) => {
-    const h = Math.floor(min / 60).toString().padStart(2, '0');
-    const m = (min % 60).toString().padStart(2, '0');
-    return `${h}:${m}`;
-  };
-
   const rotateInterpolate = checkboxRotate.interpolate({
     inputRange: [-1, 1],
     outputRange: ['-5deg', '5deg']
@@ -462,7 +460,7 @@ function TaskCard({
               <Text style={[styles.taskTitle, { color: themeKey === 'light' ? '#1e1b4b' : '#fff' }]} numberOfLines={1}>{block.title}</Text>
               <View style={styles.taskMeta}>
                 <Text style={[styles.taskTime, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.7)' : 'rgba(255,255,255,0.7)' }]}>
-                  {formatTime(block.startMin)} - {formatTime(block.endMin)}
+                  {formatTime(block.startMin, is24Hour)} - {formatTime(block.endMin, is24Hour)}
                 </Text>
                 <Text style={[styles.taskCategory, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.5)' : 'rgba(255,255,255,0.5)' }]}>{block.category}</Text>
               </View>

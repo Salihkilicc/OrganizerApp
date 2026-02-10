@@ -72,6 +72,8 @@ export default function SettingsScreen() {
   const toggleNotificationType = useSettings((state) => state.toggleNotificationType);
   const waterReminderEnabled = useSettings((state) => state.waterReminderEnabled);
   const toggleWaterReminder = useSettings((state) => state.toggleWaterReminder);
+  const is24Hour = useSettings((state) => state.is24Hour);
+  const toggleIs24Hour = useSettings((state) => state.toggleIs24Hour);
   const selectedAvatar = useAvatarStore((state) => state.selectedAvatar);
   const profilePhoto =
     (user?.user_metadata as Record<string, string | undefined> | undefined)?.avatar_url ||
@@ -341,6 +343,27 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={themeKey === 'light' ? 'rgba(30, 27, 75, 0.3)' : 'rgba(255,255,255,0.3)'} />
             </Pressable>
+            <View style={styles.sectionRow}>
+              <Ionicons name="time-outline" size={22} color={themeKey === 'light' ? '#1e1b4b' : palette.text} />
+              <View style={styles.sectionText}>
+                <Text style={[styles.sectionLabel, { color: themeKey === 'light' ? '#1e1b4b' : palette.text }]}>
+                  24-Hour Time
+                </Text>
+                <Text style={[styles.sectionHint, { color: themeKey === 'light' ? 'rgba(30, 27, 75, 0.6)' : palette.text }]}>
+                  {is24Hour ? '14:30' : '2:30 PM'}
+                </Text>
+              </View>
+              <Switch
+                value={is24Hour}
+                onValueChange={toggleIs24Hour}
+                thumbColor={palette.background}
+                trackColor={{
+                  false: themeKey === 'light' ? '#7C3AED' : '#8b5cf6',
+                  true: themeKey === 'light' ? '#2563EB' : '#3b82f6'
+                }}
+                style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+              />
+            </View>
           </GlassCard>
 
           <GlassCard
