@@ -31,13 +31,10 @@
 
 ## 📸 Demo & Interface
 
-> *(Add your screenshots here: 1. Main Dashboard, 2. AI Planner Modal, 3. Focus Mode / Shop)*
+<img width="347" height="756" alt="Screenshot 2026-02-15 at 22 35 43" src="https://github.com/user-attachments/assets/12575adb-db57-46fc-a63d-16dcea01a2b6" />
+<img width="347" height="756" alt="Screenshot 2026-02-15 at 22 35 25" src="https://github.com/user-attachments/assets/adf199ce-65be-4937-a6ad-02a9544151e8" />
+<img width="347" height="756" alt="Screenshot 2026-02-15 at 22 35 07" src="https://github.com/user-attachments/assets/26830d1e-328a-4bf7-9a6f-84fd66b901c8" />
 
-<p align="center">
-  <img src="[Link_to_your_screenshot_1]" width="250" />
-  <img src="[Link_to_your_screenshot_2]" width="250" />
-  <img src="[Link_to_your_screenshot_3]" width="250" />
-</p>
 
 ---
 
