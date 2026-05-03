@@ -1,69 +1,48 @@
-# Welcome to your Expo app 👋
+# 🚀 Planora : AI-Powered Life & Task Organizer
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Expo](https://img.shields.io/badge/Expo-1B1F23?style=for-the-badge&logo=expo&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
-## Get started
+**Planora** is an intelligent, gamified productivity ecosystem built to eliminate decision fatigue. It leverages AI to dynamically schedule tasks, tracks daily habits, and uses advanced gamification to keep users consistently engaged.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## ✨ Core Features & Architecture
 
-2. Start the app
+* **🧠 AI-Driven Task Scheduling:** Utilizes custom **Supabase Edge Functions** (`ai-generate-plan`) to auto-arrange daily routines based on user inputs and time constraints.
+* **🎮 Deep Gamification Engine:** Built-in progression system featuring Streaks, Points, and a Virtual Shop where users can unlock custom Avatars and UI upgrades.
+* **💎 Hybrid Monetization Architecture:** Seamlessly integrates **RevenueCat** for premium subscriptions and **Google AdMob** (Rewarded Ads) for freemium users to bypass AI limits (`useRewardedAd`).
+* **🧘‍♂️ Wellness & Productivity:** Features an immersive **Focus Mode** and integrated daily water tracking mechanics.
+* **🎨 Premium UI/UX:** Crafted with Glassmorphism components (`GlassCard`), parallax scroll views, dark/light theme support, and haptic feedback loops for native-level fluidity.
 
-```bash
-npx expo start
-```
+---
 
-### Configure Supabase
+## 🛠 Tech Stack
 
-1. Copy `.env.example` to `.env` (or your preferred env file that Expo loads) and paste the Supabase project credentials from [your dashboard](https://mcp.supabase.com/mcp?project_ref=omspbmogkplnklfzgotk).
-2. Restart Expo so `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are available at runtime.
+* **Frontend:** React Native, Expo, TypeScript
+* **State Management:** Modular hook-based global stores (Zustand/Context patterns handling Points, Streaks, Shop, Auth, and Premium states).
+* **Backend & BaaS:** Supabase (PostgreSQL, Authentication, Edge Functions)
+* **Monetization & Analytics:** RevenueCat (IAP) & Google AdMob
+* **Localization:** Fully integrated i18n support for global reach.
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📸 Demo & Interface
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+> *(Add your screenshots here: 1. Main Dashboard, 2. AI Planner Modal, 3. Focus Mode / Shop)*
 
-## Get a fresh project
+<p align="center">
+  <img src="[Link_to_your_screenshot_1]" width="250" />
+  <img src="[Link_to_your_screenshot_2]" width="250" />
+  <img src="[Link_to_your_screenshot_3]" width="250" />
+</p>
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
-```
+## 👨‍💻 Developed By
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+**Salih Kilic** *Computer Engineer & Tech Founder* Architecting scalable solutions at the intersection of AI, robust software engineering, and strategic product growth.
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-
-## Supabase Auth (Dev vs Prod)
-
-1. **Google Cloud Console → OAuth Client (Web)**
-   - Create a Web client and add the following Authorized redirect URI: `https://<PROJECT-REF>.supabase.co/auth/v1/callback`.
-2. **Supabase Dashboard → Authentication → URL Configuration**
-   - **DEV**: Paste the exact string logged by `getDevRedirect()` (looks like `https://auth.expo.io/@<your-user>/<your-slug>`). The root layout logs `DEV redirect: ...` in development for easy copy/paste.
-   - **PROD**: Paste the exact string logged by `getProdRedirect()` (for this app it resolves to `organizer://redirect` by default, or a path you set if you change the helper).
-
-### Troubleshooting
-
-- **`redirect_to is not allowed`** → Add the exact redirect string (copy it from the dev logs) under Supabase Redirect URLs.
-- **`Google redirect_uri_mismatch`** → Ensure the Google OAuth client uses the Supabase callback URL (`https://<PROJECT-REF>.supabase.co/auth/v1/callback`).
-- **Session not persisting** → Confirm both `supabase.auth.getSession()` and the `onAuthStateChange` subscription run on app start (already wired in `store/useAuth.ts`).
+🔗 https://www.linkedin.com/in/salih-kilic1/ | 📧 ssalih.kilicc@gmail.com
